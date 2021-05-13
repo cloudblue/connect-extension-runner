@@ -1,0 +1,57 @@
+name: Deploy CloudBlue Connect EaaS Extension Runner
+
+on:
+  push:
+    tags:
+        - '*'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install
+    - name: Linting
+      run: |
+        poetry run flake8
+    - name: Testing
+      run: |
+        poetry run pytest
+    - name: Extract tag name
+      uses: actions/github-script@v3
+      id: tag
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        result-encoding: string
+        script: |
+          return context.payload.ref.replace(/refs\/tags\//, '')
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        poetry version ${{ steps.tag.outputs.result }}
+        poetry build
+        poetry publish -u $TWINE_USERNAME -p $TWINE_PASSWORD
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+    - name: Login to DockerHub
+      uses: docker/login-action@v1 
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build and push docker image
+      id: docker_build
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: cloudblueconnect/connect-extension-runner:${{ steps.tag.outputs.result }},cloudblueconnect/connect-extension-runner:latest
+    - name: Docker image digest
+      run: echo ${{ steps.docker_build.outputs.digest }}
