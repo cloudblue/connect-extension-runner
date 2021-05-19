@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "connect-extension-runner"
+version = "0.1.0"
+description = "CloudBlue Connect EaaS Extension Runner"
+authors = ["CloudBlue LLC"]
+license = "Apache-2.0"
+packages = [
+    { include = "connect" },
+]
+readme = "./README.md"
+homepage = "https://connect.cloudblue.com"
+repository = "https://github.com/cloudblue/connect-extension-runner"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Utilities",
+    "Topic :: Software Development :: Libraries",
+]
+
+[tool.poetry.scripts]
+cextrun = 'connect.eaas.main:main'
+
+[tool.poetry.dependencies]
+python = "^3.8"
+websockets = "^9.0.1"
+connect-openapi-client = "^22.0.7"
+logzio-python-handler = "^3.0.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.1.2"
+pytest-cov = "^2.10.1"
+pytest-mock = "^3.3.1"
+coverage = {extras = ["toml"], version = "^5.3"}
+flake8 = "~3.8"
+flake8-bugbear = "~20"
+flake8-cognitive-complexity = "^0.1"
+flake8-commas = "~2.0"
+flake8-future-import = "~0.4"
+flake8-import-order = "~0.18"
+flake8-broken-line = "~0.3"
+pytest-asyncio = "^0.15.1"
+pytest-httpx = "^0.12.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
