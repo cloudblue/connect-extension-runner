@@ -11,13 +11,13 @@ import pathlib
 import signal
 
 from connect.eaas.helpers import install_extension
-from connect.eaas.workers import ControlWorker
+from connect.eaas.worker import Worker
 
 
 logger = logging.getLogger('eaas')
 
 
-def configure_logger():
+def configure_logger(debug):
     logging.config.dictConfig(
         {
             'version': 1,
@@ -38,9 +38,9 @@ def configure_logger():
                 },
             },
             'loggers': {
-                'eaas': {
+                'connect.eaas': {
                     'handlers': ['console'],
-                    'level': 'INFO',
+                    'level': 'DEBUG' if debug else 'INFO',
                 },
             },
         },
@@ -54,22 +54,26 @@ def start(data):
     logger.info('The extension has been installed, starting the control worker...')
     if data.unsecure:
         logger.warning('Websocket connections will be established using unsecure protocol (ws).')
-    worker = ControlWorker(secure=not data.unsecure)
+    worker = Worker(secure=not data.unsecure)
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
-        signal.SIGTERM,
-        worker.run_event.clear,
+        signal.SIGINT,
+        worker.stop,
     )
-    worker.run_event.set()
-    asyncio.run(worker.run())
+    loop.add_signal_handler(
+        signal.SIGTERM,
+        worker.stop,
+    )
+    loop.run_until_complete(worker.start())
 
 
 def main():
     parser = argparse.ArgumentParser(prog='cextrun')
     parser.add_argument('-u', '--unsecure', action='store_true')
+    parser.add_argument('-d', '--debug', action='store_true', default=False)
     parser.add_argument('-e', '--extension-dir', default='/extension', type=pathlib.Path)
     data = parser.parse_args()
-    configure_logger()
+    configure_logger(data.debug)
     start(data)
 
 

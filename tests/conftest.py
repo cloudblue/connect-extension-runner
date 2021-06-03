@@ -9,6 +9,8 @@ import socket
 import pytest
 import websockets
 
+from connect.eaas.extension import Extension, OK
+
 
 @pytest.fixture(scope='session')
 def unused_port():
@@ -29,3 +31,25 @@ def ws_server(unused_port):
         ):
             yield
     return _ws_server
+
+
+@pytest.fixture
+def extension_cls():
+    def _extension(method_name, result=None, async_impl=False):
+        class TestExtension(Extension):
+            pass
+
+        def ext_method(self, request):
+            return result or OK
+
+        async def async_ext_method(self, request):
+            return result or OK
+
+        if async_impl:
+            setattr(TestExtension, method_name, async_ext_method)
+        else:
+            setattr(TestExtension, method_name, ext_method)
+
+        return TestExtension
+
+    return _extension

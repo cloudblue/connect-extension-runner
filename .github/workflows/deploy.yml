@@ -52,6 +52,8 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         push: true
+        build-args: |
+          RUNNER_VERSION=${{ steps.tag.outputs.result }}
         tags: cloudblueconnect/connect-extension-runner:${{ steps.tag.outputs.result }},cloudblueconnect/connect-extension-runner:latest
     - name: Docker image digest
       run: echo ${{ steps.docker_build.outputs.digest }}

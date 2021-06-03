@@ -4,16 +4,76 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 
-OBJ_TYPE_TASK_CATEGORY = {
-    'asset_request': 'bg',
-    'asset_request_validation': 'interactive',
-    'tier_config_request': 'bg',
-    'tier_config_request_validation': 'interactive',
+from connect.eaas.dataclasses import TaskType
+
+
+TASK_TYPE_EXT_METHOD_MAP = {
+    TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: 'process_asset_purchase_request',
+    TaskType.ASSET_CHANGE_REQUEST_PROCESSING: 'process_asset_change_request',
+    TaskType.ASSET_SUSPEND_REQUEST_PROCESSING: 'process_asset_suspend_request',
+    TaskType.ASSET_RESUME_REQUEST_PROCESSING: 'process_asset_resume_request',
+    TaskType.ASSET_CANCEL_REQUEST_PROCESSING: 'process_asset_cancel_request',
+    TaskType.ASSET_ADJUSTMENT_REQUEST_PROCESSING: 'process_asset_adjustment_request',
+    TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: 'validate_asset_purchase_request',
+    TaskType.ASSET_CHANGE_REQUEST_VALIDATION: 'validate_asset_change_request',
+    TaskType.ASSET_SUSPEND_REQUEST_VALIDATION: 'validate_asset_suspend_request',
+    TaskType.ASSET_RESUME_REQUEST_VALIDATION: 'validate_asset_resume_request',
+    TaskType.ASSET_CANCEL_REQUEST_VALIDATION: 'validate_asset_cancel_request',
+    TaskType.ASSET_ADJUSTMENT_REQUEST_VALIDATION: 'validate_asset_adjustment_request',
+    TaskType.PRODUCT_ACTION_EXECUTION: 'execute_product_action',
+    TaskType.PRODUCT_CUSTOM_EVENT_PROCESSING: 'process_product_custom_event',
+    TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING: 'process_tier_config_setup_request',
+    TaskType.TIER_CONFIG_CHANGE_REQUEST_PROCESSING: 'process_tier_config_change_request',
+    TaskType.TIER_CONFIG_SETUP_REQUEST_VALIDATION: 'validate_tier_config_setup_request',
+    TaskType.TIER_CONFIG_CHANGE_REQUEST_VALIDATION: 'validate_tier_config_change_request',
 }
 
-OBJ_TYPE_EXT_METHOD_MAP = {
-    'asset_request': 'process_asset_request',
-    'asset_request_validation': 'validate_asset_request',
-    'tier_config_request': 'process_tier_config_request',
-    'tier_config_request_validation': 'validate_tier_config_request',
-}
+ASSET_REQUEST_TASK_TYPES = (
+    TaskType.ASSET_PURCHASE_REQUEST_PROCESSING,
+    TaskType.ASSET_CHANGE_REQUEST_PROCESSING,
+    TaskType.ASSET_SUSPEND_REQUEST_PROCESSING,
+    TaskType.ASSET_RESUME_REQUEST_PROCESSING,
+    TaskType.ASSET_CANCEL_REQUEST_PROCESSING,
+    TaskType.ASSET_ADJUSTMENT_REQUEST_PROCESSING,
+    TaskType.ASSET_PURCHASE_REQUEST_VALIDATION,
+    TaskType.ASSET_CHANGE_REQUEST_VALIDATION,
+    TaskType.ASSET_SUSPEND_REQUEST_VALIDATION,
+    TaskType.ASSET_RESUME_REQUEST_VALIDATION,
+    TaskType.ASSET_CANCEL_REQUEST_VALIDATION,
+    TaskType.ASSET_ADJUSTMENT_REQUEST_VALIDATION,
+)
+
+TIER_CONFIG_REQUEST_TASK_TYPES = (
+    TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING,
+    TaskType.TIER_CONFIG_CHANGE_REQUEST_PROCESSING,
+    TaskType.TIER_CONFIG_SETUP_REQUEST_VALIDATION,
+    TaskType.TIER_CONFIG_CHANGE_REQUEST_VALIDATION,
+)
+
+BACKGROUND_TASK_TYPES = (
+    TaskType.ASSET_PURCHASE_REQUEST_PROCESSING,
+    TaskType.ASSET_CHANGE_REQUEST_PROCESSING,
+    TaskType.ASSET_SUSPEND_REQUEST_PROCESSING,
+    TaskType.ASSET_RESUME_REQUEST_PROCESSING,
+    TaskType.ASSET_CANCEL_REQUEST_PROCESSING,
+    TaskType.ASSET_ADJUSTMENT_REQUEST_PROCESSING,
+    TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING,
+    TaskType.TIER_CONFIG_CHANGE_REQUEST_PROCESSING,
+)
+
+INTERACTIVE_TASK_TYPES = (
+    TaskType.ASSET_PURCHASE_REQUEST_VALIDATION,
+    TaskType.ASSET_CHANGE_REQUEST_VALIDATION,
+    TaskType.ASSET_SUSPEND_REQUEST_VALIDATION,
+    TaskType.ASSET_RESUME_REQUEST_VALIDATION,
+    TaskType.ASSET_CANCEL_REQUEST_VALIDATION,
+    TaskType.ASSET_ADJUSTMENT_REQUEST_VALIDATION,
+    TaskType.TIER_CONFIG_SETUP_REQUEST_VALIDATION,
+    TaskType.TIER_CONFIG_CHANGE_REQUEST_VALIDATION,
+    TaskType.PRODUCT_ACTION_EXECUTION,
+    TaskType.PRODUCT_CUSTOM_EVENT_PROCESSING,
+)
+
+BACKGROUND_TASK_MAX_EXECUTION_TIME = 300
+INTERACTIVE_TASK_MAX_EXECUTION_TIME = 60
+RESULT_SENDER_MAX_RETRIES = 5

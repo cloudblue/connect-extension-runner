@@ -69,12 +69,15 @@ def test_get_container_id_ko(mocker):
 def test_get_environment_with_defaults(mocker):
     os.environ['API_KEY'] = 'SU-000:XXXX'
     os.environ['ENVIRONMENT_ID'] = 'ENV-0000-0000-01'
+    if 'SERVER_ADDRESS' in os.environ:
+        del os.environ['SERVER_ADDRESS']
     mocker.patch('connect.eaas.helpers.get_container_id', return_value='container_id')
     env = get_environment()
     assert env['api_key'] == 'SU-000:XXXX'
     assert env['environment_id'] == 'ENV-0000-0000-01'
     assert env['instance_id'] == 'container_id'
-    assert env['server_address'] == 'api.cnct.info'
+    assert env['ws_address'] == 'api.cnct.info'
+    assert env['api_address'] == 'api.cnct.info'
 
 
 def test_get_environment(mocker):
@@ -82,11 +85,13 @@ def test_get_environment(mocker):
     os.environ['ENVIRONMENT_ID'] = 'ENV-0000-0000-01'
     os.environ['INSTANCE_ID'] = 'SIN-0000-0000-01'
     os.environ['SERVER_ADDRESS'] = 'api.example.com'
+    os.environ['API_ADDRESS'] = 'api.example.com'
     env = get_environment()
     assert env['api_key'] == 'SU-000:XXXX'
     assert env['environment_id'] == 'ENV-0000-0000-01'
     assert env['instance_id'] == 'SIN-0000-0000-01'
-    assert env['server_address'] == 'api.example.com'
+    assert env['ws_address'] == 'api.example.com'
+    assert env['api_address'] == 'api.example.com'
 
 
 def test_get_extension_class(mocker):

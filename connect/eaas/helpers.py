@@ -46,7 +46,8 @@ def get_environment():
         'api_key': os.getenv('API_KEY'),
         'environment_id': os.getenv('ENVIRONMENT_ID'),
         'instance_id': os.getenv('INSTANCE_ID', get_container_id()),
-        'server_address': os.getenv('SERVER_ADDRESS', 'api.cnct.info'),
+        'ws_address': os.getenv('SERVER_ADDRESS', 'api.cnct.info'),
+        'api_address': os.getenv('API_ADDRESS', os.getenv('SERVER_ADDRESS', 'api.cnct.info')),
     }
 
 
