@@ -42,6 +42,8 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
@@ -73,7 +75,14 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
         await task
 
     handler.assert_received(
-        Message(MessageType.CAPABILITIES, CapabilitiesPayload(capabilities)).to_json(),
+        Message(
+            MessageType.CAPABILITIES,
+            CapabilitiesPayload(
+                capabilities,
+                'https://example.com/README.md',
+                'https://example.com/CHANGELOG.md',
+            ),
+        ).to_json(),
     )
 
 
@@ -109,6 +118,8 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
         def process_asset_purchase_request(self, request):
@@ -145,7 +156,14 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock):
         await task
 
     handler.assert_received(
-        Message(MessageType.CAPABILITIES, CapabilitiesPayload(capabilities)).to_json(),
+        Message(
+            MessageType.CAPABILITIES,
+            CapabilitiesPayload(
+                capabilities,
+                'https://example.com/README.md',
+                'https://example.com/CHANGELOG.md',
+            ),
+        ).to_json(),
     )
     handler.assert_received(
         Message(MessageType.TASK, TaskPayload(
@@ -190,6 +208,8 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
         def process_tier_config_setup_request(self, request):
@@ -226,7 +246,14 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
         await task
 
     handler.assert_received(
-        Message(MessageType.CAPABILITIES, CapabilitiesPayload(capabilities)).to_json(),
+        Message(
+            MessageType.CAPABILITIES,
+            CapabilitiesPayload(
+                capabilities,
+                'https://example.com/README.md',
+                'https://example.com/CHANGELOG.md',
+            ),
+        ).to_json(),
     )
     handler.assert_received(
         Message(MessageType.TASK, TaskPayload(
@@ -263,6 +290,8 @@ async def test_pause(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
@@ -315,6 +344,8 @@ async def test_resume(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
@@ -368,6 +399,8 @@ async def test_shutdown(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
@@ -486,6 +519,8 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)

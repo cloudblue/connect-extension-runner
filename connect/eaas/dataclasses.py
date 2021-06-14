@@ -19,8 +19,10 @@ class TaskType:
     PRODUCT_CUSTOM_EVENT_PROCESSING = 'product_custom_event_processing'
     TIER_CONFIG_SETUP_REQUEST_PROCESSING = 'tier_config_setup_request_processing'
     TIER_CONFIG_CHANGE_REQUEST_PROCESSING = 'tier_config_change_request_processing'
+    TIER_CONFIG_ADJUSTMENT_REQUEST_PROCESSING = 'tier_config_adjustment_request_processing'
     TIER_CONFIG_SETUP_REQUEST_VALIDATION = 'tier_config_setup_request_validation'
     TIER_CONFIG_CHANGE_REQUEST_VALIDATION = 'tier_config_change_request_validation'
+    TIER_CONFIG_ADJUSTMENT_REQUEST_VALIDATION = 'tier_config_adjustment_request_validation'
 
 
 class MessageType:
@@ -73,6 +75,8 @@ class ConfigurationPayload:
 @dataclasses.dataclass
 class CapabilitiesPayload:
     capabilities: dict
+    readme_url: str = None
+    changelog_url: str = None
 
     def to_json(self):
         return dataclasses.asdict(self)

@@ -48,7 +48,10 @@ class Worker:
         self.ws = None
         self.extension_class = get_extension_class()
         self.extension_type = get_extension_type(self.extension_class)
-        self.capabilities = self.extension_class.get_descriptor()['capabilities']
+        descriptor = self.extension_class.get_descriptor()
+        self.capabilities = descriptor['capabilities']
+        self.readme_url = descriptor['readme_url']
+        self.changelog_url = descriptor['changelog_url']
         self.extension_config = None
         self.logging_api_key = None
         self.main_task = None
@@ -143,7 +146,11 @@ class Worker:
                 await self.ensure_connection()
                 message = Message(
                     message_type=MessageType.CAPABILITIES,
-                    data=CapabilitiesPayload(self.capabilities),
+                    data=CapabilitiesPayload(
+                        self.capabilities,
+                        self.readme_url,
+                        self.changelog_url,
+                    ),
                 )
                 await self.send(message.to_json())
                 while self.run_event.is_set():
@@ -188,9 +195,11 @@ class Worker:
         It will stop the tasks manager so the extension can be
         reconfigured, then restart the tasks manager.
         """
+        self.paused = True
         await self.stop_tasks_manager()
         self.extension_config = data.configuration
         self.logging_api_key = data.logging_api_key
+        self.paused = False
         self.start_tasks_manager()
 
     async def pause(self):
