@@ -188,9 +188,11 @@ class Worker:
         It will stop the tasks manager so the extension can be
         reconfigured, then restart the tasks manager.
         """
+        self.paused = True
         await self.stop_tasks_manager()
         self.extension_config = data.configuration
         self.logging_api_key = data.logging_api_key
+        self.paused = False
         self.start_tasks_manager()
 
     async def pause(self):
