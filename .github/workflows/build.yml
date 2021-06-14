@@ -2,9 +2,10 @@ name: Build CloudBlue Connect EaaS Extension Runner
 
 on:
   push:
-    branches: '*'
+    branches: 
+      - '*'
     tags:
-        - '*'
+      - '*'
   pull_request:
     branches: [ master ]
 

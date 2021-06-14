@@ -3,52 +3,40 @@
 #
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
-import logging
+import asyncio
 import json
 
 
-logger = logging.getLogger('ws-handler')
-
-
 class WSHandler:
-    def __init__(self, path, data, send_first=False, receive_count=1):
+    def __init__(self, path, data, actions):
         self.path = path
-        self.data = data
-        self.send_first = send_first
+        self.data = data if isinstance(data, list) else [data]
+        self.actions = actions
         self.headers = None
-        self.receive_count = receive_count
         self.received = []
 
     async def __call__(self, ws, path):
         if path != self.path:
             return
-        if self.send_first:
-            logger.info('server send first')
-            await self.send_data(ws)
-            await self.receive_data(ws)
-        else:
-            logger.info('client send first')
-            await self.receive_data(ws)
-            await self.send_data(ws)
+        for action in self.actions:
+            if action == 'send':
+                await self.send_data(ws)
+            if action == 'receive':
+                await self.receive_data(ws)
+            await asyncio.sleep(.1)
+        await asyncio.sleep(.1)
 
     async def send_data(self, ws):
-        if isinstance(self.data, dict):
-            logger.info(f'send single message to client: {self.data}')
-            await ws.send(json.dumps(self.data))
-            return
-
-        for message in self.data:
-            logger.info(f'send message to client: {message}')
-            await ws.send(json.dumps(message))
+        try:
+            data = self.data.pop(0)
+            await ws.send(json.dumps(data))
+        except Exception:
+            pass
 
     async def receive_data(self, ws):
-        i = 0
-        logger.info(f'receiving {self.receive_count} message/s from client')
-        while i < self.receive_count:
-            message = json.loads(await ws.recv())
-            logger.info(f'received message #{i} from client: {message}')
-            self.received.append(message)
-            i += 1
+        data = await ws.recv()
+        if data:
+            self.received.append(json.loads(data))
 
     def assert_received(self, data):
         assert data in self.received

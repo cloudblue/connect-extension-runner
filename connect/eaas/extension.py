@@ -9,13 +9,12 @@ import pkg_resources
 
 
 class _ProcessResult:
-    def __init__(self, status):
+    def __init__(self, status, data=None):
         self.status = status
-        self.data = None
+        self.data = data
 
     def __call__(self, data):
-        self.data = data
-        return self
+        return _ProcessResult(self.status, data)
 
 
 OK = _ProcessResult('succeeded')
