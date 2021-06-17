@@ -18,15 +18,17 @@ def test_start(mocker):
         def get_descriptor(cls):
             return {
                 'capabilities': {
-                    'process_asset_request': [],
-                    'validate_asset_request': [],
+                    'asset_purchase_request_processing': [],
+                    'asset_purchase_request_validation': [],
                 },
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-        def process_asset_request(self, request):
+        def process_asset_purchase_request(self, request):
             pass
 
-        def validate_asset_request(self, request):
+        def validate_asset_purchase_request(self, request):
             pass
     run_mock = mocker.AsyncMock()
     mocker.patch('connect.eaas.main.install_extension')

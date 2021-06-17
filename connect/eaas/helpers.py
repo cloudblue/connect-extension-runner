@@ -9,6 +9,7 @@ import subprocess
 
 import pkg_resources
 
+from connect.eaas.constants import TASK_TYPE_EXT_METHOD_MAP
 from connect.eaas.exceptions import EaaSError
 
 
@@ -59,7 +60,7 @@ def get_extension_class():
 def get_extension_type(cls):
     descriptor = cls.get_descriptor()
     guess_async = [
-        inspect.iscoroutinefunction(getattr(cls, name))
+        inspect.iscoroutinefunction(getattr(cls, TASK_TYPE_EXT_METHOD_MAP[name]))
         for name in descriptor['capabilities'].keys()
     ]
 

@@ -132,15 +132,17 @@ def test_get_extension_type_ok_sync():
         def get_descriptor(cls):
             return {
                 'capabilities': {
-                    'process_asset_request': [],
-                    'validate_asset_request': [],
+                    'asset_purchase_request_processing': [],
+                    'asset_purchase_request_validation': [],
                 },
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-        def process_asset_request(self, request):
+        def process_asset_purchase_request(self, request):
             pass
 
-        def validate_asset_request(self, request):
+        def validate_asset_purchase_request(self, request):
             pass
 
     assert get_extension_type(MyExtension) == 'sync'
@@ -153,15 +155,17 @@ def test_get_extension_type_ok_async():
         def get_descriptor(cls):
             return {
                 'capabilities': {
-                    'process_asset_request': [],
-                    'validate_asset_request': [],
+                    'asset_purchase_request_processing': [],
+                    'asset_purchase_request_validation': [],
                 },
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-        async def process_asset_request(self, request):
+        async def process_asset_purchase_request(self, request):
             pass
 
-        async def validate_asset_request(self, request):
+        async def validate_asset_purchase_request(self, request):
             pass
 
     assert get_extension_type(MyExtension) == 'async'
@@ -174,15 +178,17 @@ def test_get_extension_type_ko():
         def get_descriptor(cls):
             return {
                 'capabilities': {
-                    'process_asset_request': [],
-                    'validate_asset_request': [],
+                    'asset_purchase_request_processing': [],
+                    'asset_purchase_request_validation': [],
                 },
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-        def process_asset_request(self, request):
+        def process_asset_purchase_request(self, request):
             pass
 
-        async def validate_asset_request(self, request):
+        async def validate_asset_purchase_request(self, request):
             pass
 
     with pytest.raises(EaaSError) as cv:
