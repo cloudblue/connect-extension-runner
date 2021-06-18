@@ -31,7 +31,7 @@ def test_start(mocker):
         def validate_asset_purchase_request(self, request):
             pass
     run_mock = mocker.AsyncMock()
-    mocker.patch('connect.eaas.main.install_extension')
+
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
     mocker.patch.object(Worker, 'run', run_mock)
     parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir'))

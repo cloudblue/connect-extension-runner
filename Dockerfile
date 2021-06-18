@@ -18,6 +18,9 @@ RUN poetry build
 
 RUN pip install dist/*.whl
 
-WORKDIR /
-
 RUN rm -rf /install_temp
+
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]

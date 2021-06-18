@@ -41,9 +41,8 @@ class TasksManager:
     Once completed, it will push the result to a queue from which, the
     result_sender task will pick it and send the result to the backend.
     """
-    def __init__(self, worker, extension):
+    def __init__(self, worker):
         self.worker = worker
-        self.extension = extension
         self.background_executor = ThreadPoolExecutor()
         self.interactive_executor = ThreadPoolExecutor()
         self.run_event = asyncio.Event()
@@ -87,17 +86,22 @@ class TasksManager:
         object_id = data.object_id
         task_type = data.task_type
         method_name = TASK_TYPE_EXT_METHOD_MAP[task_type]
-        method = getattr(self.extension, method_name)
+        extension = self.worker.get_extension()
+        method = getattr(extension, method_name)
         logger.debug(f'invoke {method_name}')
         self.running_tasks += 1
-        try:
-            request = await self.get_request(object_id, task_type)
-        except ClientError as e:
-            logger.warning(f'Cannot retrieve object {data.object_id} for task {data.task_id}')
-            future = Future()
-            future.set_exception(e)
-            asyncio.create_task(self.enqueue_result(data, future))
-            return
+        request = None
+        if data.task_category == TaskCategory.BACKGROUND:
+            try:
+                request = await self.get_request(object_id, task_type)
+            except ClientError as e:
+                logger.warning(f'Cannot retrieve object {data.object_id} for task {data.task_id}')
+                future = Future()
+                future.set_exception(e)
+                asyncio.create_task(self.enqueue_result(data, future))
+                return
+        else:
+            request = data.data
 
         if inspect.iscoroutinefunction(method):
             future = asyncio.create_task(method(request))

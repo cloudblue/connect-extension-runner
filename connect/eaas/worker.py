@@ -118,12 +118,7 @@ class Worker:
 
     def start_tasks_manager(self):
         logger.info('Starting tasks worker...')
-        extension = self.extension_class(
-            self.get_client(),
-            self.get_extension_logger(self.logging_api_key),
-            self.extension_config,
-        )
-        self.tasks_manager = TasksManager(self, extension)
+        self.tasks_manager = TasksManager(self)
         self.tasks_manager.start()
         logger.info('Task worker started')
 
@@ -133,6 +128,13 @@ class Worker:
 
     def get_url(self):
         return f'{self.base_ws_url}/{self.environment_id}/{self.instance_id}'
+
+    def get_extension(self):
+        return self.extension_class(
+            self.get_client(),
+            self.get_extension_logger(self.logging_api_key),
+            self.extension_config,
+        )
 
     async def run(self):  # noqa: CCR001
         """
@@ -195,12 +197,8 @@ class Worker:
         It will stop the tasks manager so the extension can be
         reconfigured, then restart the tasks manager.
         """
-        self.paused = True
-        await self.stop_tasks_manager()
         self.extension_config = data.configuration
         self.logging_api_key = data.logging_api_key
-        self.paused = False
-        self.start_tasks_manager()
 
     async def pause(self):
         """

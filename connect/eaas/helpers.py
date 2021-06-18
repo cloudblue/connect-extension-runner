@@ -13,19 +13,6 @@ from connect.eaas.constants import TASK_TYPE_EXT_METHOD_MAP
 from connect.eaas.exceptions import EaaSError
 
 
-def install_extension(root_dir):
-    result = subprocess.run(
-        ['poetry', 'install'],
-        cwd=root_dir,
-        stdin=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    try:
-        result.check_returncode()
-    except subprocess.CalledProcessError:
-        raise EaaSError(result.stderr.decode())
-
-
 def get_container_id():
     result = subprocess.run(
         ['cat', '/proc/1/cpuset'],
