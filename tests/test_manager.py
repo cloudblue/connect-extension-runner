@@ -22,7 +22,7 @@ from connect.eaas.manager import TasksManager
 
 @pytest.mark.asyncio
 async def test_start_stop_is_running(mocker, caplog):
-    manager = TasksManager(mocker.MagicMock(), mocker.MagicMock())
+    manager = TasksManager(mocker.MagicMock())
     manager.start()
     assert manager.run_event.is_set() is True
     assert manager.is_running() is True
@@ -43,9 +43,10 @@ async def test_background_task_sync(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
-    manager = TasksManager(worker, extension)
+    manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000'})
 
     manager.start()
@@ -77,9 +78,10 @@ async def test_background_task_async(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
-    manager = TasksManager(worker, extension)
+    manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000'})
 
     manager.start()
@@ -111,9 +113,10 @@ async def test_interactive_task_sync(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
-    manager = TasksManager(worker, extension)
+    manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000'})
 
     manager.start()
@@ -145,9 +148,10 @@ async def test_interactive_task_async(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
-    manager = TasksManager(worker, extension)
+    manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000'})
 
     manager.start()
@@ -175,9 +179,10 @@ async def test_background_task_request_error(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
-    manager = TasksManager(worker, extension)
+    manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(side_effect=ClientError('Request not found', 404))
 
     manager.start()
@@ -200,44 +205,15 @@ async def test_background_task_request_error(mocker, extension_cls):
 
 
 @pytest.mark.asyncio
-async def test_interactive_task_request_error(mocker, extension_cls):
-    extension_class = extension_cls('validate_asset_purchase_request')
-    extension = extension_class(None, None, None)
-
-    worker = mocker.MagicMock()
-    worker.send = mocker.AsyncMock()
-
-    manager = TasksManager(worker, extension)
-    manager.get_request = mocker.AsyncMock(side_effect=ClientError('Request not found', 404))
-
-    manager.start()
-
-    task = TaskPayload(
-        'TQ-000',
-        TaskCategory.INTERACTIVE,
-        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION,
-        'PR-000',
-    )
-
-    await manager.submit_task(task)
-    await asyncio.sleep(.1)
-    await manager.stop()
-    message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
-    json_msg['data']['result'] = 'failed'
-    json_msg['data']['failure_output'] = 'Request not found'
-    worker.send.assert_awaited_once_with(json_msg)
-
-
-@pytest.mark.asyncio
 async def test_result_sender_retries(mocker, extension_cls):
     extension_class = extension_cls('process_asset_purchase_request')
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock(side_effect=[Exception('retry'), None])
 
-    manager = TasksManager(worker, extension)
+    manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000'})
 
     manager.start()
@@ -264,11 +240,12 @@ async def test_result_sender_max_retries_exceeded(mocker, extension_cls, caplog)
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock(
         side_effect=[Exception('retry') for _ in range(RESULT_SENDER_MAX_RETRIES)],
     )
 
-    manager = TasksManager(worker, extension)
+    manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000'})
 
     manager.start()

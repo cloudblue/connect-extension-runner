@@ -10,7 +10,6 @@ import logging.config
 import pathlib
 import signal
 
-from connect.eaas.helpers import install_extension
 from connect.eaas.worker import Worker
 
 
@@ -42,6 +41,10 @@ def configure_logger(debug):
                     'handlers': ['console'],
                     'level': 'DEBUG' if debug else 'INFO',
                 },
+                'eaas.extension': {
+                    'handlers': ['console'],
+                    'level': 'DEBUG' if debug else 'INFO',
+                },
             },
         },
     )
@@ -49,11 +52,9 @@ def configure_logger(debug):
 
 def start(data):
     logger.info('Starting Connect EaaS runtime....')
-    logger.info('Installing the extension package...')
-    install_extension(data.extension_dir)
-    logger.info('The extension has been installed, starting the control worker...')
     if data.unsecure:
         logger.warning('Websocket connections will be established using unsecure protocol (ws).')
+
     worker = Worker(secure=not data.unsecure)
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(

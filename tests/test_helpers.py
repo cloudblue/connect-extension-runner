@@ -15,31 +15,7 @@ from connect.eaas.helpers import (
     get_environment,
     get_extension_class,
     get_extension_type,
-    install_extension,
 )
-
-
-def test_install_extension(mocker):
-    result = mocker.MagicMock()
-    result.returnvalue = 0
-    mocked = mocker.patch('connect.eaas.helpers.subprocess.run', return_value=result)
-    install_extension('/root_dir')
-
-    assert mocked.mock_calls[0].args[0] == ['poetry', 'install']
-    assert mocked.mock_calls[0].kwargs['cwd'] == '/root_dir'
-
-
-def test_install_extension_ko(mocker):
-    result = mocker.MagicMock()
-    result.check_returncode = mocker.MagicMock(
-        side_effect=subprocess.CalledProcessError(128, cmd=[]),
-    )
-    result.stderr = 'error message'.encode('utf-8')
-    mocker.patch('connect.eaas.helpers.subprocess.run', return_value=result)
-    with pytest.raises(EaaSError) as cv:
-        install_extension('/root_dir')
-
-    assert str(cv.value) == 'error message'
 
 
 def test_get_container_id(mocker):
