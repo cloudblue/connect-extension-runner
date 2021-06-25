@@ -7,25 +7,61 @@ import json
 
 import pkg_resources
 
+from connect.eaas.dataclasses import ResultType
 
-class _ProcessResult:
-    def __init__(self, status, data=None):
+
+class _Response:
+    def __init__(self, status):
         self.status = status
+
+
+class ProcessingResponse(_Response):
+
+    def __init__(self, status, countdown=0):
+        super().__init__(status)
+        self.countdown = countdown
+
+    @classmethod
+    def done(cls):
+        return cls(ResultType.SUCCESS)
+
+    @classmethod
+    def skip(cls):
+        return cls(ResultType.SKIP)
+
+    @classmethod
+    def reschedule(cls, countdown=30):
+        return cls(ResultType.RESCHEDULE, countdown=countdown)
+
+
+class ValidationResponse(_Response):
+    def __init__(self, status, data):
+        super().__init__(status)
         self.data = data
 
-    def __call__(self, data):
-        return _ProcessResult(self.status, data)
+    @classmethod
+    def done(cls, data):
+        return cls(ResultType.SUCCESS, data)
 
 
-OK = _ProcessResult('succeeded')
+class _InteractiveTaskResponse(_Response):
+    def __init__(self, status, http_status, headers, body):
+        super().__init__(status)
+        self.http_status = http_status
+        self.headers = headers
+        self.body = body
 
-SKIP = _ProcessResult('skip')
+    @classmethod
+    def done(cls, http_status=200, headers=None, body=None):
+        return cls(ResultType.SUCCESS, http_status, headers, body)
 
 
-class Reschedule(_ProcessResult):
-    def __init__(self, countdown=30):
-        super().__init__('reschedule')
-        self.countdown = countdown
+class CustomEventResponse(_InteractiveTaskResponse):
+    pass
+
+
+class ProductActionResponse(_InteractiveTaskResponse):
+    pass
 
 
 class Extension:
@@ -43,14 +79,56 @@ class Extension:
             ),
         )
 
-    def process_asset_request(self, request):  # pragma: no cover
-        pass
+    def process_asset_purchase_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
 
-    def validate_asset_request(self, request):  # pragma: no cover
-        pass
+    def process_asset_change_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
 
-    def process_tier_config_request(self, request):  # pragma: no cover
-        pass
+    def process_asset_suspend_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
 
-    def validate_tier_config_request(self, request):  # pragma: no cover
-        pass
+    def process_asset_resume_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_asset_cancel_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_asset_adjustment_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_asset_purchase_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_asset_change_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_asset_suspend_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_asset_resume_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_asset_cancel_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_asset_adjustment_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_tier_config_setup_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_tier_config_change_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_tier_config_setup_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def validate_tier_config_change_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def execute_product_action(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_product_custom_event(self, request):  # pragma: no cover
+        raise NotImplementedError()

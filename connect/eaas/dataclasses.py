@@ -44,6 +44,7 @@ class ResultType:
     RESCHEDULE = 'reschedule'
     SKIP = 'skip'
     RETRY = 'retry'
+    FAIL = 'fail'
 
 
 @dataclasses.dataclass

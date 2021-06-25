@@ -1,20 +1,44 @@
-from connect.eaas.extension import OK, Reschedule, SKIP
+from connect.eaas.dataclasses import ResultType
+from connect.eaas.extension import (
+    CustomEventResponse,
+    ProcessingResponse,
+    ProductActionResponse,
+    ValidationResponse,
+)
 
 
 def test_result_ok():
-    assert OK.status == 'succeeded'
+    assert ProcessingResponse.done().status == ResultType.SUCCESS
     data = {'test': 'data'}
-    ok = OK(data)
-    assert ok.status == 'succeeded'
+    ok = ValidationResponse.done(data)
+    assert ok.status == ResultType.SUCCESS
     assert ok.data == data
 
 
 def test_result_skip():
-    assert SKIP.status == 'skip'
+    assert ProcessingResponse.skip().status == ResultType.SKIP
 
 
 def test_result_reschedule():
-    r = Reschedule(60)
+    r = ProcessingResponse.reschedule(60)
 
-    assert r.status == 'reschedule'
+    assert r.status == ResultType.RESCHEDULE
     assert r.countdown == 60
+
+
+def test_custom_event():
+    r = CustomEventResponse.done(headers={'X-Custom-Header': 'value'}, body='text')
+
+    assert r.status == ResultType.SUCCESS
+    assert r.http_status == 200
+    assert r.headers == {'X-Custom-Header': 'value'}
+    assert r.body == 'text'
+
+
+def test_product_action():
+    r = ProductActionResponse.done(headers={'X-Custom-Header': 'value'}, body='text')
+
+    assert r.status == ResultType.SUCCESS
+    assert r.http_status == 200
+    assert r.headers == {'X-Custom-Header': 'value'}
+    assert r.body == 'text'

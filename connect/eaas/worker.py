@@ -9,8 +9,12 @@ import logging
 from asyncio.exceptions import TimeoutError
 
 import websockets
-from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK, WebSocketException
-from logzio.handler import LogzioHandler
+from websockets.exceptions import (
+    ConnectionClosedError,
+    ConnectionClosedOK,
+    InvalidStatusCode,
+    WebSocketException,
+)
 
 from connect.client import AsyncConnectClient, ConnectClient
 from connect.eaas.dataclasses import CapabilitiesPayload, Message, MessageType
@@ -19,6 +23,7 @@ from connect.eaas.helpers import (
     get_extension_class,
     get_extension_type,
 )
+from connect.eaas.logging import ExtensionLogHandler
 from connect.eaas.manager import TasksManager
 
 
@@ -44,7 +49,6 @@ class Worker:
         proto = 'wss' if secure else 'ws'
         self.base_ws_url = f'{proto}://{self.ws_address}/public/v1/devops/ws'
         self.run_event = asyncio.Event()
-        self.paused = False
         self.ws = None
         self.extension_class = get_extension_class()
         self.extension_type = get_extension_type(self.extension_class)
@@ -57,6 +61,7 @@ class Worker:
         self.main_task = None
         self.tasks_manager = None
         self.paused = False
+        self.logging_handler = None
 
     async def ensure_connection(self):
         """
@@ -106,9 +111,12 @@ class Worker:
         to the Logz.io service.
         """
         logger = logging.getLogger('eaas.extension')
-        if token:
-            handler = LogzioHandler(token)
-            logger.addHandler(handler)
+        if self.logging_handler is None and token is not None:
+            self.logging_handler = ExtensionLogHandler(
+                token,
+                default_extra_fields={'instance_id': self.instance_id},
+            )
+            logger.addHandler(self.logging_handler)
         return logger
 
     async def stop_tasks_manager(self):
@@ -167,6 +175,13 @@ class Worker:
             except ConnectionClosedError:
                 logger.warning(f'Disconnected from: {self.get_url()}, retry in 1s')
                 await asyncio.sleep(1)
+            except InvalidStatusCode as ic:
+                if ic.status_code == 502:
+                    logger.warning('Maintenance in progress, try to reconnect in 1s')
+                    await asyncio.sleep(1)
+                else:
+                    logger.warning(f'Received an unexpected status from server: {ic.status_code}')
+                    await asyncio.sleep(.1)
             except WebSocketException:
                 logger.exception('Unexpected websocket exception.')
                 await asyncio.sleep(.1)
@@ -199,6 +214,7 @@ class Worker:
         """
         self.extension_config = data.configuration
         self.logging_api_key = data.logging_api_key
+        logger.info('Extension configuration has been updated.')
 
     async def pause(self):
         """
