@@ -9,11 +9,12 @@ from connect.eaas.dataclasses import (
     ConfigurationPayload,
     Message,
     MessageType,
+    ResultType,
     TaskCategory,
     TaskPayload,
     TaskType,
 )
-from connect.eaas.extension import Extension, OK
+from connect.eaas.extension import Extension, ProcessingResponse
 from connect.eaas.worker import Worker
 
 from tests.utils import WSHandler
@@ -124,7 +125,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock):
 
         def process_asset_purchase_request(self, request):
             assert request == pr_data
-            return OK
+            return ProcessingResponse.done()
 
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.worker.get_extension_type', return_value='sync')
@@ -171,7 +172,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock):
             TaskCategory.BACKGROUND,
             TaskType.ASSET_PURCHASE_REQUEST_PROCESSING,
             'PR-000',
-            result='succeeded',
+            result=ResultType.SUCCESS,
         )).to_json(),
     )
 
@@ -199,7 +200,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
     )
 
     capabilities = {
-        TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING: ['inquiring'],
+        TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING: ['pending'],
         TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
     }
 
@@ -214,7 +215,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
 
         def process_tier_config_setup_request(self, request):
             assert request == tcr_data
-            return OK
+            return ProcessingResponse.done()
 
     mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.worker.get_extension_type', return_value='sync')
@@ -261,7 +262,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
             TaskCategory.BACKGROUND,
             TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING,
             'TCR-000',
-            result='succeeded',
+            result=ResultType.SUCCESS,
         )).to_json(),
     )
 

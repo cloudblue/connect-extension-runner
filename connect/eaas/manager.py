@@ -21,9 +21,11 @@ from connect.eaas.constants import (
 from connect.eaas.dataclasses import (
     Message,
     MessageType,
+    ResultType,
     TaskCategory,
     TaskPayload,
 )
+from connect.eaas.extension import ProcessingResponse
 
 
 logger = logging.getLogger(__name__)
@@ -96,9 +98,12 @@ class TasksManager:
                 request = await self.get_request(object_id, task_type)
             except ClientError as e:
                 logger.warning(f'Cannot retrieve object {data.object_id} for task {data.task_id}')
-                future = Future()
-                future.set_exception(e)
-                asyncio.create_task(self.enqueue_result(data, future))
+                self.send_exception_response(data, e)
+                return
+            request_status = request.get('status')
+            if request_status not in self.worker.capabilities[task_type]:
+                logger.debug('Send skip response since request status is not supported.')
+                self.send_skip_response(data)
                 return
         else:
             request = data.data
@@ -191,6 +196,16 @@ class TasksManager:
         self.running_tasks -= 1
         logger.debug(f'enqueue results for sender, running tasks: {self.running_tasks}')
 
+    def send_exception_response(self, data, e):
+        future = Future()
+        future.set_exception(e)
+        asyncio.create_task(self.enqueue_result(data, future))
+
+    def send_skip_response(self, data):
+        future = Future()
+        future.set_result(ProcessingResponse.skip())
+        asyncio.create_task(self.enqueue_result(data, future))
+
     async def build_bg_response(self, task_data, future):
         """
         Wait for a background task to be completed and than uild the task result message.
@@ -201,13 +216,13 @@ class TasksManager:
             result = await asyncio.wait_for(future, timeout=BACKGROUND_TASK_MAX_EXECUTION_TIME)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
-            result_message.result = 'retry'
+            result_message.result = ResultType.RETRY
             result_message.failure_output = str(e)
             return result_message
-
+        logger.debug(f'result: {result}')
         result_message.result = result.status
 
-        if result.status == 'reschedule':
+        if result.status == ResultType.RESCHEDULE:
             result_message.countdown = result.countdown
         return result_message
 
@@ -221,7 +236,7 @@ class TasksManager:
             result = await asyncio.wait_for(future, timeout=INTERACTIVE_TASK_MAX_EXECUTION_TIME)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
-            result_message.result = 'failed'
+            result_message.result = ResultType.FAIL
             result_message.failure_output = str(e)
             return result_message
 

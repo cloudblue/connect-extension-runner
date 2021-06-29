@@ -9,7 +9,7 @@ import socket
 import pytest
 import websockets
 
-from connect.eaas.extension import Extension, OK
+from connect.eaas.extension import Extension, ProcessingResponse
 
 
 @pytest.fixture(scope='session')
@@ -40,10 +40,10 @@ def extension_cls():
             pass
 
         def ext_method(self, request):
-            return result or OK
+            return result or ProcessingResponse.done()
 
         async def async_ext_method(self, request):
-            return result or OK
+            return result or ProcessingResponse.done()
 
         if async_impl:
             setattr(TestExtension, method_name, async_ext_method)
