@@ -15,7 +15,7 @@ if [ -d "$DIST_DIR" ]; then rm -Rf $DIST_DIR; fi
 
 poetry build
 
-pip install -U pip && pip install $DIST_DIR/*.whl
+pip install -U pip && pip install -U --force-reinstall $DIST_DIR/*.whl
 
 popd
 
