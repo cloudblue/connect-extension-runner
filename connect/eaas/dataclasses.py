@@ -56,7 +56,7 @@ class TaskPayload:
     result: str = None
     data: Any = None
     countdown: int = 0
-    failure_output: str = None
+    output: str = None
     correlation_id: str = None
     reply_to: str = None
 

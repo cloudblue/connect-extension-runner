@@ -102,6 +102,7 @@ async def test_background_task_sync_unsupported_status(mocker, extension_cls):
     message = Message(message_type=MessageType.TASK, data=task)
     json_msg = message.to_json()
     json_msg['data']['result'] = ResultType.SKIP
+    json_msg['data']['output'] = 'The status approved is not supported by the extension.'
     worker.send.assert_awaited_once_with(json_msg)
 
 
@@ -245,7 +246,7 @@ async def test_background_task_request_error(mocker, extension_cls):
     message = Message(message_type=MessageType.TASK, data=task)
     json_msg = message.to_json()
     json_msg['data']['result'] = 'retry'
-    json_msg['data']['failure_output'] = 'Request not found'
+    json_msg['data']['output'] = 'Request not found'
     worker.send.assert_awaited_once_with(json_msg)
 
 
