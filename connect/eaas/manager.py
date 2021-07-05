@@ -103,7 +103,10 @@ class TasksManager:
             request_status = request.get('status')
             if request_status not in self.worker.capabilities[task_type]:
                 logger.debug('Send skip response since request status is not supported.')
-                self.send_skip_response(data)
+                self.send_skip_response(
+                    data,
+                    f'The status {request_status} is not supported by the extension.',
+                )
                 return
         else:
             request = data.data
@@ -201,9 +204,9 @@ class TasksManager:
         future.set_exception(e)
         asyncio.create_task(self.enqueue_result(data, future))
 
-    def send_skip_response(self, data):
+    def send_skip_response(self, data, output):
         future = Future()
-        future.set_result(ProcessingResponse.skip())
+        future.set_result(ProcessingResponse.skip(output))
         asyncio.create_task(self.enqueue_result(data, future))
 
     async def build_bg_response(self, task_data, future):
@@ -217,10 +220,13 @@ class TasksManager:
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
             result_message.result = ResultType.RETRY
-            result_message.failure_output = str(e)
+            result_message.output = str(e)
             return result_message
         logger.debug(f'result: {result}')
         result_message.result = result.status
+
+        if result.status == ResultType.SKIP:
+            result_message.output = result.output
 
         if result.status == ResultType.RESCHEDULE:
             result_message.countdown = result.countdown
@@ -237,7 +243,7 @@ class TasksManager:
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
             result_message.result = ResultType.FAIL
-            result_message.failure_output = str(e)
+            result_message.output = str(e)
             return result_message
 
         result_message.result = result.status

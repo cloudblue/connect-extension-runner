@@ -17,17 +17,18 @@ class _Response:
 
 class ProcessingResponse(_Response):
 
-    def __init__(self, status, countdown=0):
+    def __init__(self, status, countdown=0, output=None):
         super().__init__(status)
         self.countdown = countdown
+        self.output = output
 
     @classmethod
     def done(cls):
         return cls(ResultType.SUCCESS)
 
     @classmethod
-    def skip(cls):
-        return cls(ResultType.SKIP)
+    def skip(cls, output=None):
+        return cls(ResultType.SKIP, output=output)
 
     @classmethod
     def reschedule(cls, countdown=30):

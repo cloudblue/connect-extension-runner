@@ -19,6 +19,12 @@ def test_result_skip():
     assert ProcessingResponse.skip().status == ResultType.SKIP
 
 
+def test_result_skip_with_output():
+    skip = ProcessingResponse.skip('output')
+    assert skip.status == ResultType.SKIP
+    assert skip.output == 'output'
+
+
 def test_result_reschedule():
     r = ProcessingResponse.reschedule(60)
 
