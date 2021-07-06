@@ -112,22 +112,13 @@ class Extension:
     def validate_asset_change_request(self, request):  # pragma: no cover
         raise NotImplementedError()
 
-    def validate_asset_suspend_request(self, request):  # pragma: no cover
-        raise NotImplementedError()
-
-    def validate_asset_resume_request(self, request):  # pragma: no cover
-        raise NotImplementedError()
-
-    def validate_asset_cancel_request(self, request):  # pragma: no cover
-        raise NotImplementedError()
-
-    def validate_asset_adjustment_request(self, request):  # pragma: no cover
-        raise NotImplementedError()
-
     def process_tier_config_setup_request(self, request):  # pragma: no cover
         raise NotImplementedError()
 
     def process_tier_config_change_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_tier_config_adjustment_request(self, request):  # pragma: no cover
         raise NotImplementedError()
 
     def validate_tier_config_setup_request(self, request):  # pragma: no cover
