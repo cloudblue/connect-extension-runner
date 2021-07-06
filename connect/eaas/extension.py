@@ -52,6 +52,14 @@ class _InteractiveTaskResponse(_Response):
         self.headers = headers
         self.body = body
 
+    @property
+    def data(self):
+        return {
+            'http_status': self.http_status,
+            'headers': self.headers,
+            'body': self.body,
+        }
+
     @classmethod
     def done(cls, http_status=200, headers=None, body=None):
         return cls(ResultType.SUCCESS, http_status, headers, body)

@@ -11,10 +11,6 @@ class TaskType:
     ASSET_ADJUSTMENT_REQUEST_PROCESSING = 'asset_adjustment_request_processing'
     ASSET_PURCHASE_REQUEST_VALIDATION = 'asset_purchase_request_validation'
     ASSET_CHANGE_REQUEST_VALIDATION = 'asset_change_request_validation'
-    ASSET_SUSPEND_REQUEST_VALIDATION = 'asset_suspend_request_validation'
-    ASSET_RESUME_REQUEST_VALIDATION = 'asset_resume_request_validation'
-    ASSET_CANCEL_REQUEST_VALIDATION = 'asset_cancel_request_validation'
-    ASSET_ADJUSTMENT_REQUEST_VALIDATION = 'asset_adjustment_request_validation'
     PRODUCT_ACTION_EXECUTION = 'product_action_execution'
     PRODUCT_CUSTOM_EVENT_PROCESSING = 'product_custom_event_processing'
     TIER_CONFIG_SETUP_REQUEST_PROCESSING = 'tier_config_setup_request_processing'
@@ -22,7 +18,6 @@ class TaskType:
     TIER_CONFIG_ADJUSTMENT_REQUEST_PROCESSING = 'tier_config_adjustment_request_processing'
     TIER_CONFIG_SETUP_REQUEST_VALIDATION = 'tier_config_setup_request_validation'
     TIER_CONFIG_CHANGE_REQUEST_VALIDATION = 'tier_config_change_request_validation'
-    TIER_CONFIG_ADJUSTMENT_REQUEST_VALIDATION = 'tier_config_adjustment_request_validation'
 
 
 class MessageType:
@@ -68,6 +63,7 @@ class TaskPayload:
 class ConfigurationPayload:
     configuration: dict = None
     logging_api_key: str = None
+    environment_type: str = None
 
     def to_json(self):
         return dataclasses.asdict(self)
