@@ -58,6 +58,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
                 'var2': 'value2',
             },
             'token',
+            'development',
         ),
     ).to_json()
 
@@ -132,7 +133,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock):
 
     data_to_send = [
         Message(MessageType.CONFIGURATION, ConfigurationPayload(
-            {'var': 'val'}, 'api_key',
+            {'var': 'val'}, 'api_key', 'development',
         )).to_json(),
         Message(MessageType.TASK, TaskPayload(
             'TQ-000',
@@ -222,7 +223,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
 
     data_to_send = [
         Message(MessageType.CONFIGURATION, ConfigurationPayload(
-            {'var': 'val'}, 'api_key',
+            {'var': 'val'}, 'api_key', 'development',
         )).to_json(),
         Message(MessageType.TASK, TaskPayload(
             'TQ-000',
@@ -300,7 +301,7 @@ async def test_pause(mocker, ws_server, unused_port):
 
     data_to_send = [
         Message(MessageType.CONFIGURATION, ConfigurationPayload(
-            {'var': 'val'}, 'api_key',
+            {'var': 'val'}, 'api_key', 'development',
         )).to_json(),
         Message(MessageType.PAUSE).to_json(),
     ]
@@ -354,7 +355,7 @@ async def test_resume(mocker, ws_server, unused_port):
 
     data_to_send = [
         Message(MessageType.CONFIGURATION, ConfigurationPayload(
-            {'var': 'val'}, 'api_key',
+            {'var': 'val'}, 'api_key', 'development',
         )).to_json(),
         Message(MessageType.PAUSE).to_json(),
         Message(MessageType.RESUME).to_json(),
@@ -409,7 +410,7 @@ async def test_shutdown(mocker, ws_server, unused_port):
 
     data_to_send = [
         Message(MessageType.CONFIGURATION, ConfigurationPayload(
-            {'var': 'val'}, 'api_key',
+            {'var': 'val'}, 'api_key', 'development',
         )).to_json(),
         Message(MessageType.SHUTDOWN).to_json(),
     ]

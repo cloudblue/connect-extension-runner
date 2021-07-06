@@ -62,6 +62,7 @@ class Worker:
         self.tasks_manager = None
         self.paused = False
         self.logging_handler = None
+        self.environment_type = None
 
     async def ensure_connection(self):
         """
@@ -114,7 +115,11 @@ class Worker:
         if self.logging_handler is None and token is not None:
             self.logging_handler = ExtensionLogHandler(
                 token,
-                default_extra_fields={'instance_id': self.instance_id},
+                default_extra_fields={
+                    'environment_id': self.environment_id,
+                    'instance_id': self.instance_id,
+                    'environment_type': self.environment_type,
+                },
             )
             logger.addHandler(self.logging_handler)
         return logger
@@ -214,6 +219,7 @@ class Worker:
         """
         self.extension_config = data.configuration
         self.logging_api_key = data.logging_api_key
+        self.environment_type = data.environment_type
         logger.info('Extension configuration has been updated.')
 
     async def pause(self):
