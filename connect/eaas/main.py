@@ -7,7 +7,6 @@ import argparse
 import asyncio
 import logging
 import logging.config
-import pathlib
 import signal
 
 from connect.eaas.worker import Worker
@@ -72,7 +71,6 @@ def main():
     parser = argparse.ArgumentParser(prog='cextrun')
     parser.add_argument('-u', '--unsecure', action='store_true')
     parser.add_argument('-d', '--debug', action='store_true', default=False)
-    parser.add_argument('-e', '--extension-dir', default='/extension', type=pathlib.Path)
     data = parser.parse_args()
     configure_logger(data.debug)
     start(data)

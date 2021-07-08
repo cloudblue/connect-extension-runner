@@ -217,9 +217,20 @@ class Worker:
         It will stop the tasks manager so the extension can be
         reconfigured, then restart the tasks manager.
         """
-        self.extension_config = data.configuration
-        self.logging_api_key = data.logging_api_key
-        self.environment_type = data.environment_type
+        if data.configuration:
+            self.extension_config = data.configuration
+        if data.logging_api_key:
+            self.logging_api_key = data.logging_api_key
+        if data.environment_type:
+            self.environment_type = data.environment_type
+        if data.log_level:
+            logging.getLogger('eaas.extension').setLevel(
+                getattr(logging, data.log_level),
+            )
+        if data.runner_log_level:
+            logging.getLogger('connect.eaas').setLevel(
+                getattr(logging, data.runner_log_level),
+            )
         logger.info('Extension configuration has been updated.')
 
     async def pause(self):
