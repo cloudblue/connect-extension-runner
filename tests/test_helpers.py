@@ -36,10 +36,10 @@ def test_get_container_id_ko(mocker):
     )
     result.stderr = 'error message'.encode('utf-8')
     mocker.patch('connect.eaas.helpers.subprocess.run', return_value=result)
-    with pytest.raises(EaaSError) as cv:
-        get_container_id()
+    expected_result = get_container_id()
 
-    assert str(cv.value) == 'error message'
+    assert isinstance(expected_result, str)
+    assert len(expected_result) > 0
 
 
 def test_get_environment_with_defaults(mocker):
@@ -47,6 +47,8 @@ def test_get_environment_with_defaults(mocker):
     os.environ['ENVIRONMENT_ID'] = 'ENV-0000-0000-01'
     if 'SERVER_ADDRESS' in os.environ:
         del os.environ['SERVER_ADDRESS']
+    if 'INSTANCE_ID' in os.environ:
+        del os.environ['INSTANCE_ID']
     mocker.patch('connect.eaas.helpers.get_container_id', return_value='container_id')
     env = get_environment()
     assert env['api_key'] == 'SU-000:XXXX'
