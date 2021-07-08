@@ -64,6 +64,8 @@ class ConfigurationPayload:
     configuration: dict = None
     logging_api_key: str = None
     environment_type: str = None
+    log_level: str = None
+    runner_log_level: str = None
 
     def to_json(self):
         return dataclasses.asdict(self)
