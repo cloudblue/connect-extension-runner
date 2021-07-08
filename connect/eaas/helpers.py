@@ -6,6 +6,7 @@
 import inspect
 import os
 import subprocess
+from uuid import uuid4
 
 import pkg_resources
 
@@ -23,7 +24,7 @@ def get_container_id():
     try:
         result.check_returncode()
     except subprocess.CalledProcessError:
-        raise EaaSError(result.stderr.decode())
+        return str(uuid4())
 
     _, container_id = result.stdout.decode()[:-1].rsplit('/', 1)
     return container_id
