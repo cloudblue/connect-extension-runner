@@ -461,7 +461,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 
     assert (
         f'Disconnected from: ws://127.0.0.1:{unused_port}'
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002, retry in 1s'
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002, retry in 2s'
     ) in caplog.text
 
 
