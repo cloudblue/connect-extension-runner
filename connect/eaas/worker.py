@@ -178,18 +178,18 @@ class Worker:
             except ConnectionClosedOK:
                 break
             except ConnectionClosedError:
-                logger.warning(f'Disconnected from: {self.get_url()}, retry in 1s')
-                await asyncio.sleep(1)
+                logger.warning(f'Disconnected from: {self.get_url()}, retry in 2s')
+                await asyncio.sleep(2)
             except InvalidStatusCode as ic:
                 if ic.status_code == 502:
-                    logger.warning('Maintenance in progress, try to reconnect in 1s')
-                    await asyncio.sleep(1)
+                    logger.warning('Maintenance in progress, try to reconnect in 2s')
+                    await asyncio.sleep(2)
                 else:
                     logger.warning(f'Received an unexpected status from server: {ic.status_code}')
-                    await asyncio.sleep(.1)
+                    await asyncio.sleep(2)
             except WebSocketException:
                 logger.exception('Unexpected websocket exception.')
-                await asyncio.sleep(.1)
+                await asyncio.sleep(2)
 
         await self.stop_tasks_manager()
         if self.ws:
