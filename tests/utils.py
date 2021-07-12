@@ -4,7 +4,11 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 import asyncio
+import logging
 import json
+
+
+logger = logging.getLogger('connect.eaas')
 
 
 class WSHandler:
@@ -37,6 +41,7 @@ class WSHandler:
         data = await ws.recv()
         if data:
             self.received.append(json.loads(data))
+        logger.info(f'received: {self.received}')
 
     def assert_received(self, data):
         assert data in self.received
