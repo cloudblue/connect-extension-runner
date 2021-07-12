@@ -63,7 +63,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
     ).to_json()
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         data_to_send,
         ['receive', 'send'],
     )
@@ -144,7 +144,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         data_to_send,
         ['receive', 'send', 'send', 'receive'],
     )
@@ -234,7 +234,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         data_to_send,
         ['receive', 'send', 'send', 'receive'],
     )
@@ -307,7 +307,7 @@ async def test_pause(mocker, ws_server, unused_port):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         data_to_send,
         ['receive', 'send', 'send'],
     )
@@ -362,7 +362,7 @@ async def test_resume(mocker, ws_server, unused_port):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         data_to_send,
         ['receive', 'send', 'send', 'send'],
     )
@@ -416,7 +416,7 @@ async def test_shutdown(mocker, ws_server, unused_port):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         data_to_send,
         ['receive', 'send', 'send'],
     )
@@ -444,7 +444,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
         },
     )
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         None,
         [],
     )
@@ -461,7 +461,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 
     assert (
         f'Disconnected from: ws://127.0.0.1:{unused_port}'
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002, retry in 2s'
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0, retry in 2s'
     ) in caplog.text
 
 
@@ -480,7 +480,7 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
         },
     )
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         None,
         [],
     )
@@ -529,7 +529,7 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.worker.get_extension_type', return_value='sync')
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
         None,
         ['receive', 'send'],
     )

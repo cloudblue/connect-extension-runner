@@ -23,7 +23,7 @@ from connect.eaas.helpers import (
     get_extension_class,
     get_extension_type,
 )
-from connect.eaas.logging import ExtensionLogHandler
+from connect.eaas.logging import ExtensionLogHandler, RequestLogger
 from connect.eaas.manager import TasksManager
 
 
@@ -103,6 +103,9 @@ class Worker:
             self.api_key,
             endpoint=f'https://{self.api_address}/public/v1',
             use_specs=False,
+            logger=RequestLogger(
+                self.get_extension_logger(self.logging_api_key),
+            ),
         )
 
     def get_extension_logger(self, token):
@@ -140,7 +143,12 @@ class Worker:
             self.start_tasks_manager()
 
     def get_url(self):
-        return f'{self.base_ws_url}/{self.environment_id}/{self.instance_id}'
+        running_tasks = (
+            self.tasks_manager.running_tasks
+            if self.tasks_manager else 0
+        )
+        url = f'{self.base_ws_url}/{self.environment_id}/{self.instance_id}'
+        return f'{url}?running_tasks={running_tasks}'
 
     def get_extension(self):
         return self.extension_class(
@@ -224,6 +232,7 @@ class Worker:
         if data.environment_type:
             self.environment_type = data.environment_type
         if data.log_level:
+            logger.info(f'Change extesion logger level to {data.log_level}')
             logging.getLogger('eaas.extension').setLevel(
                 getattr(logging, data.log_level),
             )
@@ -267,5 +276,5 @@ class Worker:
         logger.info('Control worker stopped')
 
     def stop(self):
-        logger.info('Stopping control worker.....')
+        logger.info('Stopping control worker...')
         self.run_event.clear()
