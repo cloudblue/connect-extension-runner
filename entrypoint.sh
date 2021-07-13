@@ -21,7 +21,7 @@ popd
 
 echo "Extension installed."
 
-if [ "$@" == *bash* ]; then
+if [[ "$@" == *bash* ]]; then
 echo "In order to run the extension manually run the command cextrun"
 echo "In order to run the extension in debug mode, please use cextrun -d command"
 echo "In the case that you modified dependencies or want to install development dependencies run the command: poetry install"
