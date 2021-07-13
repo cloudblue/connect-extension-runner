@@ -45,6 +45,7 @@ async def test_background_task_sync(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
     worker.capabilities = {task_type: ['pending']}
@@ -79,6 +80,7 @@ async def test_background_task_sync_unsupported_status(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
     worker.capabilities = {TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending']}
@@ -116,6 +118,7 @@ async def test_background_task_async(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
     worker.capabilities = {task_type: ['pending']}
@@ -155,6 +158,7 @@ async def test_interactive_task_sync(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
@@ -194,6 +198,7 @@ async def test_interactive_task_async(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
@@ -225,6 +230,7 @@ async def test_background_task_request_error(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
 
@@ -259,6 +265,7 @@ async def test_result_sender_retries(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock(side_effect=[Exception('retry'), None])
     worker.capabilities = {TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending']}
@@ -293,6 +300,7 @@ async def test_result_sender_max_retries_exceeded(mocker, extension_cls, caplog)
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock(
         side_effect=[Exception('retry') for _ in range(RESULT_SENDER_MAX_RETRIES)],
@@ -316,3 +324,38 @@ async def test_result_sender_max_retries_exceeded(mocker, extension_cls, caplog)
         await manager.stop()
 
     assert 'max retries exceeded for sending results of task TQ-000' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_result_sender_wait_reconnection(mocker, extension_cls, caplog):
+    extension_class = extension_cls(
+        'process_asset_purchase_request',
+        result=ProcessingResponse.done(),
+    )
+    extension = extension_class(None, None, None)
+
+    worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=True)
+    worker.get_extension.return_value = extension
+    worker.send = mocker.AsyncMock()
+    worker.capabilities = {TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending']}
+
+    manager = TasksManager(worker)
+    manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000', 'status': 'pending'})
+
+    manager.start()
+
+    task = TaskPayload(
+        'TQ-000',
+        TaskCategory.BACKGROUND,
+        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING,
+        'PR-000',
+    )
+    with caplog.at_level(logging.DEBUG):
+        await manager.submit_task(task)
+        await asyncio.sleep(.2)
+        await manager.stop()
+
+    assert 'wait WS reconnection before resuming result sender' in [
+        record.message for record in caplog.records
+    ]

@@ -157,6 +157,13 @@ class TasksManager:
                     return
                 await asyncio.sleep(.1)
                 continue
+            if self.worker.ws is None or self.worker.ws.closed:
+                if not self.run_event.is_set() and self.running_tasks == 0:
+                    return
+                logger.debug('wait WS reconnection before resuming result sender')
+                await asyncio.sleep(.1)
+                continue
+
             result = await self.results_queue.get()
             logger.debug(f'got result from queue: {result}')
             retries = 0
