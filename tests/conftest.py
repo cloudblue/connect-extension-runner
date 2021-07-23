@@ -35,14 +35,18 @@ def ws_server(unused_port):
 
 @pytest.fixture
 def extension_cls():
-    def _extension(method_name, result=None, async_impl=False):
+    def _extension(method_name, result=None, async_impl=False, exception=None):
         class TestExtension(Extension):
             pass
 
         def ext_method(self, request):
+            if exception:
+                raise exception
             return result or ProcessingResponse.done()
 
         async def async_ext_method(self, request):
+            if exception:
+                raise exception
             return result or ProcessingResponse.done()
 
         if async_impl:
