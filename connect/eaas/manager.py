@@ -24,6 +24,7 @@ from connect.eaas.dataclasses import (
     ResultType,
     TaskCategory,
     TaskPayload,
+    TaskType,
 )
 from connect.eaas.extension import ProcessingResponse
 
@@ -226,13 +227,16 @@ class TasksManager:
             result = await asyncio.wait_for(future, timeout=BACKGROUND_TASK_MAX_EXECUTION_TIME)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
+            self.worker.get_extension().logger.exception(
+                f'Unhandled exception during execution of task {task_data.task_id}',
+            )
             result_message.result = ResultType.RETRY
-            result_message.output = str(e)
+            result_message.output = str(e) or repr(e)
             return result_message
         logger.debug(f'result: {result}')
         result_message.result = result.status
 
-        if result.status == ResultType.SKIP:
+        if result.status in (ResultType.SKIP, ResultType.FAIL):
             result_message.output = result.output
 
         if result.status == ResultType.RESCHEDULE:
@@ -249,10 +253,24 @@ class TasksManager:
             result = await asyncio.wait_for(future, timeout=INTERACTIVE_TASK_MAX_EXECUTION_TIME)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
+            self.worker.get_extension().logger.exception(
+                f'Unhandled exception during execution of task {task_data.task_id}',
+            )
             result_message.result = ResultType.FAIL
-            result_message.output = str(e)
+            result_message.output = str(e) or repr(e)
+            if result_message.task_type in (
+                TaskType.PRODUCT_ACTION_EXECUTION,
+                TaskType.PRODUCT_CUSTOM_EVENT_PROCESSING,
+            ):
+                result_message.data = {
+                    'http_status': 400,
+                    'headers': None,
+                    'body': result_message.output,
+                }
+
             return result_message
 
         result_message.result = result.status
         result_message.data = result.data
+        result_message.output = result.output
         return result_message

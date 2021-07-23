@@ -73,6 +73,47 @@ async def test_background_task_sync(mocker, extension_cls, task_type):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'task_type',
+    BACKGROUND_TASK_TYPES,
+)
+async def test_background_task_sync_reschedule(mocker, extension_cls, task_type):
+    extension_class = extension_cls(
+        TASK_TYPE_EXT_METHOD_MAP[task_type],
+        result=ProcessingResponse.reschedule(126),
+    )
+    extension = extension_class(None, None, None)
+
+    worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
+    worker.get_extension.return_value = extension
+    worker.send = mocker.AsyncMock()
+    worker.capabilities = {task_type: ['pending']}
+
+    manager = TasksManager(worker)
+    manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000', 'status': 'pending'})
+
+    manager.start()
+
+    task = TaskPayload(
+        'TQ-000',
+        TaskCategory.BACKGROUND,
+        task_type,
+        'PR-000',
+    )
+
+    await manager.submit_task(task)
+    assert manager.running_tasks == 1
+
+    await manager.stop()
+    message = Message(message_type=MessageType.TASK, data=task)
+    json_msg = message.to_json()
+    json_msg['data']['result'] = ResultType.RESCHEDULE
+    json_msg['data']['countdown'] = 126
+    worker.send.assert_awaited_once_with(json_msg)
+
+
+@pytest.mark.asyncio
 async def test_background_task_sync_unsupported_status(mocker, extension_cls):
     extension_class = extension_cls(
         TASK_TYPE_EXT_METHOD_MAP[TaskType.ASSET_PURCHASE_REQUEST_PROCESSING],
@@ -227,7 +268,7 @@ async def test_interactive_task_async(mocker, extension_cls, task_type):
 @pytest.mark.asyncio
 async def test_background_task_request_error(mocker, extension_cls):
     extension_class = extension_cls('process_asset_purchase_request')
-    extension = extension_class(None, None, None)
+    extension = extension_class(None, mocker.MagicMock(), None)
 
     worker = mocker.MagicMock()
     worker.ws = mocker.MagicMock(closed=False)
@@ -359,3 +400,79 @@ async def test_result_sender_wait_reconnection(mocker, extension_cls, caplog):
     assert 'wait WS reconnection before resuming result sender' in [
         record.message for record in caplog.records
     ]
+
+
+@pytest.mark.asyncio
+async def test_interactive_task_exception(mocker, extension_cls):
+    extension_class = extension_cls(
+        'validate_asset_purchase_request',
+        exception=Exception('validation exception'),
+    )
+    logger_mock = mocker.MagicMock()
+    extension = extension_class(None, logger_mock, None)
+
+    worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
+    worker.get_extension.return_value = extension
+    worker.capabilities = {TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft']}
+
+    manager = TasksManager(worker)
+    manager.get_request = mocker.AsyncMock(return_value={'id': 'PR-000', 'status': 'draft'})
+
+    manager.start()
+
+    task = TaskPayload(
+        'TQ-000',
+        TaskCategory.INTERACTIVE,
+        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION,
+        'PR-000',
+    )
+
+    await manager.submit_task(task)
+    await asyncio.sleep(.1)
+    await manager.stop()
+    message = Message(message_type=MessageType.TASK, data=task)
+    json_msg = message.to_json()
+    json_msg['data']['result'] = ResultType.FAIL
+    json_msg['data']['output'] = 'validation exception'
+    assert worker.send.mock_calls[1].args[0] == json_msg
+
+
+@pytest.mark.asyncio
+async def test_interactive_task_exception_product_action(mocker, extension_cls):
+    extension_class = extension_cls(
+        'execute_product_action',
+        exception=Exception('validation exception'),
+    )
+    logger_mock = mocker.MagicMock()
+    extension = extension_class(None, logger_mock, None)
+
+    worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
+    worker.get_extension.return_value = extension
+    worker.capabilities = {TaskType.PRODUCT_ACTION_EXECUTION: []}
+
+    manager = TasksManager(worker)
+
+    manager.start()
+
+    task = TaskPayload(
+        'TQ-000',
+        TaskCategory.INTERACTIVE,
+        TaskType.PRODUCT_ACTION_EXECUTION,
+        'PR-000',
+    )
+
+    await manager.submit_task(task)
+    await asyncio.sleep(.1)
+    await manager.stop()
+    message = Message(message_type=MessageType.TASK, data=task)
+    json_msg = message.to_json()
+    json_msg['data']['result'] = ResultType.FAIL
+    json_msg['data']['data'] = {
+        'http_status': 400,
+        'headers': None,
+        'body': 'validation exception',
+    }
+    json_msg['data']['output'] = 'validation exception'
+    assert worker.send.mock_calls[1].args[0] == json_msg
