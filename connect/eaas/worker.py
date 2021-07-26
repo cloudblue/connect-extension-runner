@@ -122,6 +122,7 @@ class Worker:
                     'environment_id': self.environment_id,
                     'instance_id': self.instance_id,
                     'environment_type': self.environment_type,
+                    'api_address': self.api_address,
                 },
             )
             logger.addHandler(self.logging_handler)
