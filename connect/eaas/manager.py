@@ -4,9 +4,10 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 import asyncio
-from asyncio.futures import Future
 import inspect
 import logging
+import traceback
+from asyncio.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 
 from connect.client import AsyncConnectClient, ClientError
@@ -231,7 +232,7 @@ class TasksManager:
                 f'Unhandled exception during execution of task {task_data.task_id}',
             )
             result_message.result = ResultType.RETRY
-            result_message.output = str(e) or repr(e)
+            result_message.output = traceback.format_exc()[:4000]
             return result_message
         logger.debug(f'result: {result}')
         result_message.result = result.status
@@ -257,7 +258,7 @@ class TasksManager:
                 f'Unhandled exception during execution of task {task_data.task_id}',
             )
             result_message.result = ResultType.FAIL
-            result_message.output = str(e) or repr(e)
+            result_message.output = traceback.format_exc()[:4000]
             if result_message.task_type in (
                 TaskType.PRODUCT_ACTION_EXECUTION,
                 TaskType.PRODUCT_CUSTOM_EVENT_PROCESSING,
