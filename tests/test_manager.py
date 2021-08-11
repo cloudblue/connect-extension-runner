@@ -278,6 +278,8 @@ async def test_background_task_request_error(mocker, extension_cls):
     manager = TasksManager(worker)
     manager.get_request = mocker.AsyncMock(side_effect=ClientError('Request not found', 404))
 
+    mocker.patch('traceback.format_exc', return_value='formatted traceback')
+
     manager.start()
 
     task = TaskPayload(
@@ -293,7 +295,7 @@ async def test_background_task_request_error(mocker, extension_cls):
     message = Message(message_type=MessageType.TASK, data=task)
     json_msg = message.to_json()
     json_msg['data']['result'] = 'retry'
-    json_msg['data']['output'] = 'Request not found'
+    json_msg['data']['output'] = 'formatted traceback'
     worker.send.assert_awaited_once_with(json_msg)
 
 
@@ -408,6 +410,8 @@ async def test_interactive_task_exception(mocker, extension_cls):
         'validate_asset_purchase_request',
         exception=Exception('validation exception'),
     )
+    long_stack_trace = 'x' * 5000
+    mocker.patch('traceback.format_exc', return_value=long_stack_trace)
     logger_mock = mocker.MagicMock()
     extension = extension_class(None, logger_mock, None)
 
@@ -434,7 +438,7 @@ async def test_interactive_task_exception(mocker, extension_cls):
     message = Message(message_type=MessageType.TASK, data=task)
     json_msg = message.to_json()
     json_msg['data']['result'] = ResultType.FAIL
-    json_msg['data']['output'] = 'validation exception'
+    json_msg['data']['output'] = long_stack_trace[:4000]
     assert worker.send.mock_calls[1].args[0] == json_msg
 
 
@@ -444,6 +448,7 @@ async def test_interactive_task_exception_product_action(mocker, extension_cls):
         'execute_product_action',
         exception=Exception('validation exception'),
     )
+    mocker.patch('traceback.format_exc', return_value='formatted stacktrace')
     logger_mock = mocker.MagicMock()
     extension = extension_class(None, logger_mock, None)
 
@@ -472,7 +477,7 @@ async def test_interactive_task_exception_product_action(mocker, extension_cls):
     json_msg['data']['data'] = {
         'http_status': 400,
         'headers': None,
-        'body': 'validation exception',
+        'body': 'formatted stacktrace',
     }
-    json_msg['data']['output'] = 'validation exception'
+    json_msg['data']['output'] = 'formatted stacktrace'
     assert worker.send.mock_calls[1].args[0] == json_msg
