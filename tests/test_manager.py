@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import logging
 
 import pytest
@@ -67,7 +68,7 @@ async def test_background_task_sync(mocker, extension_cls, task_type):
 
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.SUCCESS
     worker.send.assert_awaited_once_with(json_msg)
 
@@ -107,7 +108,7 @@ async def test_background_task_sync_reschedule(mocker, extension_cls, task_type)
 
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.RESCHEDULE
     json_msg['data']['countdown'] = 126
     worker.send.assert_awaited_once_with(json_msg)
@@ -143,7 +144,7 @@ async def test_background_task_sync_unsupported_status(mocker, extension_cls):
 
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.SKIP
     json_msg['data']['output'] = 'The status approved is not supported by the extension.'
     worker.send.assert_awaited_once_with(json_msg)
@@ -181,7 +182,7 @@ async def test_background_task_async(mocker, extension_cls, task_type):
 
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.SUCCESS
     worker.send.assert_awaited_once_with(json_msg)
 
@@ -220,7 +221,7 @@ async def test_interactive_task_sync(mocker, extension_cls, task_type):
 
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.SUCCESS
     worker.send.assert_awaited_once_with(json_msg)
 
@@ -260,7 +261,7 @@ async def test_interactive_task_async(mocker, extension_cls, task_type):
 
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.SUCCESS
     worker.send.assert_awaited_once_with(json_msg)
 
@@ -293,7 +294,7 @@ async def test_background_task_request_error(mocker, extension_cls):
     await asyncio.sleep(.1)
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = 'retry'
     json_msg['data']['output'] = 'formatted traceback'
     worker.send.assert_awaited_once_with(json_msg)
@@ -329,7 +330,7 @@ async def test_result_sender_retries(mocker, extension_cls):
     await asyncio.sleep(.1)
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.SUCCESS
     assert worker.send.mock_calls[1].args[0] == json_msg
 
@@ -436,7 +437,7 @@ async def test_interactive_task_exception(mocker, extension_cls):
     await asyncio.sleep(.1)
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.FAIL
     json_msg['data']['output'] = long_stack_trace[:4000]
     assert worker.send.mock_calls[1].args[0] == json_msg
@@ -472,7 +473,7 @@ async def test_interactive_task_exception_product_action(mocker, extension_cls):
     await asyncio.sleep(.1)
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
-    json_msg = message.to_json()
+    json_msg = dataclasses.asdict(message)
     json_msg['data']['result'] = ResultType.FAIL
     json_msg['data']['data'] = {
         'http_status': 400,

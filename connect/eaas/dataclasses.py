@@ -48,58 +48,52 @@ class TaskPayload:
     task_category: str
     task_type: str
     object_id: str
-    result: str = None
+    result: Optional[str] = None
     data: Any = None
     countdown: int = 0
-    output: str = None
-    correlation_id: str = None
-    reply_to: str = None
-
-    def to_json(self):
-        return dataclasses.asdict(self)
+    output: Optional[str] = None
+    correlation_id: Optional[str] = None
+    reply_to: Optional[str] = None
 
 
 @dataclasses.dataclass
 class ConfigurationPayload:
-    configuration: dict = None
-    logging_api_key: str = None
-    environment_type: str = None
-    log_level: str = None
-    runner_log_level: str = None
-
-    def to_json(self):
-        return dataclasses.asdict(self)
+    configuration: Optional[dict] = None
+    logging_api_key: Optional[str] = None
+    environment_type: Optional[str] = None
+    account_id: Optional[str] = None
+    account_name: Optional[str] = None
+    log_level: Optional[str] = None
+    runner_log_level: Optional[str] = None
 
 
 @dataclasses.dataclass
 class CapabilitiesPayload:
     capabilities: dict
-    readme_url: str = None
-    changelog_url: str = None
-
-    def to_json(self):
-        return dataclasses.asdict(self)
+    readme_url: Optional[str] = None
+    changelog_url: Optional[str] = None
 
 
-@dataclasses.dataclass(init=False)
+@dataclasses.dataclass
 class Message:
     message_type: str
     data: Optional[Union[CapabilitiesPayload, ConfigurationPayload, TaskPayload]] = None
 
-    def __init__(self, message_type=None, data=None):
-        self.message_type = message_type
-        if isinstance(data, dict):
-            if self.message_type == MessageType.CONFIGURATION:
-                self.data = ConfigurationPayload(**data)
-            elif self.message_type == MessageType.TASK:
-                self.data = TaskPayload(**data)
-            elif self.message_type == MessageType.CAPABILITIES:
-                self.data = CapabilitiesPayload(**data)
-        else:
-            self.data = data
 
-    def to_json(self):
-        payload = {'message_type': self.message_type}
-        if self.data:
-            payload['data'] = dataclasses.asdict(self.data)
-        return payload
+def from_dict(cls, data):
+    field_names = set(f.name for f in dataclasses.fields(cls))
+    return cls(**{k: v for k, v in data.items() if k in field_names})
+
+
+def parse_message(payload):
+    message_type = payload['message_type']
+    if message_type == MessageType.CONFIGURATION:
+        data = from_dict(ConfigurationPayload, payload.get('data'))
+    elif message_type == MessageType.TASK:
+        data = from_dict(TaskPayload, payload.get('data'))
+    elif message_type == MessageType.CAPABILITIES:
+        data = from_dict(CapabilitiesPayload, payload.get('data'))
+    else:
+        data = payload.get('data')
+
+    return Message(message_type=message_type, data=data)

@@ -4,6 +4,7 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 import asyncio
+import dataclasses
 import inspect
 import logging
 import traceback
@@ -90,7 +91,7 @@ class TasksManager:
         object_id = data.object_id
         task_type = data.task_type
         method_name = TASK_TYPE_EXT_METHOD_MAP[task_type]
-        extension = self.worker.get_extension()
+        extension = self.worker.get_extension(data.task_id)
         method = getattr(extension, method_name)
         logger.debug(f'invoke {method_name}')
         self.running_tasks += 1
@@ -175,7 +176,7 @@ class TasksManager:
                         message_type=MessageType.TASK,
                         data=result,
                     )
-                    await self.worker.send(message.to_json())
+                    await self.worker.send(dataclasses.asdict(message))
                     logger.info(f'Result for task {result.task_id} has been sent.')
                     break
                 except Exception:
@@ -222,13 +223,13 @@ class TasksManager:
         """
         Wait for a background task to be completed and than uild the task result message.
         """
-        result_message = TaskPayload(**task_data.to_json())
+        result_message = TaskPayload(**dataclasses.asdict(task_data))
         result = None
         try:
             result = await asyncio.wait_for(future, timeout=BACKGROUND_TASK_MAX_EXECUTION_TIME)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
-            self.worker.get_extension().logger.exception(
+            self.worker.get_extension(task_data.task_id).logger.exception(
                 f'Unhandled exception during execution of task {task_data.task_id}',
             )
             result_message.result = ResultType.RETRY
@@ -249,12 +250,12 @@ class TasksManager:
         Wait for an interactive task to be completed and than uild the task result message.
         """
         result = None
-        result_message = TaskPayload(**task_data.to_json())
+        result_message = TaskPayload(**dataclasses.asdict(task_data))
         try:
             result = await asyncio.wait_for(future, timeout=INTERACTIVE_TASK_MAX_EXECUTION_TIME)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
-            self.worker.get_extension().logger.exception(
+            self.worker.get_extension(task_data.task_id).logger.exception(
                 f'Unhandled exception during execution of task {task_data.task_id}',
             )
             result_message.result = ResultType.FAIL

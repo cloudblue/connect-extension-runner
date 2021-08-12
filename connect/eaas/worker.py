@@ -4,6 +4,7 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 import asyncio
+import dataclasses
 import json
 import logging
 from asyncio.exceptions import TimeoutError
@@ -17,13 +18,21 @@ from websockets.exceptions import (
 )
 
 from connect.client import AsyncConnectClient, ConnectClient
-from connect.eaas.dataclasses import CapabilitiesPayload, Message, MessageType
+from connect.eaas.dataclasses import (
+    CapabilitiesPayload,
+    Message,
+    MessageType,
+    parse_message,
+)
 from connect.eaas.helpers import (
     get_environment,
     get_extension_class,
     get_extension_type,
 )
-from connect.eaas.logging import ExtensionLogHandler, RequestLogger
+from connect.eaas.logging import (
+    ExtensionLogHandler,
+    RequestLogger,
+)
 from connect.eaas.manager import TasksManager
 
 
@@ -63,6 +72,8 @@ class Worker:
         self.paused = False
         self.logging_handler = None
         self.environment_type = None
+        self.account_id = None
+        self.account_name = None
 
     async def ensure_connection(self):
         """
@@ -93,7 +104,7 @@ class Worker:
         except TimeoutError:
             pass
 
-    def get_client(self):
+    def get_client(self, task_id):
         """
         Get an instance of the Connect Openapi Client. If the extension is asyncrhonous
         it returns an instance of the AsyncConnectClient otherwise the ConnectClient.
@@ -104,7 +115,10 @@ class Worker:
             endpoint=f'https://{self.api_address}/public/v1',
             use_specs=False,
             logger=RequestLogger(
-                self.get_extension_logger(self.logging_api_key),
+                logging.LoggerAdapter(
+                    self.get_extension_logger(self.logging_api_key),
+                    {'task_id': task_id},
+                ),
             ),
         )
 
@@ -122,6 +136,8 @@ class Worker:
                     'environment_id': self.environment_id,
                     'instance_id': self.instance_id,
                     'environment_type': self.environment_type,
+                    'account_id': self.account_id,
+                    'account_name': self.account_name,
                     'api_address': self.api_address,
                 },
             )
@@ -151,10 +167,13 @@ class Worker:
         url = f'{self.base_ws_url}/{self.environment_id}/{self.instance_id}'
         return f'{url}?running_tasks={running_tasks}'
 
-    def get_extension(self):
+    def get_extension(self, task_id):
         return self.extension_class(
-            self.get_client(),
-            self.get_extension_logger(self.logging_api_key),
+            self.get_client(task_id),
+            logging.LoggerAdapter(
+                self.get_extension_logger(self.logging_api_key),
+                {'task_id': task_id},
+            ),
             self.extension_config,
         )
 
@@ -176,7 +195,7 @@ class Worker:
                         self.changelog_url,
                     ),
                 )
-                await self.send(message.to_json())
+                await self.send(dataclasses.asdict(message))
                 while self.run_event.is_set():
                     await self.ensure_connection()
                     self.ensure_tasks_manager_running()
@@ -208,7 +227,7 @@ class Worker:
         """
         Process a message received from the websocket server.
         """
-        message = Message(**data)
+        message = parse_message(data)
         if message.message_type == MessageType.CONFIGURATION:
             await self.configuration(message.data)
         elif message.message_type == MessageType.TASK:
@@ -232,6 +251,11 @@ class Worker:
             self.logging_api_key = data.logging_api_key
         if data.environment_type:
             self.environment_type = data.environment_type
+        if data.account_id:
+            self.account_id = data.account_id
+        if data.account_name:
+            self.account_name = data.account_name
+
         if data.log_level:
             logger.info(f'Change extesion logger level to {data.log_level}')
             logging.getLogger('eaas.extension').setLevel(
