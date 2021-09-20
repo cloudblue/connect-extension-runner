@@ -45,6 +45,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'variables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -86,6 +87,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
                 MessageType.CAPABILITIES,
                 CapabilitiesPayload(
                     capabilities,
+                    [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
                 ),
@@ -131,6 +133,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, caplog):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'variables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -174,6 +177,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, caplog):
                 MessageType.CAPABILITIES,
                 CapabilitiesPayload(
                     capabilities,
+                    [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
                 ),
@@ -234,6 +238,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'variables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -279,6 +284,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
                 MessageType.CAPABILITIES,
                 CapabilitiesPayload(
                     capabilities,
+                    [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
                 ),
@@ -322,6 +328,7 @@ async def test_pause(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'variables': {},
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -376,6 +383,7 @@ async def test_resume(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'variables': {},
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -431,6 +439,7 @@ async def test_shutdown(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'variables': {},
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -551,6 +560,7 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
+                'variables': {},
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -572,3 +582,155 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
             assert 'Control worker started' in caplog.text
             worker.stop()
             assert 'Control worker stopped' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_capabilities_configuration_with_vars(mocker, ws_server, unused_port):
+    mocker.patch(
+        'connect.eaas.worker.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+        },
+    )
+
+    capabilities = {
+        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending', 'inquiring'],
+        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
+    }
+
+    variables = [
+        {'name': 'foo_var', 'initial_value': 'foo_value'},
+        {'name': 'bar_var', 'initial_value': 'bar_value'},
+    ]
+
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'capabilities': capabilities,
+                'variables': variables,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+    mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
+    mocker.patch('connect.eaas.worker.get_extension_type', return_value='sync')
+
+    data_to_send = dataclasses.asdict(
+        Message(
+            MessageType.CONFIGURATION,
+            ConfigurationPayload(
+                {
+                    'var1': 'value1',
+                    'var2': 'value2',
+                },
+                'token',
+                'development',
+            ),
+        ),
+    )
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        data_to_send,
+        ['receive', 'send'],
+    )
+
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        task = asyncio.create_task(worker.run())
+        worker.run_event.set()
+        await asyncio.sleep(.1)
+        worker.run_event.clear()
+        await task
+
+    handler.assert_received(
+        dataclasses.asdict(
+            Message(
+                MessageType.CAPABILITIES,
+                CapabilitiesPayload(
+                    capabilities,
+                    variables,
+                    'https://example.com/README.md',
+                    'https://example.com/CHANGELOG.md',
+                ),
+            ),
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_capabilities_configuration_without_vars(mocker, ws_server, unused_port):
+    mocker.patch(
+        'connect.eaas.worker.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+        },
+    )
+
+    capabilities = {
+        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending', 'inquiring'],
+        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
+    }
+
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'capabilities': capabilities,
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+    mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
+    mocker.patch('connect.eaas.worker.get_extension_type', return_value='sync')
+
+    data_to_send = dataclasses.asdict(
+        Message(
+            MessageType.CONFIGURATION,
+            ConfigurationPayload(
+                {
+                    'var1': 'value1',
+                    'var2': 'value2',
+                },
+                'token',
+                'development',
+            ),
+        ),
+    )
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        data_to_send,
+        ['receive', 'send'],
+    )
+
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        task = asyncio.create_task(worker.run())
+        worker.run_event.set()
+        await asyncio.sleep(.1)
+        worker.run_event.clear()
+        await task
+
+    handler.assert_received(
+        dataclasses.asdict(
+            Message(
+                MessageType.CAPABILITIES,
+                CapabilitiesPayload(
+                    capabilities,
+                    None,
+                    'https://example.com/README.md',
+                    'https://example.com/CHANGELOG.md',
+                ),
+            ),
+        ),
+    )
