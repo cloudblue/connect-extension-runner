@@ -63,6 +63,7 @@ class Worker:
         self.extension_type = get_extension_type(self.extension_class)
         descriptor = self.extension_class.get_descriptor()
         self.capabilities = descriptor['capabilities']
+        self.variables = descriptor.get('variables')
         self.readme_url = descriptor['readme_url']
         self.changelog_url = descriptor['changelog_url']
         self.extension_config = None
@@ -191,6 +192,7 @@ class Worker:
                     message_type=MessageType.CAPABILITIES,
                     data=CapabilitiesPayload(
                         self.capabilities,
+                        self.variables,
                         self.readme_url,
                         self.changelog_url,
                     ),

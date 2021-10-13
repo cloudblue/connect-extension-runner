@@ -14,6 +14,7 @@ from connect.eaas.dataclasses import (
 def test_from_dict():
     data = {
         'capabilities': {'test': 'data'},
+        'variables': [],
         'readme_url': 'https://read.me',
         'changelog_url': 'https://change.log',
         'extra': 'data',
@@ -56,6 +57,7 @@ def test_parse_capabilities_message():
         'message_type': 'capabilities',
         'data': {
             'capabilities': {'test': 'data'},
+            'variables': [],
             'readme_url': 'https://read.me',
             'changelog_url': 'https://change.log',
         },
@@ -91,3 +93,26 @@ def test_parse_configuration_message():
     assert isinstance(message.data, ConfigurationPayload)
 
     assert dataclasses.asdict(message) == msg_data
+
+
+def test_parse_capabilities_message_with_vars():
+    msg_data = {
+        'message_type': 'capabilities',
+        'data': {
+            'capabilities': {'test': 'data'},
+            'variables': [{'foo': 'value', 'bar': 'value'}],
+            'readme_url': 'https://read.me',
+            'changelog_url': 'https://change.log',
+        },
+    }
+
+    message = parse_message(msg_data)
+
+    assert isinstance(message, Message)
+    assert message.message_type == MessageType.CAPABILITIES
+    assert isinstance(message.data, CapabilitiesPayload)
+
+    assert dataclasses.asdict(message) == msg_data
+    assert message.data.variables == msg_data['data']['variables']
+    assert message.data.variables[0]['foo'] == msg_data['data']['variables'][0]['foo']
+    assert message.data.variables[0]['bar'] == msg_data['data']['variables'][0]['bar']

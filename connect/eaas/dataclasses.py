@@ -70,6 +70,7 @@ class ConfigurationPayload:
 @dataclasses.dataclass
 class CapabilitiesPayload:
     capabilities: dict
+    variables: Optional[list] = None
     readme_url: Optional[str] = None
     changelog_url: Optional[str] = None
 
