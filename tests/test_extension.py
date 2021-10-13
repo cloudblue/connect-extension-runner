@@ -5,12 +5,14 @@ from connect.eaas.extension import (
     CustomEventResponse,
     ProcessingResponse,
     ProductActionResponse,
+    ScheduledExecutionResponse,
     ValidationResponse,
 )
 
 
 def test_result_ok():
     assert ProcessingResponse.done().status == ResultType.SUCCESS
+    assert ScheduledExecutionResponse.done().status == ResultType.SUCCESS
     data = {'test': 'data'}
     ok = ValidationResponse.done(data)
     assert ok.status == ResultType.SUCCESS
@@ -68,6 +70,7 @@ def test_result_slow_reschedule(countdown, expected):
     (
         ProcessingResponse, ValidationResponse,
         CustomEventResponse, ProductActionResponse,
+        ScheduledExecutionResponse,
     ),
 )
 def test_result_fail(response_cls):

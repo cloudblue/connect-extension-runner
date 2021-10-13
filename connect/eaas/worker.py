@@ -52,6 +52,7 @@ class Worker:
         self.ws_address = env['ws_address']
         self.api_address = env['api_address']
         self.api_key = env['api_key']
+        self.service_id = None
         self.environment_id = env['environment_id']
         self.instance_id = env['instance_id']
         self.headers = (('Authorization', self.api_key),)
@@ -64,6 +65,7 @@ class Worker:
         descriptor = self.extension_class.get_descriptor()
         self.capabilities = descriptor['capabilities']
         self.variables = descriptor.get('variables')
+        self.schedulables = descriptor.get('schedulables')
         self.readme_url = descriptor['readme_url']
         self.changelog_url = descriptor['changelog_url']
         self.extension_config = None
@@ -161,12 +163,17 @@ class Worker:
             self.start_tasks_manager()
 
     def get_url(self):
-        running_tasks = (
-            self.tasks_manager.running_tasks
+        running_background_tasks = (
+            self.tasks_manager.running_background_tasks
+            if self.tasks_manager else 0
+        )
+        running_scheduled_tasks = (
+            self.tasks_manager.running_scheduled_tasks
             if self.tasks_manager else 0
         )
         url = f'{self.base_ws_url}/{self.environment_id}/{self.instance_id}'
-        return f'{url}?running_tasks={running_tasks}'
+        url = f'{url}?running_tasks={running_background_tasks}'
+        return f'{url}&running_scheduled_tasks={running_scheduled_tasks}'
 
     def get_extension(self, task_id):
         return self.extension_class(
@@ -193,6 +200,7 @@ class Worker:
                     data=CapabilitiesPayload(
                         self.capabilities,
                         self.variables,
+                        self.schedulables,
                         self.readme_url,
                         self.changelog_url,
                     ),
@@ -257,6 +265,8 @@ class Worker:
             self.account_id = data.account_id
         if data.account_name:
             self.account_name = data.account_name
+        if data.service_id:
+            self.service_id = data.service_id
 
         if data.log_level:
             logger.info(f'Change extesion logger level to {data.log_level}')

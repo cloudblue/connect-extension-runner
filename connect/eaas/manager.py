@@ -17,6 +17,7 @@ from connect.eaas.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     RESULT_SENDER_MAX_RETRIES,
+    SCHEDULED_TASK_MAX_EXECUTION_TIME,
     TASK_TYPE_EXT_METHOD_MAP,
     TIER_CONFIG_REQUEST_TASK_TYPES,
 )
@@ -50,6 +51,7 @@ class TasksManager:
         self.worker = worker
         self.background_executor = ThreadPoolExecutor()
         self.interactive_executor = ThreadPoolExecutor()
+        self.scheduled_executor = ThreadPoolExecutor()
         self.run_event = asyncio.Event()
         self.loop = asyncio.get_running_loop()
         self.client = AsyncConnectClient(
@@ -58,7 +60,9 @@ class TasksManager:
             use_specs=False,
         )
         self.results_queue = asyncio.Queue()
-        self.running_tasks = 0
+        self.running_background_tasks = 0
+        self.running_scheduled_tasks = 0
+        self.running_interactive_tasks = 0
         self.main_task = None
         self.sender_task = None
 
@@ -77,6 +81,14 @@ class TasksManager:
     def is_running(self):
         return self.run_event.is_set()
 
+    @property
+    def running_tasks(self):
+        return (
+            self.running_background_tasks
+            + self.running_interactive_tasks
+            + self.running_scheduled_tasks
+        )
+
     async def submit_task(self, data):
         """
         Submit a new task to a worker thread if the extension handler
@@ -90,13 +102,13 @@ class TasksManager:
         )
         object_id = data.object_id
         task_type = data.task_type
-        method_name = TASK_TYPE_EXT_METHOD_MAP[task_type]
         extension = self.worker.get_extension(data.task_id)
-        method = getattr(extension, method_name)
-        logger.debug(f'invoke {method_name}')
-        self.running_tasks += 1
         request = None
         if data.task_category == TaskCategory.BACKGROUND:
+            self.running_background_tasks += 1
+            method_name = TASK_TYPE_EXT_METHOD_MAP[task_type]
+            method = getattr(extension, method_name)
+            logger.debug(f'invoke {method_name}')
             try:
                 request = await self.get_request(object_id, task_type)
             except ClientError as e:
@@ -111,30 +123,35 @@ class TasksManager:
                     f'The status {request_status} is not supported by the extension.',
                 )
                 return
-        else:
+        elif data.task_category == TaskCategory.INTERACTIVE:
+            self.running_interactive_tasks += 1
+            method_name = TASK_TYPE_EXT_METHOD_MAP[task_type]
+            method = getattr(extension, method_name)
+            logger.debug(f'invoke {method_name}')
             request = data.data
+        elif data.task_category == TaskCategory.SCHEDULED:
+            self.running_scheduled_tasks += 1
+            try:
+                request = await self.get_schedule(object_id)
+            except ClientError as e:
+                logger.warning(f'Cannot retrieve object {data.object_id} for task {data.task_id}')
+                self.send_exception_response(data, e)
+                return
+            method_name = request['method']
+            method = getattr(extension, method_name)
+            logger.debug(f'invoke {method_name}')
 
         if inspect.iscoroutinefunction(method):
             future = asyncio.create_task(method(request))
         else:
             future = self.loop.run_in_executor(
-                self.get_executor(task_type),
+                getattr(self, f'{data.task_category}_executor'),
                 method,
                 request,
             )
         logger.info(f'Task {data.task_id} has been submitted.')
         logger.debug(f'Current running task: {self.running_tasks}')
         asyncio.create_task(self.enqueue_result(data, future))
-
-    def get_executor(self, task_category):
-        """
-        Return a thread pool executor based on the task category.
-        """
-        return (
-            self.background_executor
-            if task_category == TaskCategory.BACKGROUND
-            else self.interactive_executor
-        )
 
     async def get_request(self, object_id, task_type):
         """
@@ -147,6 +164,15 @@ class TasksManager:
         if task_type in TIER_CONFIG_REQUEST_TASK_TYPES:
             logger.debug(f'get TC request {object_id}')
             return await self.client('tier').config_requests[object_id].get()
+
+    async def get_schedule(self, object_id):
+        return (
+            await self.client('devops')
+            .services[self.worker.service_id]
+            .environments[self.worker.environment_id]
+            .schedules[object_id]
+            .get()
+        )
 
     async def result_sender(self):  # noqa: CCR001
         """
@@ -199,14 +225,21 @@ class TasksManager:
         result queue.
         """
         if task_data.task_category == TaskCategory.BACKGROUND:
+            self.running_background_tasks -= 1
             await self.results_queue.put(
                 await self.build_bg_response(task_data, future),
             )
-        else:
+        elif task_data.task_category == TaskCategory.INTERACTIVE:
+            self.running_interactive_tasks -= 1
             await self.results_queue.put(
                 await self.build_interactive_response(task_data, future),
             )
-        self.running_tasks -= 1
+        elif task_data.task_category == TaskCategory.SCHEDULED:
+            self.running_scheduled_tasks -= 1
+            await self.results_queue.put(
+                await self.build_scheduled_response(task_data, future),
+            )
+
         logger.debug(f'enqueue results for sender, running tasks: {self.running_tasks}')
 
     def send_exception_response(self, data, e):
@@ -274,5 +307,27 @@ class TasksManager:
 
         result_message.result = result.status
         result_message.data = result.data
+        result_message.output = result.output
+        return result_message
+
+    async def build_scheduled_response(self, task_data, future):
+        """
+        Wait for a scheduled task to be completed and than uild the task result message.
+        """
+        result = None
+        result_message = TaskPayload(**dataclasses.asdict(task_data))
+        try:
+            result = await asyncio.wait_for(future, timeout=SCHEDULED_TASK_MAX_EXECUTION_TIME)
+        except Exception as e:
+            logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
+            self.worker.get_extension(task_data.task_id).logger.exception(
+                f'Unhandled exception during execution of task {task_data.task_id}',
+            )
+            result_message.result = ResultType.RETRY
+            result_message.output = traceback.format_exc()[:4000]
+
+            return result_message
+
+        result_message.result = result.status
         result_message.output = result.output
         return result_message

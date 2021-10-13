@@ -21,7 +21,8 @@ def test_start(mocker):
                     'asset_purchase_request_processing': [],
                     'asset_purchase_request_validation': [],
                 },
-                'variables': {},
+                'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }

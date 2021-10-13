@@ -18,6 +18,7 @@ class TaskType:
     TIER_CONFIG_ADJUSTMENT_REQUEST_PROCESSING = 'tier_config_adjustment_request_processing'
     TIER_CONFIG_SETUP_REQUEST_VALIDATION = 'tier_config_setup_request_validation'
     TIER_CONFIG_CHANGE_REQUEST_VALIDATION = 'tier_config_change_request_validation'
+    SCHEDULED_EXECUTION = 'scheduled_execution'
 
 
 class MessageType:
@@ -32,6 +33,7 @@ class MessageType:
 class TaskCategory:
     BACKGROUND = 'background'
     INTERACTIVE = 'interactive'
+    SCHEDULED = 'scheduled'
 
 
 class ResultType:
@@ -49,7 +51,7 @@ class TaskPayload:
     task_type: str
     object_id: str
     result: Optional[str] = None
-    data: Any = None
+    data: Optional[Any] = None
     countdown: int = 0
     output: Optional[str] = None
     correlation_id: Optional[str] = None
@@ -63,6 +65,7 @@ class ConfigurationPayload:
     environment_type: Optional[str] = None
     account_id: Optional[str] = None
     account_name: Optional[str] = None
+    service_id: Optional[str] = None
     log_level: Optional[str] = None
     runner_log_level: Optional[str] = None
 
@@ -71,6 +74,7 @@ class ConfigurationPayload:
 class CapabilitiesPayload:
     capabilities: dict
     variables: Optional[list] = None
+    schedulables: Optional[list] = None
     readme_url: Optional[str] = None
     changelog_url: Optional[str] = None
 
@@ -82,7 +86,7 @@ class Message:
 
 
 def from_dict(cls, data):
-    field_names = set(f.name for f in dataclasses.fields(cls))
+    field_names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: v for k, v in data.items() if k in field_names})
 
 
