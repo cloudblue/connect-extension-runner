@@ -58,6 +58,7 @@ def test_parse_capabilities_message():
         'data': {
             'capabilities': {'test': 'data'},
             'variables': [],
+            'schedulables': [],
             'readme_url': 'https://read.me',
             'changelog_url': 'https://change.log',
         },
@@ -83,6 +84,7 @@ def test_parse_configuration_message():
             'runner_log_level': 'runner-log-level',
             'account_id': 'account_id',
             'account_name': 'account_name',
+            'service_id': 'service_id',
         },
     }
 
@@ -101,6 +103,7 @@ def test_parse_capabilities_message_with_vars():
         'data': {
             'capabilities': {'test': 'data'},
             'variables': [{'foo': 'value', 'bar': 'value'}],
+            'schedulables': None,
             'readme_url': 'https://read.me',
             'changelog_url': 'https://change.log',
         },
@@ -116,3 +119,31 @@ def test_parse_capabilities_message_with_vars():
     assert message.data.variables == msg_data['data']['variables']
     assert message.data.variables[0]['foo'] == msg_data['data']['variables'][0]['foo']
     assert message.data.variables[0]['bar'] == msg_data['data']['variables'][0]['bar']
+
+
+def test_parse_capabilities_message_with_schedulables():
+    msg_data = {
+        'message_type': 'capabilities',
+        'data': {
+            'capabilities': {'test': 'data'},
+            'variables': None,
+            'schedulables': [
+                {
+                    'method': 'method_name',
+                    'name': 'Name',
+                    'description': 'Description',
+                },
+            ],
+            'readme_url': 'https://read.me',
+            'changelog_url': 'https://change.log',
+        },
+    }
+
+    message = parse_message(msg_data)
+
+    assert isinstance(message, Message)
+    assert message.message_type == MessageType.CAPABILITIES
+    assert isinstance(message.data, CapabilitiesPayload)
+
+    assert dataclasses.asdict(message) == msg_data
+    assert message.data.schedulables == msg_data['data']['schedulables']

@@ -50,6 +50,9 @@ def get_extension_type(cls):
     guess_async = [
         inspect.iscoroutinefunction(getattr(cls, TASK_TYPE_EXT_METHOD_MAP[name]))
         for name in descriptor['capabilities'].keys()
+    ] + [
+        inspect.iscoroutinefunction(getattr(cls, schedulable['method']))
+        for schedulable in descriptor.get('schedulables', [])
     ]
 
     if all(guess_async):

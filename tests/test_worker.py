@@ -16,7 +16,7 @@ from connect.eaas.dataclasses import (
     TaskPayload,
     TaskType,
 )
-from connect.eaas.extension import Extension, ProcessingResponse
+from connect.eaas.extension import Extension, ProcessingResponse, ScheduledExecutionResponse
 from connect.eaas.worker import Worker
 
 from tests.utils import WSHandler
@@ -46,6 +46,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
             return {
                 'capabilities': capabilities,
                 'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -68,7 +69,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
     )
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send'],
     )
@@ -87,6 +88,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
                 MessageType.CAPABILITIES,
                 CapabilitiesPayload(
                     capabilities,
+                    [],
                     [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
@@ -134,6 +136,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, caplog):
             return {
                 'capabilities': capabilities,
                 'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -159,7 +162,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, caplog):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send', 'send', 'receive'],
     )
@@ -177,6 +180,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, caplog):
                 MessageType.CAPABILITIES,
                 CapabilitiesPayload(
                     capabilities,
+                    [],
                     [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
@@ -239,6 +243,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
             return {
                 'capabilities': capabilities,
                 'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -265,7 +270,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send', 'send', 'receive'],
     )
@@ -285,6 +290,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
                 CapabilitiesPayload(
                     capabilities,
                     [],
+                    [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
                 ),
@@ -298,6 +304,126 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
                 TaskCategory.BACKGROUND,
                 TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING,
                 'TCR-000',
+                result=ResultType.SUCCESS,
+            )),
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock):
+
+    schedule_data = {
+        'id': 'EFS-000',
+        'method': 'run_scheduled_task',
+        'parameter': {'param': 'data'},
+    }
+
+    schedule_url = f'https://127.0.0.1:{unused_port}/public/v1/devops'
+    schedule_url = f'{schedule_url}/services/SVC-0000/environments/ENV-000-0001'
+    schedule_url = f'{schedule_url}/schedules/{schedule_data["id"]}'
+
+    httpx_mock.add_response(
+        method='GET',
+        url=schedule_url,
+        json=schedule_data,
+    )
+
+    mocker.patch(
+        'connect.eaas.worker.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+        },
+    )
+
+    capabilities = {
+        TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING: ['pending'],
+        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
+    }
+
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'capabilities': capabilities,
+                'variables': [],
+                'schedulables': [
+                    {
+                        'method': 'run_scheduled_task',
+                        'name': 'Run scheduled task',
+                        'description': 'Description',
+                    },
+                ],
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+        def run_scheduled_task(self, schedule):
+            assert schedule == schedule_data
+            return ScheduledExecutionResponse.done()
+
+    mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
+    mocker.patch('connect.eaas.worker.get_extension_type', return_value='sync')
+
+    data_to_send = [
+        dataclasses.asdict(Message(MessageType.CONFIGURATION, ConfigurationPayload(
+            {'var': 'val'}, 'api_key', 'development', service_id='SVC-0000',
+        ))),
+        dataclasses.asdict(
+            Message(MessageType.TASK, TaskPayload(
+                'TQ-000',
+                TaskCategory.SCHEDULED,
+                TaskType.SCHEDULED_EXECUTION,
+                schedule_data['id'],
+            )),
+        ),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
+        data_to_send,
+        ['receive', 'send', 'send', 'receive'],
+    )
+
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        task = asyncio.create_task(worker.run())
+        worker.run_event.set()
+        await asyncio.sleep(.5)
+        worker.run_event.clear()
+        await task
+
+    handler.assert_received(
+        dataclasses.asdict(
+            Message(
+                MessageType.CAPABILITIES,
+                CapabilitiesPayload(
+                    capabilities,
+                    [],
+                    [
+                        {
+                            'method': 'run_scheduled_task',
+                            'name': 'Run scheduled task',
+                            'description': 'Description',
+                        },
+                    ],
+                    'https://example.com/README.md',
+                    'https://example.com/CHANGELOG.md',
+                ),
+            ),
+        ),
+    )
+    handler.assert_received(
+        dataclasses.asdict(
+            Message(MessageType.TASK, TaskPayload(
+                'TQ-000',
+                TaskCategory.SCHEDULED,
+                TaskType.SCHEDULED_EXECUTION,
+                schedule_data['id'],
                 result=ResultType.SUCCESS,
             )),
         ),
@@ -328,7 +454,8 @@ async def test_pause(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
-                'variables': {},
+                'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -344,7 +471,7 @@ async def test_pause(mocker, ws_server, unused_port):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send', 'send'],
     )
@@ -383,7 +510,8 @@ async def test_resume(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
-                'variables': {},
+                'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -400,7 +528,7 @@ async def test_resume(mocker, ws_server, unused_port):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send', 'send', 'send'],
     )
@@ -439,7 +567,8 @@ async def test_shutdown(mocker, ws_server, unused_port):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
-                'variables': {},
+                'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -455,7 +584,7 @@ async def test_shutdown(mocker, ws_server, unused_port):
     ]
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send', 'send'],
     )
@@ -483,7 +612,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
         },
     )
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         None,
         [],
     )
@@ -500,7 +629,8 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 
     assert (
         f'Disconnected from: ws://127.0.0.1:{unused_port}'
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0, retry in 2s'
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002'
+        '?running_tasks=0&running_scheduled_tasks=0, retry in 2s'
     ) in caplog.text
 
 
@@ -519,7 +649,7 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
         },
     )
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         None,
         [],
     )
@@ -560,7 +690,8 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
         def get_descriptor(cls):
             return {
                 'capabilities': capabilities,
-                'variables': {},
+                'variables': [],
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -569,7 +700,7 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.worker.get_extension_type', return_value='sync')
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         None,
         ['receive', 'send'],
     )
@@ -613,6 +744,7 @@ async def test_capabilities_configuration_with_vars(mocker, ws_server, unused_po
             return {
                 'capabilities': capabilities,
                 'variables': variables,
+                'schedulables': [],
                 'readme_url': 'https://example.com/README.md',
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
@@ -635,7 +767,7 @@ async def test_capabilities_configuration_with_vars(mocker, ws_server, unused_po
     )
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send'],
     )
@@ -655,6 +787,7 @@ async def test_capabilities_configuration_with_vars(mocker, ws_server, unused_po
                 CapabilitiesPayload(
                     capabilities,
                     variables,
+                    [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
                 ),
@@ -708,7 +841,7 @@ async def test_capabilities_configuration_without_vars(mocker, ws_server, unused
     )
 
     handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0',
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
         ['receive', 'send'],
     )
@@ -727,6 +860,7 @@ async def test_capabilities_configuration_without_vars(mocker, ws_server, unused
                 MessageType.CAPABILITIES,
                 CapabilitiesPayload(
                     capabilities,
+                    None,
                     None,
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',

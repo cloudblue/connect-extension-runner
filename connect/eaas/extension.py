@@ -94,6 +94,21 @@ class ProductActionResponse(_InteractiveTaskResponse):
     pass
 
 
+class ScheduledExecutionResponse(_Response):
+
+    def __init__(self, status, output=None):
+        super().__init__(status)
+        self.output = output
+
+    @classmethod
+    def done(cls):
+        return cls(ResultType.SUCCESS)
+
+    @classmethod
+    def fail(cls, output=None):
+        return cls(ResultType.FAIL, output=output)
+
+
 class Extension:
     def __init__(self, client, logger, config):
         self.client = client

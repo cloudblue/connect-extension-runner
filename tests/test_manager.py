@@ -217,7 +217,6 @@ async def test_interactive_task_sync(mocker, extension_cls, task_type):
     )
 
     await manager.submit_task(task)
-    assert manager.running_tasks == 1
 
     await manager.stop()
     message = Message(message_type=MessageType.TASK, data=task)
@@ -482,3 +481,109 @@ async def test_interactive_task_exception_product_action(mocker, extension_cls):
     }
     json_msg['data']['output'] = 'formatted stacktrace'
     assert worker.send.mock_calls[1].args[0] == json_msg
+
+
+@pytest.mark.asyncio
+async def test_scheduled_task_request_error(mocker, extension_cls):
+    extension_class = extension_cls('execute_scheduled_task')
+    extension = extension_class(None, mocker.MagicMock(), None)
+
+    worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
+    worker.get_extension.return_value = extension
+    worker.send = mocker.AsyncMock()
+
+    manager = TasksManager(worker)
+    manager.get_schedule = mocker.AsyncMock(side_effect=ClientError('Request not found', 404))
+
+    mocker.patch('traceback.format_exc', return_value='formatted traceback')
+
+    manager.start()
+
+    task = TaskPayload(
+        'TQ-000',
+        TaskCategory.SCHEDULED,
+        TaskType.SCHEDULED_EXECUTION,
+        'EFS-000',
+    )
+
+    await manager.submit_task(task)
+    await asyncio.sleep(.1)
+    await manager.stop()
+    message = Message(message_type=MessageType.TASK, data=task)
+    json_msg = dataclasses.asdict(message)
+    json_msg['data']['result'] = 'retry'
+    json_msg['data']['output'] = 'formatted traceback'
+    worker.send.assert_awaited_once_with(json_msg)
+
+
+@pytest.mark.asyncio
+async def test_scheduled_task_sync(mocker, extension_cls):
+    extension_class = extension_cls('execute_scheduled_task')
+    extension = extension_class(None, None, None)
+
+    worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
+    worker.get_extension.return_value = extension
+    worker.send = mocker.AsyncMock()
+    worker.capabilities = {}
+
+    manager = TasksManager(worker)
+    manager.get_schedule = mocker.AsyncMock(return_value={
+        'id': 'EFS-000',
+        'method': 'execute_scheduled_task',
+    })
+
+    manager.start()
+
+    task = TaskPayload(
+        'TQ-000',
+        TaskCategory.SCHEDULED,
+        TaskType.SCHEDULED_EXECUTION,
+        'EFS-000',
+    )
+
+    await manager.submit_task(task)
+    assert manager.running_tasks == 1
+
+    await manager.stop()
+    message = Message(message_type=MessageType.TASK, data=task)
+    json_msg = dataclasses.asdict(message)
+    json_msg['data']['result'] = ResultType.SUCCESS
+    worker.send.assert_awaited_once_with(json_msg)
+
+
+@pytest.mark.asyncio
+async def test_scheduled_task_async(mocker, extension_cls):
+    extension_class = extension_cls('execute_scheduled_task', async_impl=True)
+    extension = extension_class(None, None, None)
+
+    worker = mocker.MagicMock()
+    worker.ws = mocker.MagicMock(closed=False)
+    worker.get_extension.return_value = extension
+    worker.send = mocker.AsyncMock()
+    worker.capabilities = {}
+
+    manager = TasksManager(worker)
+    manager.get_schedule = mocker.AsyncMock(return_value={
+        'id': 'EFS-000',
+        'method': 'execute_scheduled_task',
+    })
+
+    manager.start()
+
+    task = TaskPayload(
+        'TQ-000',
+        TaskCategory.SCHEDULED,
+        TaskType.SCHEDULED_EXECUTION,
+        'EFS-000',
+    )
+
+    await manager.submit_task(task)
+    assert manager.running_tasks == 1
+
+    await manager.stop()
+    message = Message(message_type=MessageType.TASK, data=task)
+    json_msg = dataclasses.asdict(message)
+    json_msg['data']['result'] = ResultType.SUCCESS
+    worker.send.assert_awaited_once_with(json_msg)
