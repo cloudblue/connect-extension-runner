@@ -14,10 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from connect.client import AsyncConnectClient, ClientError
 from connect.eaas.constants import (
     ASSET_REQUEST_TASK_TYPES,
-    BACKGROUND_TASK_MAX_EXECUTION_TIME,
-    INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     RESULT_SENDER_MAX_RETRIES,
-    SCHEDULED_TASK_MAX_EXECUTION_TIME,
     TASK_TYPE_EXT_METHOD_MAP,
     TIER_CONFIG_REQUEST_TASK_TYPES,
 )
@@ -63,6 +60,10 @@ class TasksManager:
         self.running_background_tasks = 0
         self.running_scheduled_tasks = 0
         self.running_interactive_tasks = 0
+        env = self.worker.env
+        self.background_task_max_execution_time = env['background_task_max_execution_time']
+        self.interactive_task_max_execution_time = env['interactive_task_max_execution_time']
+        self.scheduled_task_max_execution_time = env['scheduled_task_max_execution_time']
         self.main_task = None
         self.sender_task = None
 
@@ -259,7 +260,7 @@ class TasksManager:
         result_message = TaskPayload(**dataclasses.asdict(task_data))
         result = None
         try:
-            result = await asyncio.wait_for(future, timeout=BACKGROUND_TASK_MAX_EXECUTION_TIME)
+            result = await asyncio.wait_for(future, timeout=self.background_task_max_execution_time)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
             self.worker.get_extension(task_data.task_id).logger.exception(
@@ -285,7 +286,10 @@ class TasksManager:
         result = None
         result_message = TaskPayload(**dataclasses.asdict(task_data))
         try:
-            result = await asyncio.wait_for(future, timeout=INTERACTIVE_TASK_MAX_EXECUTION_TIME)
+            result = await asyncio.wait_for(
+                future,
+                timeout=self.interactive_task_max_execution_time,
+            )
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
             self.worker.get_extension(task_data.task_id).logger.exception(
@@ -317,7 +321,7 @@ class TasksManager:
         result = None
         result_message = TaskPayload(**dataclasses.asdict(task_data))
         try:
-            result = await asyncio.wait_for(future, timeout=SCHEDULED_TASK_MAX_EXECUTION_TIME)
+            result = await asyncio.wait_for(future, timeout=self.scheduled_task_max_execution_time)
         except Exception as e:
             logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
             self.worker.get_extension(task_data.task_id).logger.exception(

@@ -48,13 +48,13 @@ class Worker:
     """
     def __init__(self, secure=True):
         self.secure = secure
-        env = get_environment()
-        self.ws_address = env['ws_address']
-        self.api_address = env['api_address']
-        self.api_key = env['api_key']
+        self.env = get_environment()
+        self.ws_address = self.env['ws_address']
+        self.api_address = self.env['api_address']
+        self.api_key = self.env['api_key']
         self.service_id = None
-        self.environment_id = env['environment_id']
-        self.instance_id = env['instance_id']
+        self.environment_id = self.env['environment_id']
+        self.instance_id = self.env['instance_id']
         self.headers = (('Authorization', self.api_key),)
         proto = 'wss' if secure else 'ws'
         self.base_ws_url = f'{proto}://{self.ws_address}/public/v1/devops/ws'

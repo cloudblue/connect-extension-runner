@@ -32,6 +32,9 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -117,6 +120,9 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, caplog):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -229,6 +235,9 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -337,6 +346,9 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -441,6 +453,9 @@ async def test_pause(mocker, ws_server, unused_port):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -497,6 +512,9 @@ async def test_resume(mocker, ws_server, unused_port):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -554,6 +572,9 @@ async def test_shutdown(mocker, ws_server, unused_port):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -609,6 +630,9 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
     handler = WSHandler(
@@ -646,6 +670,9 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
     handler = WSHandler(
@@ -677,6 +704,9 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -725,6 +755,9 @@ async def test_capabilities_configuration_with_vars(mocker, ws_server, unused_po
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
@@ -806,6 +839,9 @@ async def test_capabilities_configuration_without_vars(mocker, ws_server, unused
             'api_key': 'SU-000:XXXX',
             'environment_id': 'ENV-000-0001',
             'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 

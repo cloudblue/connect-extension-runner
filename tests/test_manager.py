@@ -46,6 +46,11 @@ async def test_background_task_sync(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -86,6 +91,11 @@ async def test_background_task_sync_reschedule(mocker, extension_cls, task_type)
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -122,6 +132,11 @@ async def test_background_task_sync_unsupported_status(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -160,6 +175,11 @@ async def test_background_task_async(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -200,6 +220,11 @@ async def test_interactive_task_sync(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -239,6 +264,11 @@ async def test_interactive_task_async(mocker, extension_cls, task_type):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -308,6 +338,11 @@ async def test_result_sender_retries(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock(side_effect=[Exception('retry'), None])
@@ -343,6 +378,11 @@ async def test_result_sender_max_retries_exceeded(mocker, extension_cls, caplog)
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock(
@@ -378,6 +418,11 @@ async def test_result_sender_wait_reconnection(mocker, extension_cls, caplog):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=True)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -523,6 +568,11 @@ async def test_scheduled_task_sync(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
@@ -559,6 +609,11 @@ async def test_scheduled_task_async(mocker, extension_cls):
     extension = extension_class(None, None, None)
 
     worker = mocker.MagicMock()
+    worker.env = {
+        'background_task_max_execution_time': 300,
+        'interactive_task_max_execution_time': 120,
+        'scheduled_task_max_execution_time': 60 * 60 * 12,
+    }
     worker.ws = mocker.MagicMock(closed=False)
     worker.get_extension.return_value = extension
     worker.send = mocker.AsyncMock()
