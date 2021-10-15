@@ -57,3 +57,31 @@ def extension_cls():
         return TestExtension
 
     return _extension
+
+
+@pytest.fixture(scope='session')
+def config_payload():
+    return {
+        'configuration': {'conf1': 'val1'},
+        'logging_api_key': None,
+        'environment_type': 'development',
+        'log_level': 'DEBUG',
+        'runner_log_level': 'INFO',
+        'account_id': 'account_id',
+        'account_name': 'account_name',
+        'service_id': 'service_id',
+        'product_id': 'product_id',
+        'hub_id': 'HB-0000',
+    }
+
+
+@pytest.fixture
+def task_payload():
+    def _task_payload(task_category, task_type, object_id):
+        return {
+            'task_id': 'TQ-000',
+            'task_category': task_category,
+            'task_type': task_type,
+            'object_id': object_id,
+        }
+    return _task_payload

@@ -10,7 +10,12 @@ from uuid import uuid4
 
 import pkg_resources
 
-from connect.eaas.constants import TASK_TYPE_EXT_METHOD_MAP
+from connect.eaas.constants import (
+    BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    INTERACTIVE_TASK_MAX_EXECUTION_TIME,
+    SCHEDULED_TASK_MAX_EXECUTION_TIME,
+    TASK_TYPE_EXT_METHOD_MAP,
+)
 from connect.eaas.exceptions import EaaSError
 
 
@@ -57,6 +62,15 @@ def get_environment():
         'instance_id': os.getenv('INSTANCE_ID', get_container_id()),
         'ws_address': os.getenv('SERVER_ADDRESS', 'api.cnct.info'),
         'api_address': os.getenv('API_ADDRESS', os.getenv('SERVER_ADDRESS', 'api.cnct.info')),
+        'background_task_max_execution_time': int(os.getenv(
+            'BACKGROUND_TASK_MAX_EXECUTION_TIME', BACKGROUND_TASK_MAX_EXECUTION_TIME,
+        )),
+        'interactive_task_max_execution_time': int(os.getenv(
+            'INTERACTIVE_TASK_MAX_EXECUTION_TIME', INTERACTIVE_TASK_MAX_EXECUTION_TIME,
+        )),
+        'scheduled_task_max_execution_time': int(os.getenv(
+            'SCHEDULED_TASK_MAX_EXECUTION_TIME', SCHEDULED_TASK_MAX_EXECUTION_TIME,
+        )),
     }
 
 

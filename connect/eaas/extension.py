@@ -116,7 +116,7 @@ class Extension:
         self.config = config
 
     @classmethod
-    def get_descriptor(cls):
+    def get_descriptor(cls):  # pragma: no cover
         return json.load(
             pkg_resources.resource_stream(
                 cls.__module__,
@@ -167,4 +167,19 @@ class Extension:
         raise NotImplementedError()
 
     def process_product_custom_event(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_new_listing_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_remove_listing_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_tier_account_update_request(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_usage_file(self, request):  # pragma: no cover
+        raise NotImplementedError()
+
+    def process_usage_chunk_file(self, request):  # pragma: no cover
         raise NotImplementedError()
