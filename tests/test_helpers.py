@@ -29,6 +29,74 @@ def test_get_container_id(mocker):
     assert mocked.mock_calls[0].args[0] == ['cat', '/proc/1/cpuset']
 
 
+def test_get_container_id_cgroups2(mocker):
+    overlay_mount = (
+        '776 562 0:178 / / rw,relatime master:163 - overlay overlay rw,'
+        'lowerdir=/var/lib/docker/overlay2/l/MVS46I7BSZLIJ4CCFBC2HWYOA6,'
+        'upperdir=/var/lib/docker/overlay2/d296001e9df3fe165e465fc7c37dee126d8dc7720f2a451b270cd7c1d4e9ce66/diff,'  # noqa: E501
+        'workdir=/var/lib/docker/overlay2/d296001e9df3fe165e465fc7c37dee126d8dc7720f2a451b270cd7c1d4e9ce66/work\n'  # noqa: E501
+    )
+    result_cpuset = mocker.MagicMock()
+    result_cpuset.returnvalue = 0
+    result_cpuset.stdout = (
+        '/\n'.encode('utf-8')
+    )
+    result = mocker.MagicMock()
+    result.returnvalue = 0
+    result.stdout = overlay_mount.encode('utf-8')
+    mocked = mocker.patch(
+        'connect.eaas.helpers.subprocess.run',
+        side_effect=[result_cpuset, result],
+    )
+    assert get_container_id() == 'd296001e9df3fe165e465fc7c37dee126d8dc7720f2a451b270cd7c1d4e9ce66'
+    assert mocked.mock_calls[0].args[0] == ['cat', '/proc/1/cpuset']
+    assert mocked.mock_calls[1].args[0] == ['grep', 'overlay', '/proc/self/mountinfo']
+
+
+def test_get_container_id_cgroups2_fallback(mocker):
+    overlay_mount = (
+        '776 562 0:178 / / rw,relatime master:163 - overlay overlay rw,'
+        'lowerdir=/var/lib/docker/overlay2/l/MVS46I7BSZLIJ4CCFBC2HWYOA6,'
+        'workdir=/var/lib/docker/overlay2/d296001e9df3fe165e465fc7c37dee126d8dc7720f2a451b270cd7c1d4e9ce66/work\n'  # noqa: E501
+    )
+    mocker.patch('connect.eaas.helpers.uuid4', return_value='test_uuid')
+    result_cpuset = mocker.MagicMock()
+    result_cpuset.returnvalue = 0
+    result_cpuset.stdout = (
+        '/\n'.encode('utf-8')
+    )
+    result = mocker.MagicMock()
+    result.returnvalue = 0
+    result.stdout = overlay_mount.encode('utf-8')
+    mocked = mocker.patch(
+        'connect.eaas.helpers.subprocess.run',
+        side_effect=[result_cpuset, result],
+    )
+    assert get_container_id() == 'test_uuid'
+    assert mocked.mock_calls[0].args[0] == ['cat', '/proc/1/cpuset']
+    assert mocked.mock_calls[1].args[0] == ['grep', 'overlay', '/proc/self/mountinfo']
+
+
+def test_get_container_id_cgroups2_call_error(mocker):
+    mocker.patch('connect.eaas.helpers.uuid4', return_value='test_uuid')
+    result_cpuset = mocker.MagicMock()
+    result_cpuset.returnvalue = 0
+    result_cpuset.stdout = (
+        '/\n'.encode('utf-8')
+    )
+    result = mocker.MagicMock()
+    result.check_returncode = mocker.MagicMock(
+        side_effect=subprocess.CalledProcessError(128, cmd=[]),
+    )
+    mocked = mocker.patch(
+        'connect.eaas.helpers.subprocess.run',
+        side_effect=[result_cpuset, result],
+    )
+    assert get_container_id() == 'test_uuid'
+    assert mocked.mock_calls[0].args[0] == ['cat', '/proc/1/cpuset']
+    assert mocked.mock_calls[1].args[0] == ['grep', 'overlay', '/proc/self/mountinfo']
+
+
 def test_get_container_id_ko(mocker):
     result = mocker.MagicMock()
     result.check_returncode = mocker.MagicMock(
