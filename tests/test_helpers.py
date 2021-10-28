@@ -9,6 +9,11 @@ import subprocess
 import pytest
 from pkg_resources import EntryPoint
 
+from connect.eaas.constants import (
+    BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    INTERACTIVE_TASK_MAX_EXECUTION_TIME,
+    SCHEDULED_TASK_MAX_EXECUTION_TIME,
+)
 from connect.eaas.exceptions import EaaSError
 from connect.eaas.helpers import (
     get_container_id,
@@ -124,6 +129,9 @@ def test_get_environment_with_defaults(mocker):
     assert env['instance_id'] == 'container_id'
     assert env['ws_address'] == 'api.cnct.info'
     assert env['api_address'] == 'api.cnct.info'
+    assert env['background_task_max_execution_time'] == BACKGROUND_TASK_MAX_EXECUTION_TIME
+    assert env['interactive_task_max_execution_time'] == INTERACTIVE_TASK_MAX_EXECUTION_TIME
+    assert env['scheduled_task_max_execution_time'] == SCHEDULED_TASK_MAX_EXECUTION_TIME
 
 
 def test_get_environment(mocker):
@@ -132,12 +140,19 @@ def test_get_environment(mocker):
     os.environ['INSTANCE_ID'] = 'SIN-0000-0000-01'
     os.environ['SERVER_ADDRESS'] = 'api.example.com'
     os.environ['API_ADDRESS'] = 'api.example.com'
+    os.environ['BACKGROUND_TASK_MAX_EXECUTION_TIME'] = '1'
+    os.environ['INTERACTIVE_TASK_MAX_EXECUTION_TIME'] = '2'
+    os.environ['SCHEDULED_TASK_MAX_EXECUTION_TIME'] = '3'
+
     env = get_environment()
     assert env['api_key'] == 'SU-000:XXXX'
     assert env['environment_id'] == 'ENV-0000-0000-01'
     assert env['instance_id'] == 'SIN-0000-0000-01'
     assert env['ws_address'] == 'api.example.com'
     assert env['api_address'] == 'api.example.com'
+    assert env['background_task_max_execution_time'] == 1
+    assert env['interactive_task_max_execution_time'] == 2
+    assert env['scheduled_task_max_execution_time'] == 3
 
 
 def test_get_extension_class(mocker):

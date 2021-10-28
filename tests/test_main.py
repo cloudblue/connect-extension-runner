@@ -32,13 +32,13 @@ def test_start(mocker):
 
         def validate_asset_purchase_request(self, request):
             pass
-    run_mock = mocker.AsyncMock()
+    start_mock = mocker.AsyncMock()
 
-    mocker.patch('connect.eaas.worker.get_extension_class', return_value=MyExtension)
-    mocker.patch.object(Worker, 'run', run_mock)
+    mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
+    mocker.patch.object(Worker, 'start', start_mock)
     parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir'))
     start(parsed_args(True, extension_dir='/extension'))
-    run_mock.assert_awaited_once()
+    start_mock.assert_awaited_once()
     signal.raise_signal(signal.SIGTERM)
 
 

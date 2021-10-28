@@ -85,6 +85,8 @@ def test_parse_configuration_message():
             'account_id': 'account_id',
             'account_name': 'account_name',
             'service_id': 'service_id',
+            'product_id': 'product_id',
+            'hub_id': 'hub_id',
         },
     }
 

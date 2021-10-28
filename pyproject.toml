@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "connect-extension-runner"
-version = "0.1.0"
+version = "24.1"
 description = "CloudBlue Connect EaaS Extension Runner"
 authors = ["CloudBlue LLC"]
 license = "Apache-2.0"
@@ -26,7 +26,7 @@ cextrun = 'connect.eaas.main:main'
 
 [tool.poetry.dependencies]
 python = "^3.8"
-websockets = "^9.0.1"
+websockets = "10.*"
 connect-openapi-client = ">=23.1"
 logzio-python-handler = "^3.0.0"
 

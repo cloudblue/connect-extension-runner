@@ -19,6 +19,11 @@ class TaskType:
     TIER_CONFIG_SETUP_REQUEST_VALIDATION = 'tier_config_setup_request_validation'
     TIER_CONFIG_CHANGE_REQUEST_VALIDATION = 'tier_config_change_request_validation'
     SCHEDULED_EXECUTION = 'scheduled_execution'
+    LISTING_NEW_REQUEST_PROCESSING = 'listing_new_request_processing'
+    LISTING_REMOVE_REQUEST_PROCESSING = 'listing_remove_request_processing'
+    TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING = 'tier_account_update_request_processing'
+    USAGE_FILE_REQUEST_PROCESSING = 'usage_file_request_processing'
+    PART_USAGE_FILE_REQUEST_PROCESSING = 'part_usage_file_request_processing'
 
 
 class MessageType:
@@ -68,6 +73,8 @@ class ConfigurationPayload:
     service_id: Optional[str] = None
     log_level: Optional[str] = None
     runner_log_level: Optional[str] = None
+    product_id: Optional[str] = None
+    hub_id: Optional[str] = None
 
 
 @dataclasses.dataclass

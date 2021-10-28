@@ -15,7 +15,6 @@ class ExtensionLogHandler(LogzioHandler):
 
 
 class RequestLogger:
-
     def __init__(self, logger):
         self.logger = logger
 
