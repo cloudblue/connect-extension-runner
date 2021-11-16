@@ -27,7 +27,7 @@ cextrun = 'connect.eaas.main:main'
 [tool.poetry.dependencies]
 python = "^3.8"
 websockets = "10.*"
-connect-openapi-client = ">=23.1"
+connect-openapi-client = ">=24.0"
 logzio-python-handler = "^3.0.0"
 
 [tool.poetry.dev-dependencies]
