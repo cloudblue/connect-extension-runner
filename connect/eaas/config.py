@@ -4,9 +4,11 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 import logging
+import platform
 
 from connect.eaas.helpers import (
     get_environment,
+    get_version,
 )
 
 
@@ -89,8 +91,22 @@ class ConfigHelper:
     def get_api_url(self):
         return f'https://{self.env["api_address"]}/public/v1'
 
+    def get_user_agent(self):
+        version = get_version()
+        pimpl = platform.python_implementation()
+        pver = platform.python_version()
+        sysname = platform.system()
+        sysver = platform.release()
+        ua = (
+            f'connect-extension-runner/{version} {pimpl}/{pver} {sysname}/{sysver}'
+            f' {self.env["environment_id"]}/{self.env["instance_id"]}'
+        )
+        return {'User-Agent': ua}
+
     def get_headers(self):
-        return (('Authorization', self.api_key),)
+        return (
+            ('Authorization', self.api_key),
+        )
 
     def get_timeout(self, category):
         return self.env[f'{category}_task_max_execution_time']

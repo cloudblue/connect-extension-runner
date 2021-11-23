@@ -7,7 +7,10 @@ import os
 import subprocess
 
 import pytest
-from pkg_resources import EntryPoint
+from pkg_resources import (
+    DistributionNotFound,
+    EntryPoint,
+)
 
 from connect.eaas.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
@@ -20,6 +23,7 @@ from connect.eaas.helpers import (
     get_environment,
     get_extension_class,
     get_extension_type,
+    get_version,
 )
 
 
@@ -102,6 +106,24 @@ def test_get_container_id_cgroups2_call_error(mocker):
     assert mocked.mock_calls[1].args[0] == ['grep', 'overlay', '/proc/self/mountinfo']
 
 
+def test_get_container_id_invalid_mount_container_id(mocker):
+    mocker.patch('connect.eaas.helpers.uuid4', return_value='test_uuid')
+    result1 = mocker.MagicMock()
+    result1.returnvalue = 0
+    result1.stdout.decode = mocker.MagicMock(
+        side_effect=['/hello/'],
+    )
+    result2 = mocker.MagicMock()
+    result2.stdout.decode = mocker.MagicMock(
+        return_value='upperdir=/hello/you/,you,\n',
+    )
+    mocker.patch(
+        'connect.eaas.helpers.subprocess.run',
+        side_effect=[result1, result2],
+    )
+    assert get_container_id() == 'test_uuid'
+
+
 def test_get_container_id_ko(mocker):
     result = mocker.MagicMock()
     result.check_returncode = mocker.MagicMock(
@@ -165,7 +187,7 @@ def test_get_extension_class(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.helpers.pkg_resources.iter_entry_points',
+        'connect.eaas.helpers.iter_entry_points',
         return_value=iter([
             EntryPoint('extension', 'connect.eaas.ext'),
         ]),
@@ -178,7 +200,7 @@ def test_get_extension_class(mocker):
 
 def test_get_extension_class_not_found(mocker):
     mocker.patch(
-        'connect.eaas.helpers.pkg_resources.iter_entry_points',
+        'connect.eaas.helpers.iter_entry_points',
         return_value=iter([
         ]),
     )
@@ -258,3 +280,21 @@ def test_get_extension_type_ko():
     assert (
         str(cv.value) == 'An Extension class can only have sync or async methods not a mix of both.'
     )
+
+
+def test_get_version(mocker):
+    mocked = mocker.MagicMock()
+    mocked.version = '22.0'
+    mocker.patch(
+        'connect.eaas.helpers.get_distribution',
+        return_value=mocked,
+    )
+    assert get_version() == '22.0'
+
+
+def test_get_version_exception(mocker):
+    mocker.patch(
+        'connect.eaas.helpers.get_distribution',
+        side_effect=DistributionNotFound(),
+    )
+    assert get_version() == '0.0.0'

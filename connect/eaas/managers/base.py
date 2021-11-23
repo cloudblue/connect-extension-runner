@@ -31,6 +31,7 @@ class TasksManagerBase(ABC):
             self.config.api_key,
             endpoint=self.config.get_api_url(),
             use_specs=False,
+            default_headers=self.config.get_user_agent(),
         )
         self.running_tasks = 0
 

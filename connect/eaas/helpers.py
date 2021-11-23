@@ -8,7 +8,11 @@ import os
 import subprocess
 from uuid import uuid4
 
-import pkg_resources
+from pkg_resources import (
+    DistributionNotFound,
+    get_distribution,
+    iter_entry_points,
+)
 
 from connect.eaas.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
@@ -75,7 +79,7 @@ def get_environment():
 
 
 def get_extension_class():
-    ext_class = next(pkg_resources.iter_entry_points('connect.eaas.ext', 'extension'), None)
+    ext_class = next(iter_entry_points('connect.eaas.ext', 'extension'), None)
     return ext_class.load() if ext_class else None
 
 
@@ -95,3 +99,10 @@ def get_extension_type(cls):
         return 'sync'
 
     raise EaaSError('An Extension class can only have sync or async methods not a mix of both.')
+
+
+def get_version():
+    try:
+        return get_distribution('connect-extension-runner').version
+    except DistributionNotFound:
+        return '0.0.0'
