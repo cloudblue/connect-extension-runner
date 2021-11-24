@@ -5,3 +5,11 @@
 #
 class EaaSError(Exception):
     pass
+
+
+class MaintenanceError(EaaSError):
+    pass
+
+
+class CommunicationError(EaaSError):
+    pass

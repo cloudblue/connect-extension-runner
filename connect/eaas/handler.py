@@ -81,4 +81,5 @@ class ExtensionHandler:
                     {'task_id': task_id},
                 ),
             ),
+            default_headers=self.config.get_user_agent(),
         )
