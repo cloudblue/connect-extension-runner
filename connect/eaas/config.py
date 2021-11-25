@@ -113,7 +113,24 @@ class ConfigHelper:
 
     def update_dynamic_config(self, data):
         """Updates the dynamic configuration."""
-        self.dyn_config = data
+        if not self.dyn_config:
+            self.dyn_config = data
+        else:
+            self.dyn_config.service_id = data.service_id or self.dyn_config.service_id
+            self.dyn_config.product_id = data.product_id or self.dyn_config.product_id
+            self.dyn_config.hub_id = data.hub_id or self.dyn_config.hub_id
+            self.dyn_config.environment_type = (
+                data.environment_type or self.dyn_config.environment_type
+            )
+            self.dyn_config.account_id = data.account_id or self.dyn_config.account_id
+            self.dyn_config.account_name = (
+                data.account_name or self.dyn_config.account_name
+            )
+            self.dyn_config.configuration = data.configuration or self.dyn_config.configuration
+            self.dyn_config.logging_api_key = (
+                data.logging_api_key or self.dyn_config.logging_api_key
+            )
+
         logger.info(f'Runner dynamic config updated {data}')
         if data.log_level:
             logger.info(f'Change extesion logger level to {data.log_level}')
