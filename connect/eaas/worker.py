@@ -168,40 +168,49 @@ class Worker:
             ),
         )
 
-    @backoff.on_exception(
-        backoff.expo,
-        CommunicationError,
-        max_time=_get_max_retry_time_generic,
-        max_value=_get_max_retry_delay_time,
-        on_backoff=_on_communication_backoff,
-    )
-    @backoff.on_exception(
-        backoff.expo,
-        MaintenanceError,
-        max_time=_get_max_retry_time_maintenance,
-        max_value=_get_max_retry_delay_time,
-        on_backoff=_on_communication_backoff,
-    )
     async def communicate(self):
-        try:
-            await self.ensure_connection()
-            await self.send(self.get_capabilities())
-            while self.run_event.is_set():
+        @backoff.on_exception(
+            backoff.expo,
+            CommunicationError,
+            factor=10,
+            max_time=_get_max_retry_time_generic,
+            max_value=_get_max_retry_delay_time,
+            jitter=backoff.random_jitter,
+            on_backoff=_on_communication_backoff,
+            giveup=lambda _: not self.run_event.is_set(),
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            MaintenanceError,
+            factor=10,
+            max_time=_get_max_retry_time_maintenance,
+            max_value=_get_max_retry_delay_time,
+            jitter=backoff.random_jitter,
+            on_backoff=_on_communication_backoff,
+            giveup=lambda _: not self.run_event.is_set(),
+        )
+        async def _do_communicate():
+            try:
                 await self.ensure_connection()
-                message = await self.receive()
-                if not message:
-                    continue
-                await self.process_message(message)
-        except ConnectionClosedError as e:
-            logger.warning(f'Connection closed with code {e.rcvd} from: {self.get_url()}')
-            raise CommunicationError()
-        except InvalidStatusCode as ic:
-            if ic.status_code == 502:
-                logger.warning('InvalidStatusCode 502 raised. Maintenance in progress.')
-                raise MaintenanceError()
-            else:
-                logger.warning(f'InvalidStatusCode {ic.status_code} raised.')
+                await self.send(self.get_capabilities())
+                while self.run_event.is_set():
+                    await self.ensure_connection()
+                    message = await self.receive()
+                    if not message:
+                        continue
+                    await self.process_message(message)
+            except ConnectionClosedError as e:
+                logger.warning(f'Connection closed with code {e.rcvd} from: {self.get_url()}')
                 raise CommunicationError()
+            except InvalidStatusCode as ic:
+                if ic.status_code == 502:
+                    logger.warning('InvalidStatusCode 502 raised. Maintenance in progress.')
+                    raise MaintenanceError()
+                else:
+                    logger.warning(f'InvalidStatusCode {ic.status_code} raised.')
+                    raise CommunicationError()
+
+        await _do_communicate()
 
     async def run(self):  # noqa: CCR001
         """
