@@ -1083,3 +1083,41 @@ def test__on_communication_backoff(caplog, tries, ordinal):
     with caplog.at_level(logging.INFO):
         _on_communication_backoff(details)
     assert expected in caplog.records[0].message
+
+
+@pytest.mark.asyncio
+async def test_connection_unexpected_error(mocker, ws_server, unused_port, caplog):
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
+        None,
+        [],
+    )
+
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        worker.send = mocker.AsyncMock(side_effect=RuntimeError('generic error'))
+        with caplog.at_level(logging.INFO):
+            task = asyncio.create_task(worker.start())
+            await asyncio.sleep(.5)
+            worker.stop()
+            await task
+
+    assert 'Unexpected error in communicate: generic error' in caplog.text
+    assert 'Backing off ' in caplog.text

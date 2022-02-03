@@ -13,3 +13,7 @@ class MaintenanceError(EaaSError):
 
 class CommunicationError(EaaSError):
     pass
+
+
+class StopBackoffError(EaaSError):
+    pass
