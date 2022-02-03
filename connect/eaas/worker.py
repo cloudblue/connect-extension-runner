@@ -34,6 +34,7 @@ from connect.eaas.dataclasses import (
 from connect.eaas.exceptions import (
     CommunicationError,
     MaintenanceError,
+    StopBackoffError,
 )
 from connect.eaas.handler import ExtensionHandler
 from connect.eaas.managers import (
@@ -168,7 +169,7 @@ class Worker:
             ),
         )
 
-    async def communicate(self):
+    async def communicate(self):  # noqa: CCR001
         @backoff.on_exception(
             backoff.expo,
             CommunicationError,
@@ -177,7 +178,7 @@ class Worker:
             max_value=_get_max_retry_delay_time,
             jitter=backoff.random_jitter,
             on_backoff=_on_communication_backoff,
-            giveup=lambda _: not self.run_event.is_set(),
+            giveup=self._backoff_shutdown,
         )
         @backoff.on_exception(
             backoff.expo,
@@ -187,7 +188,7 @@ class Worker:
             max_value=_get_max_retry_delay_time,
             jitter=backoff.random_jitter,
             on_backoff=_on_communication_backoff,
-            giveup=lambda _: not self.run_event.is_set(),
+            giveup=self._backoff_shutdown,
         )
         async def _do_communicate():
             try:
@@ -209,6 +210,12 @@ class Worker:
                 else:
                     logger.warning(f'InvalidStatusCode {ic.status_code} raised.')
                     raise CommunicationError()
+            except WebSocketException as wse:
+                logger.warning(f'Unexpected websocket exception {wse}.')
+                raise CommunicationError()
+            except Exception as e:
+                logger.warning(f'Unexpected error in communicate: {e}.')
+                raise CommunicationError()
 
         await _do_communicate()
 
@@ -225,9 +232,6 @@ class Worker:
                 await self.communicate()
             except ConnectionClosedOK:
                 self.run_event.clear()
-            except WebSocketException:
-                logger.exception('Unexpected websocket exception. Retrying in 2 seconds.')
-                await asyncio.sleep(2)
             except CommunicationError:
                 logger.error(
                     f'Max retries exceeded after {MAX_RETRY_TIME_GENERIC_SECONDS} seconds',
@@ -239,6 +243,8 @@ class Worker:
                     'seconds',
                 )
                 self.run_event.clear()
+            except StopBackoffError:
+                pass
         if self.ws:
             await self.ws.close()
 
@@ -370,3 +376,8 @@ class Worker:
         """
         logger.info('Stopping control worker...')
         self.run_event.clear()
+
+    def _backoff_shutdown(self, _):
+        if not self.run_event.is_set():
+            logger.info('Worker exiting, stop backoff loop')
+            raise StopBackoffError()
