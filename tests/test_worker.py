@@ -16,8 +16,9 @@ from connect.eaas.dataclasses import (
     TaskPayload,
     TaskType,
 )
+from connect.eaas.exceptions import CommunicationError, MaintenanceError, StopBackoffError
 from connect.eaas.extension import Extension, ProcessingResponse, ScheduledExecutionResponse
-from connect.eaas.worker import _on_communication_backoff, Worker
+from connect.eaas.worker import Worker
 
 from tests.utils import WSHandler
 
@@ -605,6 +606,7 @@ async def test_shutdown(mocker, ws_server, unused_port, config_payload):
 async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
     mocker.patch(
@@ -636,7 +638,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
             await task
 
     assert (
-        f'Connection closed with code 1006 from: ws://127.0.0.1:{unused_port}'
+        f'Disconnected from: ws://127.0.0.1:{unused_port}'
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002'
         '?running_tasks=0&running_scheduled_tasks=0'
     ) in caplog.text
@@ -644,6 +646,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 
 @pytest.mark.asyncio
 async def test_connection_websocket_exception(mocker, ws_server, unused_port, caplog):
+    mocker.patch('connect.eaas.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
     mocker.patch(
@@ -667,18 +670,19 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
 
     async with ws_server(handler):
         worker = Worker(secure=False)
-        worker.send = mocker.AsyncMock(side_effect=WebSocketException())
+        worker.send = mocker.AsyncMock(side_effect=WebSocketException('test error'))
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(.5)
             worker.stop()
             await task
 
-    assert 'Unexpected websocket exception' in caplog.text
+    assert 'Unexpected exception test error, try to reconnect in 0.1s' in caplog.text
 
 
 @pytest.mark.asyncio
 async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
+    mocker.patch('connect.eaas.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch('connect.eaas.handler.get_extension_class')
@@ -711,12 +715,12 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
             worker.stop()
             await task
 
-    assert 'InvalidStatusCode 502 raised. Maintenance in progress.' in caplog.text
-    assert 'Backing off ' in caplog.text
+    assert 'Maintenance in progress, try to reconnect in 0.1s' in caplog.text
 
 
 @pytest.mark.asyncio
 async def test_connection_internal_server_error(mocker, ws_server, unused_port, caplog):
+    mocker.patch('connect.eaas.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch('connect.eaas.handler.get_extension_class')
@@ -749,8 +753,7 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
             worker.stop()
             await task
 
-    assert 'InvalidStatusCode 500 raised.' in caplog.text
-    assert 'Backing off ' in caplog.text
+    assert 'Received an unexpected status from server: 500' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1073,51 +1076,107 @@ async def test_sender_ws_closed(mocker, config_payload, task_payload):
         (23, 'rd'),
     ),
 )
-def test__on_communication_backoff(caplog, tries, ordinal):
+def test_backoff_log(mocker, caplog, tries, ordinal):
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
     details = {'tries': tries, 'elapsed': 2.2, 'wait': 1.1}
     expected = (
         f'{tries}{ordinal} communication attempt failed, backing off waiting '
         f'{details["wait"]:.2f} seconds after next retry. Elapsed time: {details["elapsed"]:.2f}'
         ' seconds.'
     )
+    w = Worker()
     with caplog.at_level(logging.INFO):
-        _on_communication_backoff(details)
+        w._backoff_log(details)
     assert expected in caplog.records[0].message
 
 
 @pytest.mark.asyncio
-async def test_connection_unexpected_error(mocker, ws_server, unused_port, caplog):
-    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
-    mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+async def test_ensure_connection_maintenance(mocker, caplog):
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.websockets.connect', side_effect=InvalidStatusCode(502, None))
+
+    worker = Worker()
+    worker.run_event.set()
+    worker.get_url = lambda: 'ws://test'
+
+    with pytest.raises(MaintenanceError):
+        with caplog.at_level(logging.INFO):
+            await worker.ensure_connection()
+
+    assert '1st communication attempt failed, backing off waiting' in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('status', (400, 401, 403, 500, 501))
+async def test_ensure_connection_other_statuses(mocker, caplog, status):
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch(
-        'connect.eaas.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-        },
-    )
-    handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
-        None,
-        [],
+        'connect.eaas.worker.websockets.connect',
+        side_effect=InvalidStatusCode(status, None),
     )
 
-    async with ws_server(handler):
-        worker = Worker(secure=False)
-        worker.send = mocker.AsyncMock(side_effect=RuntimeError('generic error'))
+    worker = Worker()
+    worker.run_event.set()
+    worker.get_url = lambda: 'ws://test'
+
+    with pytest.raises(CommunicationError):
         with caplog.at_level(logging.INFO):
-            task = asyncio.create_task(worker.start())
-            await asyncio.sleep(.5)
-            worker.stop()
+            await worker.ensure_connection()
+
+    assert '1st communication attempt failed, backing off waiting' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_ensure_connection_generic_exception(mocker, caplog):
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch(
+        'connect.eaas.worker.websockets.connect',
+        side_effect=RuntimeError('generic error'),
+    )
+
+    worker = Worker()
+    worker.run_event.set()
+    worker.get_url = lambda: 'ws://test'
+
+    with pytest.raises(CommunicationError):
+        with caplog.at_level(logging.INFO):
+            await worker.ensure_connection()
+
+    assert '1st communication attempt failed, backing off waiting' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_ensure_connection_exit_backoff(mocker, caplog):
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 600)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch(
+        'connect.eaas.worker.websockets.connect',
+        side_effect=RuntimeError('generic error'),
+    )
+
+    worker = Worker()
+    worker.run_event.set()
+    worker.get_url = lambda: 'ws://test'
+
+    with pytest.raises(StopBackoffError):
+        with caplog.at_level(logging.INFO):
+            task = asyncio.create_task(worker.ensure_connection())
+            worker.run_event.clear()
             await task
 
-    assert 'Unexpected error in communicate: generic error' in caplog.text
-    assert 'Backing off ' in caplog.text
+    assert 'Worker exiting, stop backoff loop' in caplog.text
