@@ -17,6 +17,7 @@ from pkg_resources import (
 from connect.eaas.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
+    ORDINAL_SUFFIX,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
     TASK_TYPE_EXT_METHOD_MAP,
 )
@@ -106,3 +107,9 @@ def get_version():
         return get_distribution('connect-extension-runner').version
     except DistributionNotFound:
         return '0.0.0'
+
+
+def to_ordinal(val):
+    if val > 14:
+        return f"{val}{ORDINAL_SUFFIX.get(int(str(val)[-1]), 'th')}"
+    return f"{val}{ORDINAL_SUFFIX.get(val, 'th')}"

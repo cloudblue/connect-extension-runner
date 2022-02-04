@@ -9,17 +9,18 @@ import json
 import logging
 from asyncio.exceptions import TimeoutError
 
+import backoff
 import websockets
 from websockets.exceptions import (
     ConnectionClosedError,
     ConnectionClosedOK,
     InvalidStatusCode,
-    WebSocketException,
 )
-import backoff
+
 
 from connect.eaas.config import ConfigHelper
 from connect.eaas.constants import (
+    DELAY_ON_CONNECT_EXCEPTION_SECONDS,
     MAX_RETRY_DELAY_TIME_SECONDS,
     MAX_RETRY_TIME_GENERIC_SECONDS,
     MAX_RETRY_TIME_MAINTENANCE_SECONDS,
@@ -37,6 +38,7 @@ from connect.eaas.exceptions import (
     StopBackoffError,
 )
 from connect.eaas.handler import ExtensionHandler
+from connect.eaas.helpers import to_ordinal
 from connect.eaas.managers import (
     BackgroundTasksManager,
     InteractiveTasksManager,
@@ -57,28 +59,6 @@ def _get_max_retry_time_generic():
 
 def _get_max_retry_delay_time():
     return MAX_RETRY_DELAY_TIME_SECONDS
-
-
-_ORDINAL_DICT = {
-    1: 'st',
-    2: 'nd',
-    3: 'rd',
-    11: 'th',
-    12: 'th',
-    13: 'th',
-}
-
-
-def _on_communication_backoff(details):
-    if details['tries'] > 14:
-        ordinal_attempt = _ORDINAL_DICT.get(int(str(details['tries'])[-1]), 'th')
-    else:
-        ordinal_attempt = _ORDINAL_DICT.get(details['tries'], 'th')
-    logger.info(
-        f'{details["tries"]}{ordinal_attempt} communication attempt failed, backing off waiting '
-        f'{details["wait"]:.2f} seconds after next retry. Elapsed time: {details["elapsed"]:.2f}'
-        ' seconds.',
-    )
 
 
 class Worker:
@@ -126,18 +106,50 @@ class Worker:
         url = f'{url}?running_tasks={self.background_manager.running_tasks}'
         return f'{url}&running_scheduled_tasks={self.scheduled_manager.running_tasks}'
 
-    async def ensure_connection(self):
+    async def ensure_connection(self):  # noqa: CCR001
         """
         Ensure that a websocket connection is established.
         """
-        if self.ws is None or self.ws.closed:
-            url = self.get_url()
-            self.ws = await websockets.connect(
-                url,
-                extra_headers=self.config.get_headers(),
-            )
-            await (await self.ws.ping())
-            logger.info(f'Connected to {url}')
+        @backoff.on_exception(
+            backoff.expo,
+            CommunicationError,
+            max_time=_get_max_retry_time_generic,
+            max_value=_get_max_retry_delay_time,
+            on_backoff=self._backoff_log,
+            giveup=self._backoff_shutdown,
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            MaintenanceError,
+            max_time=_get_max_retry_time_maintenance,
+            max_value=_get_max_retry_delay_time,
+            on_backoff=self._backoff_log,
+            giveup=self._backoff_shutdown,
+        )
+        async def _connect():
+            if self.ws is None or self.ws.closed:
+                try:
+                    url = self.get_url()
+                    self.ws = await websockets.connect(
+                        url,
+                        extra_headers=self.config.get_headers(),
+                    )
+                    await (await self.ws.ping())
+                    logger.info(f'Connected to {url}')
+                except InvalidStatusCode as ic:
+                    if ic.status_code == 502:
+                        logger.warning('Maintenance in progress...')
+                        raise MaintenanceError()
+                    else:
+                        logger.warning(
+                            f'Received an unexpected status from server: {ic.status_code}...',
+                        )
+                        raise CommunicationError()
+                except Exception as e:
+                    logger.warning(f'Received an unexpected exception: {e}...')
+                    raise CommunicationError()
+
+        await _connect()
 
     async def send(self, message):
         """
@@ -169,56 +181,6 @@ class Worker:
             ),
         )
 
-    async def communicate(self):  # noqa: CCR001
-        @backoff.on_exception(
-            backoff.expo,
-            CommunicationError,
-            factor=10,
-            max_time=_get_max_retry_time_generic,
-            max_value=_get_max_retry_delay_time,
-            jitter=backoff.random_jitter,
-            on_backoff=_on_communication_backoff,
-            giveup=self._backoff_shutdown,
-        )
-        @backoff.on_exception(
-            backoff.expo,
-            MaintenanceError,
-            factor=10,
-            max_time=_get_max_retry_time_maintenance,
-            max_value=_get_max_retry_delay_time,
-            jitter=backoff.random_jitter,
-            on_backoff=_on_communication_backoff,
-            giveup=self._backoff_shutdown,
-        )
-        async def _do_communicate():
-            try:
-                await self.ensure_connection()
-                await self.send(self.get_capabilities())
-                while self.run_event.is_set():
-                    await self.ensure_connection()
-                    message = await self.receive()
-                    if not message:
-                        continue
-                    await self.process_message(message)
-            except ConnectionClosedError as e:
-                logger.warning(f'Connection closed with code {e.rcvd} from: {self.get_url()}')
-                raise CommunicationError()
-            except InvalidStatusCode as ic:
-                if ic.status_code == 502:
-                    logger.warning('InvalidStatusCode 502 raised. Maintenance in progress.')
-                    raise MaintenanceError()
-                else:
-                    logger.warning(f'InvalidStatusCode {ic.status_code} raised.')
-                    raise CommunicationError()
-            except WebSocketException as wse:
-                logger.warning(f'Unexpected websocket exception {wse}.')
-                raise CommunicationError()
-            except Exception as e:
-                logger.warning(f'Unexpected error in communicate: {e}.')
-                raise CommunicationError()
-
-        await _do_communicate()
-
     async def run(self):  # noqa: CCR001
         """
         Main loop for the websocket connection.
@@ -229,22 +191,41 @@ class Worker:
         await self.run_event.wait()
         while self.run_event.is_set():
             try:
-                await self.communicate()
-            except ConnectionClosedOK:
-                self.run_event.clear()
-            except CommunicationError:
-                logger.error(
-                    f'Max retries exceeded after {MAX_RETRY_TIME_GENERIC_SECONDS} seconds',
+                await self.ensure_connection()
+                await self.send(self.get_capabilities())
+                while self.run_event.is_set():
+                    message = await self.receive()
+                    if not message:
+                        continue
+                    await self.process_message(message)
+            except (ConnectionClosedOK, StopBackoffError):
+                break
+            except ConnectionClosedError:
+                logger.warning(
+                    f'Disconnected from: {self.get_url()}'
+                    f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
                 )
-                self.run_event.clear()
-            except MaintenanceError:
-                logger.error(
-                    f'Max retries exceeded after {MAX_RETRY_TIME_MAINTENANCE_SECONDS} '
-                    'seconds',
+                await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
+            except InvalidStatusCode as ic:
+                if ic.status_code == 502:
+                    logger.warning(
+                        'Maintenance in progress'
+                        f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
+                    )
+                    await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
+                else:
+                    logger.warning(
+                        f'Received an unexpected status from server: {ic.status_code}'
+                        f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
+                    )
+                    await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
+            except Exception as e:
+                logger.exception(
+                    f'Unexpected exception {e}'
+                    f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
                 )
-                self.run_event.clear()
-            except StopBackoffError:
-                pass
+                await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
+
         if self.ws:
             await self.ws.close()
 
@@ -381,3 +362,11 @@ class Worker:
         if not self.run_event.is_set():
             logger.info('Worker exiting, stop backoff loop')
             raise StopBackoffError()
+
+    def _backoff_log(self, details):
+        logger.info(
+            f'{to_ordinal(details["tries"])} communication attempt failed, backing off waiting '
+            f'{details["wait"]:.2f} seconds after next retry. '
+            f'Elapsed time: {details["elapsed"]:.2f}'
+            ' seconds.',
+        )
