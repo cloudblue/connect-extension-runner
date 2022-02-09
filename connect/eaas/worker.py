@@ -25,6 +25,7 @@ from connect.eaas.constants import (
     MAX_RETRY_TIME_GENERIC_SECONDS,
     MAX_RETRY_TIME_MAINTENANCE_SECONDS,
     RESULT_SENDER_MAX_RETRIES,
+    RESULT_SENDER_WAIT_GRACE_SECONDS,
 )
 from connect.eaas.dataclasses import (
     CapabilitiesPayload,
@@ -200,11 +201,11 @@ class Worker:
                     await self.process_message(message)
             except (ConnectionClosedOK, StopBackoffError):
                 self.run_event.clear()
-                break
+                continue
             except (CommunicationError, MaintenanceError):
-                logger.error('Max connection attemps reached, exit.')
+                logger.error('Max connection attemps reached, exit!')
                 self.run_event.clear()
-                break
+                continue
             except ConnectionClosedError:
                 logger.warning(
                     f'Disconnected from: {self.get_url()}'
@@ -230,9 +231,7 @@ class Worker:
                     f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
                 )
                 await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
-
-        if self.ws:
-            await self.ws.close()
+        logger.info('Consumer loop exited!')
 
     async def process_message(self, data):
         """
@@ -281,6 +280,10 @@ class Worker:
                     return
                 await asyncio.sleep(.1)
                 continue
+            logger.info(
+                f'Current processing status: running={self.running_tasks} '
+                f'results={self.results_queue.qsize()}',
+            )
             result = await self.results_queue.get()
             logger.info(f'Got a result from queue: {result.task_id}')
             retries = 0
@@ -306,7 +309,7 @@ class Worker:
                 )
 
             if not self.run_event.is_set():
-                logger.debug(
+                logger.info(
                     f'Current processing status: running={self.running_tasks} '
                     f'results={self.results_queue.qsize()}',
                 )
@@ -352,8 +355,25 @@ class Worker:
         self.results_task = asyncio.create_task(self.result_sender())
         self.run_event.set()
         logger.info('Control worker started')
-        await self.results_task
+        result_timeout = self.config.get_timeout('background') + RESULT_SENDER_WAIT_GRACE_SECONDS
+        try:
+            await asyncio.wait_for(
+                self.results_task,
+                timeout=result_timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f'Cannot send all results timeout of {result_timeout} exceeded, cancel task',
+            )
+            self.results_task.cancel()
+            try:
+                await self.results_task
+            except asyncio.CancelledError:
+                logger.info('Result sender task has been cancelled')
+
         await self.main_task
+        if self.ws:
+            await self.ws.close()
         logger.info('Control worker stopped')
 
     def stop(self):
