@@ -1180,3 +1180,25 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
             await task
 
     assert 'Worker exiting, stop backoff loop' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_ensure_connection_exit_max_attemps(mocker, caplog):
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 10)
+    mocker.patch('connect.eaas.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch(
+        'connect.eaas.worker.websockets.connect',
+        side_effect=RuntimeError('generic error'),
+    )
+
+    worker = Worker()
+    worker.run_event.set()
+    worker.get_url = lambda: 'ws://test'
+
+    with caplog.at_level(logging.ERROR):
+        task = asyncio.create_task(worker.run())
+        await task
+
+    assert 'Max connection attemps reached, exit.' in caplog.text
