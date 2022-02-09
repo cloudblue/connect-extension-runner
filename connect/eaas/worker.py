@@ -199,6 +199,11 @@ class Worker:
                         continue
                     await self.process_message(message)
             except (ConnectionClosedOK, StopBackoffError):
+                self.run_event.set()
+                break
+            except (CommunicationError, MaintenanceError):
+                logger.error('Max connection attemps reached, exit.')
+                self.run_event.set()
                 break
             except ConnectionClosedError:
                 logger.warning(

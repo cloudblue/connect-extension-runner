@@ -54,7 +54,6 @@ jobs:
       with:
         images: cloudblueconnect/connect-extension-runner
         tags: |
-          type=semver,pattern={{version}},value=${{ steps.tag.outputs.result }}.0
           type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.result }}.0
           type=semver,pattern={{major}},value=${{ steps.tag.outputs.result }}.0
         flavor: |
