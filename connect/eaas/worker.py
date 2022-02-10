@@ -74,6 +74,7 @@ class Worker:
         self.handler = ExtensionHandler(self.config)
         self.results_queue = asyncio.Queue()
         self.run_event = asyncio.Event()
+        self.stop_event = asyncio.Event()
         self.background_manager = BackgroundTasksManager(
             self.config,
             self.handler,
@@ -355,6 +356,7 @@ class Worker:
         self.results_task = asyncio.create_task(self.result_sender())
         self.run_event.set()
         logger.info('Control worker started')
+        await self.stop_event.wait()
         result_timeout = self.config.get_timeout('background') + RESULT_SENDER_WAIT_GRACE_SECONDS
         try:
             await asyncio.wait_for(
@@ -382,6 +384,7 @@ class Worker:
         """
         logger.info('Stopping control worker...')
         self.run_event.clear()
+        self.stop_event.set()
 
     def _backoff_shutdown(self, _):
         if not self.run_event.is_set():
