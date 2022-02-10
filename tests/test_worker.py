@@ -977,7 +977,7 @@ async def test_sender_retries(mocker, config_payload, task_payload, caplog):
         worker.config.update_dynamic_config(ConfigurationPayload(**config_payload))
         worker.run = mocker.AsyncMock()
         worker.send = mocker.AsyncMock(side_effect=[Exception('retry'), None])
-        worker.ws = mocker.MagicMock(closed=False)
+        worker.ws = mocker.AsyncMock(closed=False)
         await worker.results_queue.put(
             TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
         )
@@ -1005,7 +1005,7 @@ async def test_sender_max_retries_exceeded(mocker, config_payload, task_payload,
         worker.send = mocker.AsyncMock(
             side_effect=[Exception('retry') for _ in range(RESULT_SENDER_MAX_RETRIES)],
         )
-        worker.ws = mocker.MagicMock(closed=False)
+        worker.ws = mocker.AsyncMock(closed=False)
         await worker.results_queue.put(
             TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
         )
@@ -1033,7 +1033,7 @@ async def test_sender_paused(mocker, config_payload, task_payload):
     worker.config.update_dynamic_config(ConfigurationPayload(**config_payload))
     worker.run = mocker.AsyncMock()
     worker.send = mocker.AsyncMock()
-    worker.ws = mocker.MagicMock(closed=False)
+    worker.ws = mocker.AsyncMock(closed=False)
     worker.paused = True
     await worker.results_queue.put(
         TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
@@ -1055,7 +1055,7 @@ async def test_sender_ws_closed(mocker, config_payload, task_payload):
     worker.config.update_dynamic_config(ConfigurationPayload(**config_payload))
     worker.run = mocker.AsyncMock()
     worker.send = mocker.AsyncMock()
-    worker.ws = mocker.MagicMock(closed=True)
+    worker.ws = mocker.AsyncMock(closed=True)
     await worker.results_queue.put(
         TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
     )
@@ -1201,4 +1201,69 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
         task = asyncio.create_task(worker.run())
         await task
 
-    assert 'Max connection attemps reached, exit.' in caplog.text
+    assert 'Max connection attemps reached, exit!' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, config_payload):
+
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': .1,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    capabilities = {
+        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending', 'inquiring'],
+        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
+    }
+
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'capabilities': capabilities,
+                'variables': [],
+                'schedulables': [],
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+    mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
+    mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+    mocker.patch('connect.eaas.worker.RESULT_SENDER_WAIT_GRACE_SECONDS', .1)
+
+    data_to_send = [
+        dataclasses.asdict(Message(MessageType.CONFIGURATION, ConfigurationPayload(
+            **config_payload,
+        ))),
+        dataclasses.asdict(Message(MessageType.SHUTDOWN)),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
+        data_to_send,
+        ['receive', 'send', 'send'] + ['receive' for _ in range(100)],
+    )
+
+    task_result = TaskPayload(
+        'TQ-000',
+        TaskCategory.BACKGROUND,
+        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING,
+        'PR-000',
+    )
+
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        for _ in range(100):
+            await worker.results_queue.put(task_result)
+        asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)

@@ -94,10 +94,10 @@ class TasksManagerBase(ABC):
         Build a result object for a task and put it in the
         result queue.
         """
-        self.running_tasks -= 1
         await self.enqueue(
             await self.build_response(task_data, future),
         )
+        self.running_tasks -= 1
 
     async def invoke(self, task_data, method, argument):
         """
