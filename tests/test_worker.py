@@ -1055,7 +1055,7 @@ async def test_sender_ws_closed(mocker, config_payload, task_payload):
     worker.config.update_dynamic_config(ConfigurationPayload(**config_payload))
     worker.run = mocker.AsyncMock()
     worker.send = mocker.AsyncMock()
-    worker.ws = mocker.AsyncMock(closed=True)
+    worker.ws = mocker.AsyncMock(open=False)
     await worker.results_queue.put(
         TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
     )
