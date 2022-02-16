@@ -26,6 +26,7 @@ class TasksManagerBase(ABC):
         self.config = config
         self.handler = handler
         self.enqueue = enqueue
+        self.lock = asyncio.Lock()
         self.executor = ThreadPoolExecutor()
         self.client = AsyncConnectClient(
             self.config.api_key,
@@ -46,7 +47,8 @@ class TasksManagerBase(ABC):
             extension = self.handler.new_extension(task_data.task_id)
             method = None
             argument = None
-            self.running_tasks += 1
+            async with self.lock:
+                self.running_tasks += 1
             logger.info(
                 f'new background task received: {task_data.task_id}, '
                 f'running tasks: {self.running_tasks}',
@@ -54,11 +56,13 @@ class TasksManagerBase(ABC):
             argument = await self.get_argument(task_data)
 
             if not argument:
-                self.running_tasks -= 1
+                async with self.lock:
+                    self.running_tasks -= 1
                 return
             method = self.get_method(task_data, extension, argument)
             if not method:
-                self.running_tasks -= 1
+                async with self.lock:
+                    self.running_tasks -= 1
                 return
 
             logger.info(f'invoke method {method.__name__}')
@@ -97,7 +101,8 @@ class TasksManagerBase(ABC):
         await self.enqueue(
             await self.build_response(task_data, future),
         )
-        self.running_tasks -= 1
+        async with self.lock:
+            self.running_tasks -= 1
 
     async def invoke(self, task_data, method, argument):
         """

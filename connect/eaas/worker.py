@@ -72,6 +72,7 @@ class Worker:
     def __init__(self, secure=True):
         self.config = ConfigHelper(secure)
         self.handler = ExtensionHandler(self.config)
+        self.lock = asyncio.Lock()
         self.results_queue = asyncio.Queue()
         self.run_event = asyncio.Event()
         self.stop_event = asyncio.Event()
@@ -129,14 +130,15 @@ class Worker:
             giveup=self._backoff_shutdown,
         )
         async def _connect():
-            if self.ws is None or self.ws.closed:
+            if self.ws is None or not self.ws.open:
                 try:
                     url = self.get_url()
-                    self.ws = await websockets.connect(
-                        url,
-                        extra_headers=self.config.get_headers(),
-                    )
-                    await (await self.ws.ping())
+                    async with self.lock:
+                        self.ws = await websockets.connect(
+                            url,
+                            extra_headers=self.config.get_headers(),
+                        )
+                        await (await self.ws.ping())
                     logger.info(f'Connected to {url}')
                 except InvalidStatusCode as ic:
                     if ic.status_code == 502:
@@ -268,7 +270,7 @@ class Worker:
                     return
                 await asyncio.sleep(.1)
                 continue
-            if self.ws is None or self.ws.closed:
+            if self.ws is None or not self.ws.open:
                 if not self.run_event.is_set() and self.running_tasks == 0:
                     logger.info('WS has been closed, worker shutting down and no more task: exit!')
                     return
