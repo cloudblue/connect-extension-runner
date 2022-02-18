@@ -7,6 +7,7 @@ import asyncio
 import dataclasses
 import json
 import logging
+import time
 from asyncio.exceptions import TimeoutError
 
 import backoff
@@ -94,7 +95,6 @@ class Worker:
         self.ws = None
         self.main_task = None
         self.results_task = None
-        self.paused = False
 
     @property
     def running_tasks(self):
@@ -130,30 +130,37 @@ class Worker:
             giveup=self._backoff_shutdown,
         )
         async def _connect():
-            if self.ws is None or not self.ws.open:
-                try:
-                    url = self.get_url()
-                    async with self.lock:
+            async with self.lock:
+                if self.ws is None or not self.ws.open:
+                    try:
+                        url = self.get_url()
                         self.ws = await websockets.connect(
                             url,
                             extra_headers=self.config.get_headers(),
                         )
                         await (await self.ws.ping())
-                    logger.info(f'Connected to {url}')
-                except InvalidStatusCode as ic:
-                    if ic.status_code == 502:
-                        logger.warning('Maintenance in progress...')
-                        raise MaintenanceError()
-                    else:
-                        logger.warning(
-                            f'Received an unexpected status from server: {ic.status_code}...',
-                        )
+                        await self.do_handshake()
+                        logger.info(f'Connected to {url}')
+                    except InvalidStatusCode as ic:
+                        if ic.status_code == 502:
+                            logger.warning('Maintenance in progress...')
+                            raise MaintenanceError()
+                        else:
+                            logger.warning(
+                                f'Received an unexpected status from server: {ic.status_code}...',
+                            )
+                            raise CommunicationError()
+                    except Exception as e:
+                        logger.warning(f'Received an unexpected exception: {e}...')
                         raise CommunicationError()
-                except Exception as e:
-                    logger.warning(f'Received an unexpected exception: {e}...')
-                    raise CommunicationError()
 
         await _connect()
+
+    async def do_handshake(self):
+        await self.send(self.get_capabilities())
+        message = await asyncio.wait_for(self.ws.recv(), timeout=5)
+        message = parse_message(json.loads(message))
+        await self.process_configuration(message.data)
 
     async def send(self, message):
         """
@@ -196,10 +203,9 @@ class Worker:
         while self.run_event.is_set():
             try:
                 await self.ensure_connection()
-                await self.send(self.get_capabilities())
                 while self.run_event.is_set():
                     message = await self.receive()
-                    if not message:
+                    if not message:  # pragma: no cover
                         continue
                     await self.process_message(message)
             except (ConnectionClosedOK, StopBackoffError):
@@ -245,10 +251,6 @@ class Worker:
             await self.process_configuration(message.data)
         elif message.message_type == MessageType.TASK:
             await self.process_task(message.data)
-        elif message.message_type == MessageType.PAUSE:
-            await self.pause()
-        elif message.message_type == MessageType.RESUME:
-            await self.resume()
         elif message.message_type == MessageType.SHUTDOWN:
             await self.shutdown()
 
@@ -268,20 +270,7 @@ class Worker:
                 if not self.run_event.is_set() and self.running_tasks == 0:
                     logger.info('Worker exiting and no more running tasks: exit!')
                     return
-                await asyncio.sleep(.1)
-                continue
-            if self.ws is None or not self.ws.open:
-                if not self.run_event.is_set() and self.running_tasks == 0:
-                    logger.info('WS has been closed, worker shutting down and no more task: exit!')
-                    return
-                logger.debug('Wait WS reconnection before resuming result sender')
-                await asyncio.sleep(.1)
-                continue
-
-            if self.paused:
-                if not self.run_event.is_set() and self.running_tasks == 0:
-                    return
-                await asyncio.sleep(.1)
+                await asyncio.sleep(.5)
                 continue
             logger.info(
                 f'Current processing status: running={self.running_tasks} '
@@ -296,6 +285,7 @@ class Worker:
                         message_type=MessageType.TASK,
                         data=result,
                     )
+                    await self.ensure_connection()
                     await self.send(dataclasses.asdict(message))
                     logger.info(f'Result for task {result.task_id} has been sent.')
                     break
@@ -304,7 +294,7 @@ class Worker:
                         f'Attemp {retries} to send results for task {result.task_id} has failed.',
                     )
                     retries += 1
-                    await asyncio.sleep(.1)
+                    await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
             else:
                 logger.warning(
                     f'Max retries exceeded ({RESULT_SENDER_MAX_RETRIES})'
@@ -326,27 +316,11 @@ class Worker:
         self.config.update_dynamic_config(data)
         logger.info('Extension configuration has been updated.')
 
-    async def pause(self):
-        """
-        Stop the task manager. No task will be consumed
-        until a "resume" message is received.
-        """
-        self.paused = True
-        logger.info('Pause task manager operations.')
-
-    async def resume(self):
-        """
-        Restart the task manager so it will consume tasks once again.
-        """
-        self.paused = False
-        logger.info('Resume task manager operations.')
-
     async def shutdown(self):
         """
         Shutdown the extension runner.
         """
         logger.info('Shutdown extension runner.')
-        await self.pause()
         self.stop()
 
     async def start(self):
@@ -387,6 +361,15 @@ class Worker:
         logger.info('Stopping control worker...')
         self.run_event.clear()
         self.stop_event.set()
+
+    async def send_shutdown(self):
+        msg = Message(MessageType.SHUTDOWN)
+        await self.send(dataclasses.asdict(msg))
+
+    def handle_signal(self):
+        asyncio.create_task(self.send_shutdown())
+        time.sleep(1)
+        self.stop()
 
     def _backoff_shutdown(self, _):
         if not self.run_event.is_set():

@@ -429,124 +429,6 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, config
 
 
 @pytest.mark.asyncio
-async def test_pause(mocker, ws_server, unused_port, config_payload):
-
-    mocker.patch(
-        'connect.eaas.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-        },
-    )
-
-    capabilities = {
-        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending', 'inquiring'],
-        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
-    }
-
-    class MyExtension(Extension):
-        @classmethod
-        def get_descriptor(cls):
-            return {
-                'capabilities': capabilities,
-                'variables': [],
-                'schedulables': [],
-                'readme_url': 'https://example.com/README.md',
-                'changelog_url': 'https://example.com/CHANGELOG.md',
-            }
-
-    mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
-    mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
-
-    data_to_send = [
-        dataclasses.asdict(Message(MessageType.CONFIGURATION, ConfigurationPayload(
-            **config_payload,
-        ))),
-        dataclasses.asdict(Message(MessageType.PAUSE)),
-    ]
-
-    handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
-        data_to_send,
-        ['receive', 'send', 'send'],
-    )
-
-    async with ws_server(handler):
-        worker = Worker(secure=False)
-        task = asyncio.create_task(worker.start())
-        await asyncio.sleep(.5)
-        assert worker.paused is True
-        worker.stop()
-        await task
-
-
-@pytest.mark.asyncio
-async def test_resume(mocker, ws_server, unused_port, config_payload):
-
-    mocker.patch(
-        'connect.eaas.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-        },
-    )
-
-    capabilities = {
-        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending', 'inquiring'],
-        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
-    }
-
-    class MyExtension(Extension):
-        @classmethod
-        def get_descriptor(cls):
-            return {
-                'capabilities': capabilities,
-                'variables': [],
-                'schedulables': [],
-                'readme_url': 'https://example.com/README.md',
-                'changelog_url': 'https://example.com/CHANGELOG.md',
-            }
-
-    mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
-    mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
-
-    data_to_send = [
-        dataclasses.asdict(Message(MessageType.CONFIGURATION, ConfigurationPayload(
-            **config_payload,
-        ))),
-        dataclasses.asdict(Message(MessageType.PAUSE)),
-        dataclasses.asdict(Message(MessageType.RESUME)),
-    ]
-
-    handler = WSHandler(
-        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
-        data_to_send,
-        ['receive', 'send', 'send', 'send'],
-    )
-
-    async with ws_server(handler):
-        worker = Worker(secure=False)
-        worker.paused = True
-        task = asyncio.create_task(worker.start())
-        await asyncio.sleep(.5)
-        assert worker.paused is False
-        worker.stop()
-        await task
-
-
-@pytest.mark.asyncio
 async def test_shutdown(mocker, ws_server, unused_port, config_payload):
 
     mocker.patch(
@@ -630,7 +512,8 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 
     async with ws_server(handler):
         worker = Worker(secure=False)
-        worker.send = mocker.AsyncMock(side_effect=ConnectionClosedError(1006, 'disconnected'))
+        worker.do_handshake = mocker.AsyncMock()
+        worker.receive = mocker.AsyncMock(side_effect=ConnectionClosedError(1006, 'disconnected'))
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(.5)
@@ -670,7 +553,8 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
 
     async with ws_server(handler):
         worker = Worker(secure=False)
-        worker.send = mocker.AsyncMock(side_effect=WebSocketException('test error'))
+        worker.do_handshake = mocker.AsyncMock()
+        worker.receive = mocker.AsyncMock(side_effect=WebSocketException('test error'))
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(.5)
@@ -708,7 +592,8 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
 
     async with ws_server(handler):
         worker = Worker(secure=False)
-        worker.send = mocker.AsyncMock(side_effect=InvalidStatusCode(502, None))
+        worker.do_handshake = mocker.AsyncMock()
+        worker.receive = mocker.AsyncMock(side_effect=InvalidStatusCode(502, None))
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(.5)
@@ -746,7 +631,8 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
 
     async with ws_server(handler):
         worker = Worker(secure=False)
-        worker.send = mocker.AsyncMock(side_effect=InvalidStatusCode(500, None))
+        worker.do_handshake = mocker.AsyncMock()
+        worker.receive = mocker.AsyncMock(side_effect=InvalidStatusCode(500, None))
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(0.5)
@@ -1025,28 +911,6 @@ async def test_sender_max_retries_exceeded(mocker, config_payload, task_payload,
 
 
 @pytest.mark.asyncio
-async def test_sender_paused(mocker, config_payload, task_payload):
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
-
-    worker = Worker(secure=True)
-    worker.config.update_dynamic_config(ConfigurationPayload(**config_payload))
-    worker.run = mocker.AsyncMock()
-    worker.send = mocker.AsyncMock()
-    worker.ws = mocker.AsyncMock(closed=False)
-    worker.paused = True
-    await worker.results_queue.put(
-        TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
-    )
-    assert worker.results_queue.empty() is False
-    task = asyncio.create_task(worker.start())
-    await asyncio.sleep(.1)
-    worker.stop()
-    await task
-    worker.send.assert_not_awaited()
-
-
-@pytest.mark.asyncio
 async def test_sender_ws_closed(mocker, config_payload, task_payload):
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
@@ -1267,3 +1131,80 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, con
             await worker.results_queue.put(task_result)
         asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
+
+
+@pytest.mark.asyncio
+async def test_update_configuration(mocker, ws_server, unused_port, config_payload):
+
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    capabilities = {
+        TaskType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending', 'inquiring'],
+        TaskType.ASSET_PURCHASE_REQUEST_VALIDATION: ['draft'],
+    }
+
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'capabilities': capabilities,
+                'variables': [],
+                'schedulables': [],
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+    mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
+    mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+
+    dyn_config = ConfigurationPayload(**config_payload)
+    config_payload['configuration'] = {'conf2': 'val2'}
+    updated_config = ConfigurationPayload(**config_payload)
+
+    data_to_send = [
+        dataclasses.asdict(Message(MessageType.CONFIGURATION, dyn_config)),
+        dataclasses.asdict(Message(MessageType.CONFIGURATION, updated_config)),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
+        data_to_send,
+        ['receive', 'send', 'send'],
+    )
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+        assert worker.config.variables == {'conf2': 'val2'}
+
+
+@pytest.mark.asyncio
+async def test_handle_signal(mocker, config_payload, task_payload, caplog):
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
+
+    worker = Worker(secure=True)
+    worker.config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    worker.run = mocker.AsyncMock()
+    worker.send = mocker.AsyncMock()
+    worker.result_sender = mocker.AsyncMock()
+    worker.ws = mocker.AsyncMock(open=True)
+    task = asyncio.create_task(worker.start())
+    worker.handle_signal()
+    await task
+    worker.send.assert_awaited_once_with({'data': None, 'message_type': 'shutdown'})
