@@ -1,5 +1,6 @@
 import logging
 
+import pytest
 from urllib3.response import HTTPResponse
 from requests.models import Response
 
@@ -67,11 +68,18 @@ def test_request_logger_request_with_qs(caplog):
     ) == caplog.records[0].message
 
 
-def test_request_logger_request_with_headers(caplog):
+@pytest.mark.parametrize(
+    ('authorization', 'expected_auth'),
+    (
+        ('ApiKey SU-000:**********', 'ApiKey SU-000:**********'),
+        ('custom_token', '*' * 20),
+    ),
+)
+def test_request_logger_request_with_headers(caplog, authorization, expected_auth):
     rl = RequestLogger(logging.getLogger('eaas.extension'))
 
     headers = {
-        'Authorization': 'ApiKey SU-000:xxxx',
+        'Authorization': authorization,
     }
 
     with caplog.at_level(logging.DEBUG):
@@ -81,7 +89,7 @@ def test_request_logger_request_with_headers(caplog):
         [
             '--- HTTP Request ---',
             "GET https://example.com ",
-            'Authorization: ApiKey SU-000:xxxx',
+            f'Authorization: {expected_auth}',
             '',
         ],
     ) == caplog.records[0].message

@@ -58,11 +58,11 @@ def start(data):
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
         signal.SIGINT,
-        worker.stop,
+        worker.handle_signal,
     )
     loop.add_signal_handler(
         signal.SIGTERM,
-        worker.stop,
+        worker.handle_signal,
     )
     loop.run_until_complete(worker.start())
 

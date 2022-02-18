@@ -30,8 +30,6 @@ class MessageType:
     CAPABILITIES = 'capabilities'
     CONFIGURATION = 'configuration'
     TASK = 'task'
-    PAUSE = 'pause'
-    RESUME = 'resume'
     SHUTDOWN = 'shutdown'
 
 

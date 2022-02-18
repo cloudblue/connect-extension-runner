@@ -18,6 +18,12 @@ class RequestLogger:
     def __init__(self, logger):
         self.logger = logger
 
+    def obfuscate(self, value):
+        if value.startswith('ApiKey SU-'):
+            return value.split(':')[0] + ':' + '*' * 10
+        else:
+            return '*' * 20
+
     def log_request(self, method, url, kwargs):
         other_args = {k: v for k, v in kwargs.items() if k not in ('headers', 'json', 'params')}
 
@@ -32,6 +38,8 @@ class RequestLogger:
 
         if 'headers' in kwargs:
             for k, v in kwargs['headers'].items():
+                if k.lower() == 'authorization':
+                    v = self.obfuscate(v)
                 lines.append(f'{k}: {v}')
 
         if 'json' in kwargs:
