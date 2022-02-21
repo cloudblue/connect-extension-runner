@@ -54,11 +54,9 @@ class TasksManagerBase(ABC):
                 f'running tasks: {self.running_tasks}',
             )
             argument = await self.get_argument(task_data)
-
             if not argument:
-                async with self.lock:
-                    self.running_tasks -= 1
                 return
+
             method = self.get_method(task_data, extension, argument)
             if not method:
                 async with self.lock:
