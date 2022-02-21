@@ -24,7 +24,7 @@ class InteractiveTasksManager(TasksManagerBase):
 
     def get_method(self, task_data, extension, argument):
         method_name = TASK_TYPE_EXT_METHOD_MAP[task_data.task_type]
-        return getattr(extension, method_name)
+        return getattr(extension, method_name, None)
 
     async def get_argument(self, task_data):
         return task_data.data

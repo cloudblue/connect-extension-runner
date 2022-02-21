@@ -214,7 +214,6 @@ async def test_submit_no_argument(mocker, extension_cls, task_payload):
     await asyncio.sleep(.01)
     mocked_new_extension.assert_called_once_with(task_data.task_id)
     mocked_invoke.assert_not_awaited()
-    assert manager.running_tasks == 0
 
 
 @pytest.mark.asyncio
