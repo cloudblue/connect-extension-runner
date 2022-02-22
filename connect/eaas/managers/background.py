@@ -6,6 +6,7 @@
 import asyncio
 import dataclasses
 import logging
+import time
 import traceback
 
 from connect.eaas.constants import (
@@ -120,12 +121,16 @@ class BackgroundTasksManager(TasksManagerBase):
         result_message = TaskPayload(**dataclasses.asdict(task_data))
         result = None
         try:
+            begin_ts = time.monotonic()
             result = await asyncio.wait_for(
                 future,
                 timeout=self.config.get_timeout('background'),
             )
             result_message.result = result.status
-            logger.info(f'task {task_data.task_id} result: {result.status}')
+            elapsed = time.monotonic() - begin_ts
+            logger.info(
+                f'background task {task_data.task_id} result: {result.status}, tooks: {elapsed}',
+            )
             if result.status in (ResultType.SKIP, ResultType.FAIL):
                 result_message.output = result.output
 

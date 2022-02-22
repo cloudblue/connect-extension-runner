@@ -6,6 +6,7 @@
 import asyncio
 import dataclasses
 import logging
+import time
 import traceback
 
 from connect.eaas.constants import TASK_TYPE_EXT_METHOD_MAP
@@ -36,6 +37,7 @@ class InteractiveTasksManager(TasksManagerBase):
         result = None
         result_message = TaskPayload(**dataclasses.asdict(task_data))
         try:
+            begin_ts = time.monotonic()
             result = await asyncio.wait_for(
                 future,
                 timeout=self.config.get_timeout('interactive'),
@@ -43,6 +45,10 @@ class InteractiveTasksManager(TasksManagerBase):
             result_message.result = result.status
             result_message.data = result.data
             result_message.output = result.output
+            elapsed = time.monotonic() - begin_ts
+            logger.info(
+                f'interactive task {task_data.task_id} result: {result.status}, tooks: {elapsed}',
+            )
         except Exception as e:
             self.log_exception(task_data, e)
             result_message.result = ResultType.FAIL
