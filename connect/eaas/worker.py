@@ -206,7 +206,9 @@ class Worker:
                 while self.run_event.is_set():
                     message = await self.receive()
                     if not message:  # pragma: no cover
+                        logger.debug('No message received within 1s, retry')
                         continue
+                    logger.debug('New message received via WS')
                     await self.process_message(message)
             except (ConnectionClosedOK, StopBackoffError):
                 self.run_event.clear()
@@ -256,8 +258,10 @@ class Worker:
 
     async def process_task(self, task_data):
         """Send a task to a manager based on task category."""
+        logger.info(f'received new {task_data.task_category} task: {task_data.task_id}')
         manager = getattr(self, f'{task_data.task_category}_manager')
         await manager.submit(task_data)
+        logger.info(f'task {task_data.task_id} submitted for processing')
 
     async def result_sender(self):  # noqa: CCR001
         """
