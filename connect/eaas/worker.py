@@ -137,6 +137,8 @@ class Worker:
                         self.ws = await websockets.connect(
                             url,
                             extra_headers=self.config.get_headers(),
+                            ping_interval=60,
+                            ping_timeout=60,
                         )
                         await (await self.ws.ping())
                         await self.do_handshake()
