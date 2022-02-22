@@ -9,6 +9,8 @@ import logging
 import logging.config
 import signal
 
+import uvloop
+
 from connect.eaas.worker import Worker
 
 
@@ -50,6 +52,7 @@ def configure_logger(debug):
 
 
 def start(data):
+    uvloop.install()
     logger.info('Starting Connect EaaS runtime....')
     if data.unsecure:
         logger.warning('Websocket connections will be established using unsecure protocol (ws).')
