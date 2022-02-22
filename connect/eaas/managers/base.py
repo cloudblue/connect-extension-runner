@@ -27,7 +27,7 @@ class TasksManagerBase(ABC):
         self.handler = handler
         self.enqueue = enqueue
         self.lock = asyncio.Lock()
-        self.executor = ThreadPoolExecutor()
+        self.executor = ThreadPoolExecutor(max_workers=35)
         self.client = AsyncConnectClient(
             self.config.api_key,
             endpoint=self.config.get_api_url(),
@@ -50,7 +50,7 @@ class TasksManagerBase(ABC):
             async with self.lock:
                 self.running_tasks += 1
             logger.info(
-                f'new background task received: {task_data.task_id}, '
+                f'new {task_data.task_category} task received: {task_data.task_id}, '
                 f'running tasks: {self.running_tasks}',
             )
             argument = await self.get_argument(task_data)
@@ -63,7 +63,7 @@ class TasksManagerBase(ABC):
                     self.running_tasks -= 1
                 return
 
-            logger.info(f'invoke method {method.__name__}')
+            logger.info(f'invoke method {method.__name__} for task {task_data.task_id}')
             await self.invoke(task_data, method, argument)
         except ClientError as ce:
             logger.warning(

@@ -44,10 +44,6 @@ def configure_logger(debug):
                     'handlers': ['console'],
                     'level': 'DEBUG' if debug else 'INFO',
                 },
-                'websockets': {
-                    'handlers': ['console'],
-                    'level': 'DEBUG' if debug else 'INFO',
-                },
             },
         },
     )
