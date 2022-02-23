@@ -36,8 +36,8 @@ def test_start(mocker):
 
     mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
     mocker.patch.object(Worker, 'start', start_mock)
-    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir'))
-    start(parsed_args(True, extension_dir='/extension'))
+    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir', 'split'))
+    start(parsed_args(True, extension_dir='/extension', split=False))
     start_mock.assert_awaited_once()
     signal.raise_signal(signal.SIGTERM)
 

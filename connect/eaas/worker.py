@@ -70,7 +70,8 @@ class Worker:
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, secure=True):
+    def __init__(self, secure=True, runner_type=None):
+        self.runner_type = runner_type
         self.config = ConfigHelper(secure)
         self.handler = ExtensionHandler(self.config)
         self.lock = asyncio.Lock()
@@ -107,7 +108,10 @@ class Worker:
     def get_url(self):
         url = self.config.get_ws_url()
         url = f'{url}?running_tasks={self.background_manager.running_tasks}'
-        return f'{url}&running_scheduled_tasks={self.scheduled_manager.running_tasks}'
+        url = f'{url}&running_scheduled_tasks={self.scheduled_manager.running_tasks}'
+        if self.runner_type:
+            url = f'{url}&runner_type={self.runner_type}'
+        return url
 
     async def ensure_connection(self):  # noqa: CCR001
         """
@@ -177,6 +181,7 @@ class Worker:
         """
         try:
             message = await asyncio.wait_for(self.ws.recv(), timeout=1)
+            # message = await self.ws.recv()
             return json.loads(message)
         except TimeoutError:  # pragma: no cover
             pass
@@ -208,8 +213,7 @@ class Worker:
                 await self.ensure_connection()
                 while self.run_event.is_set():
                     message = await self.receive()
-                    if not message:  # pragma: no cover
-                        logger.debug('No message received within 1s, retry')
+                    if not message:
                         continue
                     logger.debug('New message received via WS')
                     await self.process_message(message)
