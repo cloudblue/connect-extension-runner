@@ -27,7 +27,7 @@ class TasksManagerBase(ABC):
         self.handler = handler
         self.enqueue = enqueue
         self.lock = asyncio.Lock()
-        self.executor = ThreadPoolExecutor()
+        self.executor = ThreadPoolExecutor(max_workers=100)
         self.client = AsyncConnectClient(
             self.config.api_key,
             endpoint=self.config.get_api_url(),
