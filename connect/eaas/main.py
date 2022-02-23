@@ -8,6 +8,8 @@ import asyncio
 import logging
 import logging.config
 import signal
+import threading
+from multiprocessing import Process
 
 import uvloop
 
@@ -51,13 +53,8 @@ def configure_logger(debug):
     )
 
 
-def start(data):
-    uvloop.install()
-    logger.info('Starting Connect EaaS runtime....')
-    if data.unsecure:
-        logger.warning('Websocket connections will be established using unsecure protocol (ws).')
-
-    worker = Worker(secure=not data.unsecure)
+def start_worker_process(unsecure, runner_type):
+    worker = Worker(secure=not unsecure, runner_type=runner_type)
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
         signal.SIGINT,
@@ -70,9 +67,38 @@ def start(data):
     loop.run_until_complete(worker.start())
 
 
+def start(data):
+    uvloop.install()
+    logger.info('Starting Connect EaaS runtime....')
+    if data.unsecure:
+        logger.warning('Websocket connections will be established using unsecure protocol (ws).')
+
+    if not data.split:
+        start_worker_process(data.unsecure, None)
+    else:  # pragma: no cover
+        workers = []
+        stop_event = threading.Event()
+        for runner_type in ('interactive', 'background'):
+            p = Process(daemon=True, target=start_worker_process, args=(data.unsecure, runner_type))
+            workers.append(p)
+            p.start()
+            logger.info(f'{runner_type} tasks worker pid: {p.pid}')
+
+        def _terminate(*args, **kwargs):
+            for p in workers:
+                p.join()
+            stop_event.set()
+
+        signal.signal(signal.SIGINT, _terminate)
+        signal.signal(signal.SIGTERM, _terminate)
+
+        stop_event.wait()
+
+
 def main():
     parser = argparse.ArgumentParser(prog='cextrun')
     parser.add_argument('-u', '--unsecure', action='store_true')
+    parser.add_argument('-s', '--split', action='store_true', default=False)
     parser.add_argument('-d', '--debug', action='store_true', default=False)
     data = parser.parse_args()
     configure_logger(data.debug)
