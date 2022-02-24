@@ -109,7 +109,19 @@ async def test_get_argument_subscription(
     mocker, httpx_mock, extension_cls, task_type,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -132,6 +144,13 @@ async def test_get_argument_subscription(
 
     httpx_mock.add_response(
         method='GET',
+        url=f'{api_url}/requests?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        json=[],
+        headers={'Content-Range': 'items 0-0/1'},
+    )
+
+    httpx_mock.add_response(
+        method='GET',
         url=f'{api_url}/requests/PR-000',
         json=pr_data,
     )
@@ -150,7 +169,19 @@ async def test_get_argument_tcr(
     mocker, httpx_mock, extension_cls, task_type,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -187,7 +218,19 @@ async def test_get_argument_tar(
     mocker, httpx_mock, extension_cls,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -250,7 +293,19 @@ async def test_get_argument_tar_no_assets(
     mocker, httpx_mock, extension_cls,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -325,7 +380,19 @@ async def test_get_argument_listing_request(
     mocker, httpx_mock, extension_cls, task_type,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -394,7 +461,19 @@ async def test_get_argument_listing_request_vendor(
     mocker, httpx_mock, extension_cls, task_type,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -451,7 +530,19 @@ async def test_get_argument_listing_request_no_hub(
     mocker, httpx_mock, extension_cls, task_type,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -524,7 +615,19 @@ async def test_get_argument_usage_file(
     mocker, httpx_mock, extension_cls,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -566,7 +669,19 @@ async def test_get_argument_usage_chunks(
     mocker, httpx_mock, extension_cls,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -610,7 +725,19 @@ async def test_get_argument_unsupported_status(
     mocker, httpx_mock, extension_cls,
     config_payload, task_payload, unused_port,
 ):
-
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
@@ -652,6 +779,61 @@ async def test_get_argument_unsupported_status(
         task,
         'The status pending is not supported by the extension.',
     )
+
+
+@pytest.mark.parametrize(
+    'task_type',
+    ASSET_REQUEST_TASK_TYPES,
+)
+@pytest.mark.asyncio
+async def test_get_argument_subscription_no_request_supported_statuses(
+    mocker, httpx_mock, extension_cls, task_type,
+    config_payload, task_payload, unused_port,
+):
+    mocker.patch(
+        'connect.eaas.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+    mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
+    config = ConfigHelper()
+    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    mocker.patch.object(
+        ExtensionHandler,
+        'capabilities',
+        new_callable=mocker.PropertyMock(return_value={task_type: ['pending']}),
+    )
+    mocker.patch('connect.eaas.handler.get_extension_class')
+    mocker.patch('connect.eaas.handler.get_extension_type')
+    handler = ExtensionHandler(config)
+    handler.extension_class = extension_cls(TASK_TYPE_EXT_METHOD_MAP[task_type], async_impl=True)
+    handler.extension_type = 'async'
+
+    result_queue = mocker.patch.object(asyncio.Queue, 'put')
+    manager = BackgroundTasksManager(config, handler, result_queue)
+    manager.send_skip_response = mocker.MagicMock()
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/requests?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        json=[],
+        headers={'Content-Range': 'items 0-0/0'},
+    )
+
+    task = TaskPayload(
+        **task_payload(TaskCategory.BACKGROUND, task_type, 'PR-000'),
+    )
+    assert await manager.get_argument(task) is None
+    manager.send_skip_response.assert_called_once()
 
 
 @pytest.mark.asyncio

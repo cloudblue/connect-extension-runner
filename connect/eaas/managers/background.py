@@ -88,6 +88,18 @@ class BackgroundTasksManager(TasksManagerBase):
         argument = None
         if task_data.task_type in ASSET_REQUEST_TASK_TYPES:
             logger.info(f'get asset request {task_data.object_id}')
+            supported_statuses = self.handler.capabilities[task_data.task_type]
+            if await self.client.requests.filter(
+                id=task_data.object_id,
+                status__in=supported_statuses,
+            ).count() == 0:
+                logger.info('Send skip response since request status is not supported.')
+                self.send_skip_response(
+                    task_data,
+                    'The request status does not match the '
+                    f'supported statuses: {supported_statuses}.',
+                )
+                return
             argument = await self.client.requests[task_data.object_id].get()
         if task_data.task_type in TIER_CONFIG_REQUEST_TASK_TYPES:
             logger.info(f'get TC request {task_data.object_id}')
