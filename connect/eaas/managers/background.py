@@ -30,52 +30,6 @@ logger = logging.getLogger(__name__)
 
 class BackgroundTasksManager(TasksManagerBase):
 
-    async def _accept_listing_request(self, task_data, listing_request):
-        if self.config.hub_id is None:
-            return True
-        marketplace_id = listing_request['listing']['contract']['marketplace']['id']
-        marketplace = await self.client.marketplaces[marketplace_id].get()
-        hubs = [
-            marketplace_hub['hub']['id']
-            for marketplace_hub in marketplace['hubs']
-        ]
-        if self.config.hub_id not in hubs:
-            self.send_skip_response(
-                task_data,
-                f'The marketplace {marketplace_id} does not belong '
-                f'to hub {self.config.hub_id}.',
-            )
-            return False
-
-        return True
-
-    async def _accept_tier_account_request(self, task_data, tar):
-        tier_account_id = tar['account']['id']
-        product_id = tar['product']['id']
-        connection_type = (
-            'preview' if self.config.environment_type == 'development'
-            else self.config.environment_type
-        )
-        tiers_filter = (
-            R().tiers.tier2.id.eq(tier_account_id)
-            | R().tiers.tier1.id.eq(tier_account_id)
-            | R().tiers.customer.id.eq(tier_account_id)
-        )
-        query = (
-            R().product.id.eq(product_id)
-            & R().connection.type.eq(connection_type)
-            & tiers_filter
-        )
-        if await self.client.assets.filter(query).count() == 0:
-            self.send_skip_response(
-                task_data,
-                'The Tier Account related to this request does not '
-                f'have assets with a {connection_type} connection.',
-            )
-            return False
-
-        return True
-
     def get_method(self, task_data, extension, argument):
         method_name = TASK_TYPE_EXT_METHOD_MAP[task_data.task_type]
         return getattr(extension, method_name, None)
@@ -85,46 +39,18 @@ class BackgroundTasksManager(TasksManagerBase):
         Get the request object through the Connect public API
         related to the task that need processing.
         """
-        argument = None
         if task_data.task_type in ASSET_REQUEST_TASK_TYPES:
-            logger.info(f'get asset request {task_data.object_id}')
-            supported_statuses = self.handler.capabilities[task_data.task_type]
-            if await self.client.requests.filter(
-                id=task_data.object_id,
-                status__in=supported_statuses,
-            ).count() == 0:
-                logger.info('Send skip response since request status is not supported.')
-                self.send_skip_response(
-                    task_data,
-                    'The request status does not match the '
-                    f'supported statuses: {supported_statuses}.',
-                )
-                return
-            argument = await self.client.requests[task_data.object_id].get()
+            return await self._get_asset_request(task_data)
         if task_data.task_type in TIER_CONFIG_REQUEST_TASK_TYPES:
-            logger.info(f'get TC request {task_data.object_id}')
-            argument = await self.client('tier').config_requests[task_data.object_id].get()
+            return await self._get_tier_config_request(task_data)
         if task_data.task_type in LISTING_REQUEST_TASK_TYPES:
-            argument = await self.client.listing_requests[task_data.object_id].get()
-            if not await self._accept_listing_request(task_data, argument):
-                return
+            return await self._get_listing_request(task_data)
         if task_data.task_type == TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING:
-            argument = await self.client('tier').account_requests[task_data.object_id].get()
-            if not await self._accept_tier_account_request(task_data, argument):
-                return
+            return await self._get_tier_account_request(task_data)
         if task_data.task_type == TaskType.USAGE_FILE_REQUEST_PROCESSING:
-            argument = await self.client('usage').files[task_data.object_id].get()
+            return await self._get_usage_file(task_data)
         if task_data.task_type == TaskType.PART_USAGE_FILE_REQUEST_PROCESSING:
-            argument = await self.client('usage').chunks[task_data.object_id].get()
-        status = argument.get('status', argument.get('state'))
-        if status not in self.handler.capabilities[task_data.task_type]:
-            logger.info('Send skip response since request status is not supported.')
-            self.send_skip_response(
-                task_data,
-                f'The status {status} is not supported by the extension.',
-            )
-            return
-        return argument
+            return await self._get_usage_file_chunk(task_data)
 
     async def build_response(self, task_data, future):
         """
@@ -159,3 +85,108 @@ class BackgroundTasksManager(TasksManagerBase):
         future = asyncio.Future()
         future.set_result(ProcessingResponse.skip(output))
         asyncio.create_task(self.enqueue_result(data, future))
+
+    async def _status_has_changed(self, task_data, namespace, collection, status_field):
+        supported_statuses = self.handler.capabilities[task_data.task_type]
+        client = self.client
+        if namespace:
+            client = client.ns(namespace)
+        client = client.collection(collection)
+        filter_expr = {
+            'id': task_data.object_id,
+            f'{status_field}__in': supported_statuses,
+        }
+        if await client.filter(**filter_expr).count() == 0:
+            logger.info(
+                f'Send skip response for {task_data.task_id} since '
+                'the current request status is not supported.',
+            )
+            self.send_skip_response(
+                task_data,
+                'The request status does not match the '
+                f'supported statuses: {",".join(supported_statuses)}.',
+            )
+            return True
+
+        return False
+
+    async def _get_asset_request(self, task_data):
+        if await self._status_has_changed(task_data, None, 'requests', 'status'):
+            return
+
+        return await self.client.requests[task_data.object_id].get()
+
+    async def _get_tier_config_request(self, task_data):
+        if await self._status_has_changed(task_data, 'tier', 'config-requests', 'status'):
+            return
+
+        return await self.client('tier').config_requests[task_data.object_id].get()
+
+    async def _get_listing_request(self, task_data):
+
+        if await self._status_has_changed(task_data, None, 'listing-requests', 'state'):
+            return
+
+        listing_request = await self.client.listing_requests[task_data.object_id].get()
+
+        if self.config.hub_id is None:
+            return listing_request
+
+        marketplace_id = listing_request['listing']['contract']['marketplace']['id']
+        marketplace = await self.client.marketplaces[marketplace_id].get()
+        hubs = [
+            marketplace_hub['hub']['id']
+            for marketplace_hub in marketplace['hubs']
+        ]
+        if self.config.hub_id not in hubs:
+            self.send_skip_response(
+                task_data,
+                f'The marketplace {marketplace_id} does not belong '
+                f'to hub {self.config.hub_id}.',
+            )
+            return
+
+        return listing_request
+
+    async def _get_tier_account_request(self, task_data):
+        if await self._status_has_changed(task_data, 'tier', 'account-requests', 'status'):
+            return
+
+        tar = await self.client('tier').account_requests[task_data.object_id].get()
+        tier_account_id = tar['account']['id']
+        product_id = tar['product']['id']
+        connection_type = (
+            'preview' if self.config.environment_type == 'development'
+            else self.config.environment_type
+        )
+        tiers_filter = (
+            R().tiers.tier2.id.eq(tier_account_id)
+            | R().tiers.tier1.id.eq(tier_account_id)
+            | R().tiers.customer.id.eq(tier_account_id)
+        )
+        query = (
+            R().product.id.eq(product_id)
+            & R().connection.type.eq(connection_type)
+            & tiers_filter
+        )
+        if await self.client.assets.filter(query).count() == 0:
+            self.send_skip_response(
+                task_data,
+                'The Tier Account related to this request does not '
+                f'have assets with a {connection_type} connection.',
+            )
+            return
+
+        return tar
+
+    async def _get_usage_file(self, task_data):
+        if await self._status_has_changed(task_data, 'usage', 'files', 'status'):
+            return
+
+        return await self.client('usage').files[task_data.object_id].get()
+
+    async def _get_usage_file_chunk(self, task_data):
+        if await self._status_has_changed(task_data, 'usage', 'chunks', 'status'):
+            return
+
+        return await self.client('usage').chunks[task_data.object_id].get()

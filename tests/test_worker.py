@@ -217,9 +217,21 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, config_paylo
 
     tcr_data = {'id': 'TCR-000', 'status': 'pending'}
 
+    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+
     httpx_mock.add_response(
         method='GET',
-        url=f'https://127.0.0.1:{unused_port}/public/v1/tier/config-requests/TCR-000',
+        url=(
+            f'{api_url}/tier/config-requests?'
+            'and(eq(id,TCR-000),in(status,(pending)))&limit=0&offset=0'
+        ),
+        json=[],
+        headers={'Content-Range': 'items 0-0/1'},
+    )
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/tier/config-requests/TCR-000',
         json=tcr_data,
     )
 
