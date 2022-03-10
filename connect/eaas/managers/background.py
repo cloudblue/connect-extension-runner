@@ -65,9 +65,10 @@ class BackgroundTasksManager(TasksManagerBase):
                 timeout=self.config.get_timeout('background'),
             )
             result_message.result = result.status
-            elapsed = time.monotonic() - begin_ts
+            result_message.runtime = time.monotonic() - begin_ts
             logger.info(
-                f'background task {task_data.task_id} result: {result.status}, tooks: {elapsed}',
+                f'background task {task_data.task_id} result: {result.status}, tooks:'
+                f' {result_message.runtime}',
             )
             if result.status in (ResultType.SKIP, ResultType.FAIL):
                 result_message.output = result.output

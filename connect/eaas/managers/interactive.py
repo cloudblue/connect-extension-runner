@@ -45,9 +45,10 @@ class InteractiveTasksManager(TasksManagerBase):
             result_message.result = result.status
             result_message.data = result.data
             result_message.output = result.output
-            elapsed = time.monotonic() - begin_ts
+            result_message.runtime = time.monotonic() - begin_ts
             logger.info(
-                f'interactive task {task_data.task_id} result: {result.status}, tooks: {elapsed}',
+                f'interactive task {task_data.task_id} result: {result.status}, tooks:'
+                f' {result_message.runtime}',
             )
         except Exception as e:
             self.log_exception(task_data, e)

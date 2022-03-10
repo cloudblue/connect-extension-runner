@@ -59,6 +59,7 @@ class TaskPayload:
     output: Optional[str] = None
     correlation_id: Optional[str] = None
     reply_to: Optional[str] = None
+    runtime: Optional[float] = 0.0
 
 
 @dataclasses.dataclass
@@ -82,6 +83,7 @@ class CapabilitiesPayload:
     schedulables: Optional[list] = None
     readme_url: Optional[str] = None
     changelog_url: Optional[str] = None
+    runner_version: Optional[str] = None
 
 
 @dataclasses.dataclass

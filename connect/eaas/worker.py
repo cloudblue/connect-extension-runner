@@ -40,7 +40,7 @@ from connect.eaas.exceptions import (
     StopBackoffError,
 )
 from connect.eaas.handler import ExtensionHandler
-from connect.eaas.helpers import to_ordinal
+from connect.eaas.helpers import get_version, to_ordinal
 from connect.eaas.managers import (
     BackgroundTasksManager,
     InteractiveTasksManager,
@@ -196,6 +196,7 @@ class Worker:
                     self.handler.schedulables,
                     self.handler.readme,
                     self.handler.changelog,
+                    get_version(),
                 ),
             ),
         )
