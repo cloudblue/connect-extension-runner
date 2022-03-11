@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import logging
+import time
 
 import pytest
 from websockets.exceptions import ConnectionClosedError, InvalidStatusCode, WebSocketException
@@ -57,6 +58,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port, config
 
     mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+    mocker.patch('connect.eaas.worker.get_version', return_value='24.1')
 
     data_to_send = dataclasses.asdict(
         Message(
@@ -88,6 +90,7 @@ async def test_capabilities_configuration(mocker, ws_server, unused_port, config
                     [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
+                    '24.1',
                 ),
             ),
         ),
@@ -160,6 +163,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, config_payloa
 
     mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+    mocker.patch('connect.eaas.worker.get_version', return_value='24.1')
 
     dyn_config = ConfigurationPayload(**config_payload)
 
@@ -173,6 +177,9 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, config_payloa
         ))),
     ]
 
+    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
@@ -195,10 +202,12 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, config_payloa
                     [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
+                    '24.1',
                 ),
             ),
         ),
     )
+
     handler.assert_received(
         dataclasses.asdict(
             Message(MessageType.TASK, TaskPayload(
@@ -207,6 +216,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, config_payloa
                 TaskType.ASSET_PURCHASE_REQUEST_PROCESSING,
                 'PR-000',
                 result=ResultType.SUCCESS,
+                runtime=1.0,
             )),
         ),
     )
@@ -271,6 +281,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, config_paylo
 
     mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+    mocker.patch('connect.eaas.worker.get_version', return_value='24.1')
 
     data_to_send = [
         dataclasses.asdict(Message(MessageType.CONFIGURATION, ConfigurationPayload(
@@ -285,7 +296,9 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, config_paylo
             )),
         ),
     ]
-
+    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
@@ -309,6 +322,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, config_paylo
                     [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
+                    '24.1',
                 ),
             ),
         ),
@@ -321,6 +335,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, config_paylo
                 TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING,
                 'TCR-000',
                 result=ResultType.SUCCESS,
+                runtime=1.0,
             )),
         ),
     )
@@ -388,6 +403,7 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, config
 
     mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+    mocker.patch('connect.eaas.worker.get_version', return_value='24.1')
 
     data_to_send = [
         dataclasses.asdict(Message(MessageType.CONFIGURATION, ConfigurationPayload(
@@ -403,6 +419,9 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, config
         ),
     ]
 
+    mocked_time = mocker.patch('connect.eaas.managers.scheduled.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
@@ -432,10 +451,12 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, config
                     ],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
+                    '24.1',
                 ),
             ),
         ),
     )
+
     handler.assert_received(
         dataclasses.asdict(
             Message(MessageType.TASK, TaskPayload(
@@ -444,6 +465,7 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, config
                 TaskType.SCHEDULED_EXECUTION,
                 schedule_data['id'],
                 result=ResultType.SUCCESS,
+                runtime=1.0,
             )),
         ),
     )
@@ -754,6 +776,7 @@ async def test_capabilities_configuration_with_vars(mocker, ws_server, unused_po
 
     mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+    mocker.patch('connect.eaas.worker.get_version', return_value='24.1')
 
     data_to_send = dataclasses.asdict(
         Message(
@@ -792,6 +815,7 @@ async def test_capabilities_configuration_with_vars(mocker, ws_server, unused_po
                     [],
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
+                    '24.1',
                 ),
             ),
         ),
@@ -830,6 +854,7 @@ async def test_capabilities_configuration_without_vars(mocker, ws_server, unused
 
     mocker.patch('connect.eaas.handler.get_extension_class', return_value=MyExtension)
     mocker.patch('connect.eaas.handler.get_extension_type', return_value='sync')
+    mocker.patch('connect.eaas.worker.get_version', return_value='24.1')
 
     data_to_send = dataclasses.asdict(
         Message(
@@ -868,6 +893,7 @@ async def test_capabilities_configuration_without_vars(mocker, ws_server, unused
                     None,
                     'https://example.com/README.md',
                     'https://example.com/CHANGELOG.md',
+                    '24.1',
                 ),
             ),
         ),

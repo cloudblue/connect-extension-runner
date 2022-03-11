@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import pytest
 
@@ -40,6 +41,9 @@ async def test_sync(mocker, extension_cls, task_type, config_payload):
     )
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(TASK_TYPE_EXT_METHOD_MAP[task_type])
     handler.extension_type = 'sync'
@@ -53,6 +57,7 @@ async def test_sync(mocker, extension_cls, task_type, config_payload):
         TaskCategory.BACKGROUND,
         task_type,
         'PR-000',
+        runtime=1.0,
     )
 
     await manager.submit(task)
@@ -78,6 +83,9 @@ async def test_async(mocker, extension_cls, task_type, config_payload):
     )
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(TASK_TYPE_EXT_METHOD_MAP[task_type], async_impl=True)
     handler.extension_type = 'async'
@@ -91,6 +99,7 @@ async def test_async(mocker, extension_cls, task_type, config_payload):
         TaskCategory.BACKGROUND,
         task_type,
         'PR-000',
+        runtime=1.0,
     )
 
     await manager.submit(task)
@@ -970,11 +979,14 @@ async def test_build_response_exception(mocker, task_payload):
 async def test_send_skip_response(mocker, task_payload):
     config = ConfigHelper()
     mocked_put = mocker.AsyncMock()
+    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     manager = BackgroundTasksManager(config, None, mocked_put)
 
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
+            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000', 1.0,
         ),
     )
 

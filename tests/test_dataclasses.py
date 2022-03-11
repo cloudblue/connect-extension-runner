@@ -40,6 +40,7 @@ def test_parse_task_message():
             'output': 'output',
             'correlation_id': 'correlation_id',
             'reply_to': 'reply_to',
+            'runtime': 2.2,
         },
     }
 
@@ -61,6 +62,7 @@ def test_parse_capabilities_message():
             'schedulables': [],
             'readme_url': 'https://read.me',
             'changelog_url': 'https://change.log',
+            'runner_version': '1.1',
         },
     }
 
@@ -108,6 +110,7 @@ def test_parse_capabilities_message_with_vars():
             'schedulables': None,
             'readme_url': 'https://read.me',
             'changelog_url': 'https://change.log',
+            'runner_version': None,
         },
     }
 
@@ -138,6 +141,7 @@ def test_parse_capabilities_message_with_schedulables():
             ],
             'readme_url': 'https://read.me',
             'changelog_url': 'https://change.log',
+            'runner_version': '1.2',
         },
     }
 

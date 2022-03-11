@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import pytest
 
@@ -43,6 +44,9 @@ async def test_validation_sync(mocker, extension_cls, task_type, config_payload)
     )
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.interactive.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
 
     task_response_data = {'task': 'data', 'valid': True}
@@ -61,6 +65,7 @@ async def test_validation_sync(mocker, extension_cls, task_type, config_payload)
         TaskCategory.INTERACTIVE,
         task_type,
         'ID-000',
+        runtime=1.0,
     )
 
     task.data = {'task': 'data'}
@@ -89,6 +94,9 @@ async def test_validation_async(mocker, extension_cls, task_type, config_payload
     )
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.interactive.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
 
     task_response_data = {'task': 'data', 'valid': True}
@@ -108,6 +116,7 @@ async def test_validation_async(mocker, extension_cls, task_type, config_payload
         TaskCategory.INTERACTIVE,
         task_type,
         'ID-000',
+        runtime=1.0,
     )
 
     task.data = {'task': 'data'}
@@ -145,6 +154,9 @@ async def test_others_sync(mocker, extension_cls, task_type, result, config_payl
     )
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.interactive.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
 
     handler.extension_class = extension_cls(
@@ -161,6 +173,7 @@ async def test_others_sync(mocker, extension_cls, task_type, result, config_payl
         TaskCategory.INTERACTIVE,
         task_type,
         'ID-000',
+        runtime=1.0,
     )
 
     task.data = {'task': 'data'}
@@ -202,6 +215,9 @@ async def test_others_async(mocker, extension_cls, task_type, result, config_pay
     )
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.interactive.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
 
     handler.extension_class = extension_cls(
@@ -219,6 +235,7 @@ async def test_others_async(mocker, extension_cls, task_type, result, config_pay
         TaskCategory.INTERACTIVE,
         task_type,
         'ID-000',
+        runtime=1.0,
     )
 
     task.data = {'task': 'data'}

@@ -6,6 +6,7 @@
 import asyncio
 import dataclasses
 import logging
+import time
 import traceback
 
 from connect.eaas.dataclasses import (
@@ -39,12 +40,18 @@ class ScheduledTasksManager(TasksManagerBase):
         result = None
         result_message = TaskPayload(**dataclasses.asdict(task_data))
         try:
+            begin_ts = time.monotonic()
             result = await asyncio.wait_for(
                 future,
                 timeout=self.config.get_timeout('scheduled'),
             )
             result_message.result = result.status
             result_message.output = result.output
+            result_message.runtime = time.monotonic() - begin_ts
+            logger.info(
+                f'interactive task {task_data.task_id} result: {result.status}, tooks:'
+                f' {result_message.runtime}',
+            )
         except Exception as e:
             self.log_exception(task_data, e)
             result_message.result = ResultType.RETRY

@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import pytest
 
@@ -24,6 +25,9 @@ async def test_sync(mocker, extension_cls, config_payload):
     config.update_dynamic_config(ConfigurationPayload(**config_payload))
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.scheduled.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
         'my_sync_schedulable_method',
@@ -42,6 +46,7 @@ async def test_sync(mocker, extension_cls, config_payload):
         TaskCategory.SCHEDULED,
         TaskType.SCHEDULED_EXECUTION,
         'EFS-000',
+        runtime=1.0,
     )
 
     await manager.submit(task)
@@ -58,6 +63,9 @@ async def test_async(mocker, extension_cls, config_payload):
     config.update_dynamic_config(ConfigurationPayload(**config_payload))
     mocker.patch('connect.eaas.handler.get_extension_class')
     mocker.patch('connect.eaas.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.managers.scheduled.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
         'my_async_schedulable_method',
@@ -77,6 +85,7 @@ async def test_async(mocker, extension_cls, config_payload):
         TaskCategory.SCHEDULED,
         TaskType.SCHEDULED_EXECUTION,
         'EFS-000',
+        runtime=1.0,
     )
 
     await manager.submit(task)

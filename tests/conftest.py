@@ -77,11 +77,12 @@ def config_payload():
 
 @pytest.fixture
 def task_payload():
-    def _task_payload(task_category, task_type, object_id):
+    def _task_payload(task_category, task_type, object_id, runtime=0.0):
         return {
             'task_id': 'TQ-000',
             'task_category': task_category,
             'task_type': task_type,
             'object_id': object_id,
+            'runtime': runtime,
         }
     return _task_payload

@@ -20,3 +20,4 @@ temp/
 coverage.xml
 
 setup.py
+/extension
