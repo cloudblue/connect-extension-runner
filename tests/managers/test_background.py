@@ -3,49 +3,49 @@ import time
 
 import pytest
 
-from connect.eaas.config import ConfigHelper
-from connect.eaas.constants import (
-    ASSET_REQUEST_TASK_TYPES,
-    BACKGROUND_TASK_TYPES,
-    LISTING_REQUEST_TASK_TYPES,
-    TASK_TYPE_EXT_METHOD_MAP,
-    TIER_CONFIG_REQUEST_TASK_TYPES,
-)
-from connect.eaas.dataclasses import (
-    ConfigurationPayload,
+from connect.eaas.core.dataclasses import (
+    EventType,
     Message,
     MessageType,
     ResultType,
+    SettingsPayload,
     TaskCategory,
     TaskPayload,
-    TaskType,
 )
-from connect.eaas.extension import ProcessingResponse
-from connect.eaas.handler import ExtensionHandler
-from connect.eaas.managers import BackgroundTasksManager
+from connect.eaas.core.extension import ProcessingResponse
+from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.constants import (
+    ASSET_REQUEST_EVENT_TYPES,
+    BACKGROUND_EVENT_TYPES,
+    EVENT_TYPE_EXT_METHOD_MAP,
+    LISTING_REQUEST_EVENT_TYPES,
+    TIER_CONFIG_REQUEST_EVENT_TYPES,
+)
+from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.managers import BackgroundTasksManager
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'task_type',
-    BACKGROUND_TASK_TYPES,
+    'event_type',
+    BACKGROUND_EVENT_TYPES,
 )
-async def test_sync(mocker, extension_cls, task_type, config_payload):
+async def test_sync(mocker, extension_cls, event_type, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
-        new_callable=mocker.PropertyMock(return_value={task_type: ['pending']}),
+        new_callable=mocker.PropertyMock(return_value={event_type: ['pending']}),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
-    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
-    handler.extension_class = extension_cls(TASK_TYPE_EXT_METHOD_MAP[task_type])
+    handler.extension_class = extension_cls(EVENT_TYPE_EXT_METHOD_MAP[event_type])
     handler.extension_type = 'sync'
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
@@ -53,41 +53,45 @@ async def test_sync(mocker, extension_cls, task_type, config_payload):
     manager.get_argument = mocker.AsyncMock(return_value={'id': 'PR-000', 'status': 'pending'})
 
     task = TaskPayload(
-        'TQ-000',
-        TaskCategory.BACKGROUND,
-        task_type,
-        'PR-000',
-        runtime=1.0,
+        options={
+            'task_id': 'TQ-000',
+            'task_category': TaskCategory.BACKGROUND,
+            'runtime': 1.0,
+        },
+        input={
+            'event_type': event_type,
+            'object_id': 'PR-000',
+        },
     )
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(message_type=MessageType.TASK, data=task)
-    message.data.result = ResultType.SUCCESS
+    message = Message(version=2, message_type=MessageType.TASK, data=task)
+    message.data.options.result = ResultType.SUCCESS
     result_queue.assert_awaited_once_with(message.data)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'task_type',
-    BACKGROUND_TASK_TYPES,
+    'event_type',
+    BACKGROUND_EVENT_TYPES,
 )
-async def test_async(mocker, extension_cls, task_type, config_payload):
+async def test_async(mocker, extension_cls, event_type, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
-        new_callable=mocker.PropertyMock(return_value={task_type: ['pending']}),
+        new_callable=mocker.PropertyMock(return_value={event_type: ['pending']}),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
-    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = ExtensionHandler(config)
-    handler.extension_class = extension_cls(TASK_TYPE_EXT_METHOD_MAP[task_type], async_impl=True)
+    handler.extension_class = extension_cls(EVENT_TYPE_EXT_METHOD_MAP[event_type], async_impl=True)
     handler.extension_type = 'async'
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
@@ -95,31 +99,35 @@ async def test_async(mocker, extension_cls, task_type, config_payload):
     manager.get_argument = mocker.AsyncMock(return_value={'id': 'PR-000', 'status': 'pending'})
 
     task = TaskPayload(
-        'TQ-000',
-        TaskCategory.BACKGROUND,
-        task_type,
-        'PR-000',
-        runtime=1.0,
+        options={
+            'task_id': 'TQ-000',
+            'task_category': TaskCategory.BACKGROUND,
+            'runtime': 1.0,
+        },
+        input={
+            'event_type': event_type,
+            'object_id': 'PR-000',
+        },
     )
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(message_type=MessageType.TASK, data=task)
-    message.data.result = ResultType.SUCCESS
+    message = Message(version=2, message_type=MessageType.TASK, data=task)
+    message.data.options.result = ResultType.SUCCESS
     result_queue.assert_awaited_once_with(message.data)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'task_type',
-    ASSET_REQUEST_TASK_TYPES,
+    'event_type',
+    ASSET_REQUEST_EVENT_TYPES,
 )
 async def test_get_argument_subscription(
-    mocker, httpx_mock, extension_cls, task_type,
-    config_payload, task_payload, unused_port,
+    mocker, httpx_mock, extension_cls, event_type,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -134,16 +142,16 @@ async def test_get_argument_subscription(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
-        new_callable=mocker.PropertyMock(return_value={task_type: ['pending']}),
+        new_callable=mocker.PropertyMock(return_value={event_type: ['pending']}),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
-    handler.extension_class = extension_cls(TASK_TYPE_EXT_METHOD_MAP[task_type], async_impl=True)
+    handler.extension_class = extension_cls(EVENT_TYPE_EXT_METHOD_MAP[event_type], async_impl=True)
     handler.extension_type = 'async'
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
@@ -164,22 +172,22 @@ async def test_get_argument_subscription(
         json=pr_data,
     )
     task = TaskPayload(
-        **task_payload(TaskCategory.BACKGROUND, task_type, 'PR-000'),
+        **task_payload(TaskCategory.BACKGROUND, event_type, 'PR-000'),
     )
     assert await manager.get_argument(task) == pr_data
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'task_type',
-    TIER_CONFIG_REQUEST_TASK_TYPES,
+    'event_type',
+    TIER_CONFIG_REQUEST_EVENT_TYPES,
 )
 async def test_get_argument_tcr(
-    mocker, httpx_mock, extension_cls, task_type,
-    config_payload, task_payload, unused_port,
+    mocker, httpx_mock, extension_cls, event_type,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -194,16 +202,16 @@ async def test_get_argument_tcr(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
-        new_callable=mocker.PropertyMock(return_value={task_type: ['pending']}),
+        new_callable=mocker.PropertyMock(return_value={event_type: ['pending']}),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
-    handler.extension_class = extension_cls(TASK_TYPE_EXT_METHOD_MAP[task_type], async_impl=True)
+    handler.extension_class = extension_cls(EVENT_TYPE_EXT_METHOD_MAP[event_type], async_impl=True)
     handler.extension_type = 'async'
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
@@ -227,7 +235,7 @@ async def test_get_argument_tcr(
         json=tcr_data,
     )
     task = TaskPayload(
-        **task_payload(TaskCategory.BACKGROUND, task_type, 'TCR-000'),
+        **task_payload(TaskCategory.BACKGROUND, event_type, 'TCR-000'),
     )
     assert await manager.get_argument(task) == tcr_data
 
@@ -235,10 +243,10 @@ async def test_get_argument_tcr(
 @pytest.mark.asyncio
 async def test_get_argument_tar(
     mocker, httpx_mock, extension_cls,
-    config_payload, task_payload, unused_port,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -253,19 +261,19 @@ async def test_get_argument_tar(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING: ['pending']},
+            return_value={EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING: ['pending']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
+        EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
     )
     handler.extension_type = 'sync'
 
@@ -310,7 +318,7 @@ async def test_get_argument_tar(
     task = TaskPayload(
         **task_payload(
             TaskCategory.BACKGROUND,
-            TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
+            EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
             'TAR-000',
         ),
     )
@@ -320,10 +328,10 @@ async def test_get_argument_tar(
 @pytest.mark.asyncio
 async def test_get_argument_tar_no_assets(
     mocker, httpx_mock, extension_cls,
-    config_payload, task_payload, unused_port,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -338,19 +346,19 @@ async def test_get_argument_tar_no_assets(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING: ['pending']},
+            return_value={EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING: ['pending']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
+        EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
     )
     handler.extension_type = 'sync'
 
@@ -396,7 +404,7 @@ async def test_get_argument_tar_no_assets(
     task = TaskPayload(
         **task_payload(
             TaskCategory.BACKGROUND,
-            TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
+            EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
             'TAR-000',
         ),
     )
@@ -412,15 +420,15 @@ async def test_get_argument_tar_no_assets(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'task_type',
-    LISTING_REQUEST_TASK_TYPES,
+    'event_type',
+    LISTING_REQUEST_EVENT_TYPES,
 )
 async def test_get_argument_listing_request(
-    mocker, httpx_mock, extension_cls, task_type,
-    config_payload, task_payload, unused_port,
+    mocker, httpx_mock, extension_cls, event_type,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -435,19 +443,19 @@ async def test_get_argument_listing_request(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={task_type: ['pending']},
+            return_value={event_type: ['pending']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        task_type,
+        event_type,
     )
     handler.extension_type = 'sync'
 
@@ -494,7 +502,7 @@ async def test_get_argument_listing_request(
     task = TaskPayload(
         **task_payload(
             TaskCategory.BACKGROUND,
-            task_type,
+            event_type,
             'LSTR-000',
         ),
     )
@@ -503,15 +511,15 @@ async def test_get_argument_listing_request(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'task_type',
-    LISTING_REQUEST_TASK_TYPES,
+    'event_type',
+    LISTING_REQUEST_EVENT_TYPES,
 )
 async def test_get_argument_listing_request_vendor(
-    mocker, httpx_mock, extension_cls, task_type,
-    config_payload, task_payload, unused_port,
+    mocker, httpx_mock, extension_cls, event_type,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -526,21 +534,21 @@ async def test_get_argument_listing_request_vendor(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    dyn_cfg = ConfigurationPayload(**config_payload)
-    dyn_cfg.hub_id = None
+    dyn_cfg = SettingsPayload(**settings_payload)
+    dyn_cfg.service.hub_id = None
     config.update_dynamic_config(dyn_cfg)
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={task_type: ['pending']},
+            return_value={event_type: ['pending']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        task_type,
+        event_type,
     )
     handler.extension_type = 'sync'
 
@@ -573,7 +581,7 @@ async def test_get_argument_listing_request_vendor(
     task = TaskPayload(
         **task_payload(
             TaskCategory.BACKGROUND,
-            task_type,
+            event_type,
             'LSTR-000',
         ),
     )
@@ -582,15 +590,15 @@ async def test_get_argument_listing_request_vendor(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'task_type',
-    LISTING_REQUEST_TASK_TYPES,
+    'event_type',
+    LISTING_REQUEST_EVENT_TYPES,
 )
 async def test_get_argument_listing_request_no_hub(
-    mocker, httpx_mock, extension_cls, task_type,
-    config_payload, task_payload, unused_port,
+    mocker, httpx_mock, extension_cls, event_type,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -605,19 +613,19 @@ async def test_get_argument_listing_request_no_hub(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={task_type: ['pending']},
+            return_value={event_type: ['pending']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        task_type,
+        event_type,
     )
     handler.extension_type = 'sync'
 
@@ -665,7 +673,7 @@ async def test_get_argument_listing_request_no_hub(
     task = TaskPayload(
         **task_payload(
             TaskCategory.BACKGROUND,
-            task_type,
+            event_type,
             'LSTR-000',
         ),
     )
@@ -682,10 +690,10 @@ async def test_get_argument_listing_request_no_hub(
 @pytest.mark.asyncio
 async def test_get_argument_usage_file(
     mocker, httpx_mock, extension_cls,
-    config_payload, task_payload, unused_port,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -700,19 +708,19 @@ async def test_get_argument_usage_file(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={TaskType.USAGE_FILE_REQUEST_PROCESSING: ['pending']},
+            return_value={EventType.USAGE_FILE_REQUEST_PROCESSING: ['pending']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        TASK_TYPE_EXT_METHOD_MAP[TaskType.USAGE_FILE_REQUEST_PROCESSING],
+        EVENT_TYPE_EXT_METHOD_MAP[EventType.USAGE_FILE_REQUEST_PROCESSING],
         async_impl=True,
     )
     handler.extension_type = 'async'
@@ -738,7 +746,7 @@ async def test_get_argument_usage_file(
         json=uf_data,
     )
     task = TaskPayload(
-        **task_payload(TaskCategory.BACKGROUND, TaskType.USAGE_FILE_REQUEST_PROCESSING, 'UF-000'),
+        **task_payload(TaskCategory.BACKGROUND, EventType.USAGE_FILE_REQUEST_PROCESSING, 'UF-000'),
     )
     assert await manager.get_argument(task) == uf_data
 
@@ -746,10 +754,10 @@ async def test_get_argument_usage_file(
 @pytest.mark.asyncio
 async def test_get_argument_usage_chunks(
     mocker, httpx_mock, extension_cls,
-    config_payload, task_payload, unused_port,
+    settings_payload, task_payload, unused_port,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -764,19 +772,19 @@ async def test_get_argument_usage_chunks(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={TaskType.PART_USAGE_FILE_REQUEST_PROCESSING: ['pending']},
+            return_value={EventType.PART_USAGE_FILE_REQUEST_PROCESSING: ['pending']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        TASK_TYPE_EXT_METHOD_MAP[TaskType.PART_USAGE_FILE_REQUEST_PROCESSING],
+        EVENT_TYPE_EXT_METHOD_MAP[EventType.PART_USAGE_FILE_REQUEST_PROCESSING],
         async_impl=True,
     )
     handler.extension_type = 'async'
@@ -803,7 +811,7 @@ async def test_get_argument_usage_chunks(
     )
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
+            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
     )
     assert await manager.get_argument(task) == uf_data
@@ -811,31 +819,31 @@ async def test_get_argument_usage_chunks(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ('task_type', 'status_field', 'endpoint'),
+    ('event_type', 'status_field', 'endpoint'),
     (
-        (TaskType.ASSET_PURCHASE_REQUEST_PROCESSING, 'status', '/requests'),
-        (TaskType.ASSET_CHANGE_REQUEST_PROCESSING, 'status', '/requests'),
-        (TaskType.ASSET_SUSPEND_REQUEST_PROCESSING, 'status', '/requests'),
-        (TaskType.ASSET_RESUME_REQUEST_PROCESSING, 'status', '/requests'),
-        (TaskType.ASSET_CANCEL_REQUEST_PROCESSING, 'status', '/requests'),
-        (TaskType.ASSET_ADJUSTMENT_REQUEST_PROCESSING, 'status', '/requests'),
-        (TaskType.TIER_CONFIG_SETUP_REQUEST_PROCESSING, 'status', '/tier/config-requests'),
-        (TaskType.TIER_CONFIG_CHANGE_REQUEST_PROCESSING, 'status', '/tier/config-requests'),
-        (TaskType.TIER_CONFIG_ADJUSTMENT_REQUEST_PROCESSING, 'status', '/tier/config-requests'),
-        (TaskType.LISTING_NEW_REQUEST_PROCESSING, 'state', '/listing-requests'),
-        (TaskType.LISTING_REMOVE_REQUEST_PROCESSING, 'state', '/listing-requests'),
-        (TaskType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING, 'status', '/tier/account-requests'),
-        (TaskType.USAGE_FILE_REQUEST_PROCESSING, 'status', '/usage/files'),
-        (TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'status', '/usage/chunks'),
+        (EventType.ASSET_PURCHASE_REQUEST_PROCESSING, 'status', '/requests'),
+        (EventType.ASSET_CHANGE_REQUEST_PROCESSING, 'status', '/requests'),
+        (EventType.ASSET_SUSPEND_REQUEST_PROCESSING, 'status', '/requests'),
+        (EventType.ASSET_RESUME_REQUEST_PROCESSING, 'status', '/requests'),
+        (EventType.ASSET_CANCEL_REQUEST_PROCESSING, 'status', '/requests'),
+        (EventType.ASSET_ADJUSTMENT_REQUEST_PROCESSING, 'status', '/requests'),
+        (EventType.TIER_CONFIG_SETUP_REQUEST_PROCESSING, 'status', '/tier/config-requests'),
+        (EventType.TIER_CONFIG_CHANGE_REQUEST_PROCESSING, 'status', '/tier/config-requests'),
+        (EventType.TIER_CONFIG_ADJUSTMENT_REQUEST_PROCESSING, 'status', '/tier/config-requests'),
+        (EventType.LISTING_NEW_REQUEST_PROCESSING, 'state', '/listing-requests'),
+        (EventType.LISTING_REMOVE_REQUEST_PROCESSING, 'state', '/listing-requests'),
+        (EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING, 'status', '/tier/account-requests'),
+        (EventType.USAGE_FILE_REQUEST_PROCESSING, 'status', '/usage/files'),
+        (EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'status', '/usage/chunks'),
     ),
 )
 async def test_get_argument_unsupported_status(
     mocker, httpx_mock, extension_cls,
-    config_payload, task_payload, unused_port,
-    task_type, status_field, endpoint,
+    settings_payload, task_payload, unused_port,
+    event_type, status_field, endpoint,
 ):
     mocker.patch(
-        'connect.eaas.config.get_environment',
+        'connect.eaas.runner.config.get_environment',
         return_value={
             'ws_address': f'127.0.0.1:{unused_port}',
             'api_address': f'127.0.0.1:{unused_port}',
@@ -850,19 +858,19 @@ async def test_get_argument_unsupported_status(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(ConfigurationPayload(**config_payload))
+    config.update_dynamic_config(SettingsPayload(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
         new_callable=mocker.PropertyMock(
-            return_value={task_type: ['supported']},
+            return_value={event_type: ['supported']},
         ),
     )
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
+    mocker.patch('connect.eaas.runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls(
-        TASK_TYPE_EXT_METHOD_MAP[task_type],
+        EVENT_TYPE_EXT_METHOD_MAP[event_type],
         async_impl=True,
     )
     handler.extension_type = 'async'
@@ -882,7 +890,7 @@ async def test_get_argument_unsupported_status(
     )
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, task_type, 'OBJ-000',
+            TaskCategory.BACKGROUND, event_type, 'OBJ-000',
         ),
     )
     assert await manager.get_argument(task) is None
@@ -898,7 +906,7 @@ async def test_build_response_done(task_payload):
     manager = BackgroundTasksManager(config, None, None)
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
+            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
     )
     future = asyncio.Future()
@@ -906,8 +914,8 @@ async def test_build_response_done(task_payload):
     future.set_result(result)
     response = await manager.build_response(task, future)
 
-    assert response.task_id == task.task_id
-    assert response.result == result.status
+    assert response.options.task_id == task.options.task_id
+    assert response.options.result == result.status
 
 
 @pytest.mark.asyncio
@@ -923,16 +931,16 @@ async def test_build_response_fail_skip(task_payload, result):
     manager = BackgroundTasksManager(config, None, None)
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
+            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
     )
     future = asyncio.Future()
     future.set_result(result)
     response = await manager.build_response(task, future)
 
-    assert response.task_id == task.task_id
-    assert response.result == result.status
-    assert response.output == result.output
+    assert response.options.task_id == task.options.task_id
+    assert response.options.result == result.status
+    assert response.options.output == result.output
 
 
 @pytest.mark.asyncio
@@ -941,7 +949,7 @@ async def test_build_response_reschedule(task_payload):
     manager = BackgroundTasksManager(config, None, None)
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
+            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
     )
     future = asyncio.Future()
@@ -949,9 +957,9 @@ async def test_build_response_reschedule(task_payload):
     future.set_result(result)
     response = await manager.build_response(task, future)
 
-    assert response.task_id == task.task_id
-    assert response.result == result.status
-    assert response.countdown == result.countdown
+    assert response.options.task_id == task.options.task_id
+    assert response.options.result == result.status
+    assert response.options.countdown == result.countdown
 
 
 @pytest.mark.asyncio
@@ -962,16 +970,16 @@ async def test_build_response_exception(mocker, task_payload):
 
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
+            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
     )
     future = asyncio.Future()
     future.set_exception(Exception('Awesome error message'))
     response = await manager.build_response(task, future)
 
-    assert response.task_id == task.task_id
-    assert response.result == ResultType.RETRY
-    assert 'Awesome error message' in response.output
+    assert response.options.task_id == task.options.task_id
+    assert response.options.result == ResultType.RETRY
+    assert 'Awesome error message' in response.options.output
     manager.log_exception.assert_called_once()
 
 
@@ -979,20 +987,20 @@ async def test_build_response_exception(mocker, task_payload):
 async def test_send_skip_response(mocker, task_payload):
     config = ConfigHelper()
     mocked_put = mocker.AsyncMock()
-    mocked_time = mocker.patch('connect.eaas.managers.background.time')
+    mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
     manager = BackgroundTasksManager(config, None, mocked_put)
 
     task = TaskPayload(
         **task_payload(
-            TaskCategory.BACKGROUND, TaskType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000', 1.0,
+            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000', 1.0,
         ),
     )
 
     manager.send_skip_response(task, 'test output')
     await asyncio.sleep(.01)
-    task.result = ResultType.SKIP
-    task.output = 'test output'
+    task.options.result = ResultType.SKIP
+    task.options.output = 'test output'
 
     mocked_put.assert_awaited_once_with(task)
