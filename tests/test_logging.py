@@ -4,7 +4,7 @@ import pytest
 from urllib3.response import HTTPResponse
 from requests.models import Response
 
-from connect.eaas.logging import ExtensionLogHandler, RequestLogger
+from connect.eaas.extension_runner.logging import ExtensionLogHandler, RequestLogger
 
 
 def test_extension_log_handler():
@@ -24,7 +24,7 @@ def test_extension_log_handler():
 
 
 def test_request_logger_request(caplog):
-    rl = RequestLogger(logging.getLogger('eaas.extension'))
+    rl = RequestLogger(logging.getLogger('eaas.extension_runner.extension'))
 
     with caplog.at_level(logging.DEBUG):
         rl.log_request('POST', 'https://example.com', {})
@@ -39,7 +39,7 @@ def test_request_logger_request(caplog):
 
 
 def test_request_logger_request_params(caplog):
-    rl = RequestLogger(logging.getLogger('eaas.extension'))
+    rl = RequestLogger(logging.getLogger('eaas.extension_runner.extension'))
 
     with caplog.at_level(logging.DEBUG):
         rl.log_request('POST', 'https://example.com', {'params': {'a': 'va'}})
@@ -54,7 +54,7 @@ def test_request_logger_request_params(caplog):
 
 
 def test_request_logger_request_with_qs(caplog):
-    rl = RequestLogger(logging.getLogger('eaas.extension'))
+    rl = RequestLogger(logging.getLogger('eaas.extension_runner.extension'))
 
     with caplog.at_level(logging.DEBUG):
         rl.log_request('GET', 'https://example.com?queryparam=value', {})
@@ -76,7 +76,7 @@ def test_request_logger_request_with_qs(caplog):
     ),
 )
 def test_request_logger_request_with_headers(caplog, authorization, expected_auth):
-    rl = RequestLogger(logging.getLogger('eaas.extension'))
+    rl = RequestLogger(logging.getLogger('eaas.extension_runner.extension'))
 
     headers = {
         'Authorization': authorization,
@@ -96,7 +96,7 @@ def test_request_logger_request_with_headers(caplog, authorization, expected_aut
 
 
 def test_request_logger_request_with_json_body(caplog):
-    rl = RequestLogger(logging.getLogger('eaas.extension'))
+    rl = RequestLogger(logging.getLogger('eaas.extension_runner.extension'))
 
     json = {
         'test': 'data',
@@ -118,7 +118,7 @@ def test_request_logger_request_with_json_body(caplog):
 
 
 def test_request_logger_response(caplog):
-    rl = RequestLogger(logging.getLogger('eaas.extension'))
+    rl = RequestLogger(logging.getLogger('eaas.extension_runner.extension'))
 
     rsp = Response()
     rsp.raw = HTTPResponse()
@@ -157,7 +157,7 @@ def test_request_logger_response_json(mocker, caplog):
     json = {'id': 'XX-1234', 'name': 'XXX'}
     mocker.patch('requests.models.Response.json', return_value=json)
 
-    rl = RequestLogger(logging.getLogger('eaas.extension'))
+    rl = RequestLogger(logging.getLogger('eaas.extension_runner.extension'))
 
     rsp = Response()
     rsp.raw = HTTPResponse()

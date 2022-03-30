@@ -1,3 +1,3 @@
-from connect.eaas.managers.background import BackgroundTasksManager  # noqa
-from connect.eaas.managers.interactive import InteractiveTasksManager  # noqa
-from connect.eaas.managers.scheduled import ScheduledTasksManager  # noqa
+from connect.eaas.extension_runner.managers import BackgroundTasksManager   # noqa
+from connect.eaas.extension_runner.managers import InteractiveTasksManager   # noqa
+from connect.eaas.extension_runner.managers import ScheduledTasksManager   # noqa

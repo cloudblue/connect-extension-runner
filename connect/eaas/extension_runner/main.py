@@ -13,8 +13,7 @@ from multiprocessing import Process
 
 import uvloop
 
-from connect.eaas.worker import Worker
-
+from connect.eaas.extension_runner.worker import Worker
 
 logger = logging.getLogger('eaas')
 

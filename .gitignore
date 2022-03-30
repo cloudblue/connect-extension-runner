@@ -15,6 +15,7 @@ dist/
 coverage/
 .coverage
 /htmlcov/
+/tests/htmlcov/
 docs/_build
 temp/
 coverage.xml

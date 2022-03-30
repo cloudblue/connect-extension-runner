@@ -1,17 +1,25 @@
-from connect.eaas.config import ConfigHelper
-from connect.eaas.dataclasses import ConfigurationPayload
+from connect.eaas.core.dataclasses import Logging, Service, SettingsPayload
+from connect.eaas.extension_runner.config import ConfigHelper
 
 
-def test_new_extension(mocker, config_payload, extension_cls):
-    from connect.eaas.handler import ExtensionHandler
+def test_new_extension(mocker, settings_payload, extension_cls):
+    from connect.eaas.extension_runner.handler import ExtensionHandler
     config = ConfigHelper()
-    dyn_config = ConfigurationPayload(**config_payload)
-    dyn_config.logging_api_key = 'test_key'
+    dyn_config = SettingsPayload(
+        varibles=settings_payload.get('configuration'),
+        environment_type=settings_payload.get('environment_type'),
+        logging=Logging(**settings_payload),
+        service=Service(**settings_payload),
+    )
+    dyn_config.logging.logging_api_key = 'test_key'
     config.update_dynamic_config(dyn_config)
-    mocker.patch('connect.eaas.handler.logging.getLogger')
-    mocker.patch('connect.eaas.handler.get_extension_class')
-    mocker.patch('connect.eaas.handler.get_extension_type')
-    mocked_log_handler = mocker.patch('connect.eaas.handler.ExtensionLogHandler', autospec=True)
+    mocker.patch('connect.eaas.extension_runner.handler.logging.getLogger')
+    mocker.patch('connect.eaas.extension_runner.handler.get_extension_class')
+    mocker.patch('connect.eaas.extension_runner.handler.get_extension_type')
+    mocked_log_handler = mocker.patch(
+        'connect.eaas.extension_runner.handler.ExtensionLogHandler',
+        autospec=True,
+    )
     handler = ExtensionHandler(config)
     handler.extension_class = extension_cls('test_method')
     handler.extension_type = 'sync'

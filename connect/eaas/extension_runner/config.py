@@ -6,11 +6,11 @@
 import logging
 import platform
 
-from connect.eaas.helpers import (
+from connect.eaas.extension_runner.helpers import (
     get_environment,
     get_version,
 )
-
+from connect.eaas.core.dataclasses import Logging, Service
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,15 @@ class ConfigHelper:
 
     @property
     def service_id(self):
-        return self.dyn_config.service_id
+        return self.dyn_config.service.service_id
 
     @property
     def product_id(self):
-        return self.dyn_config.product_id
+        return self.dyn_config.service.product_id
 
     @property
     def hub_id(self):
-        return self.dyn_config.hub_id
+        return self.dyn_config.service.hub_id
 
     @property
     def environment_id(self):
@@ -55,19 +55,19 @@ class ConfigHelper:
 
     @property
     def account_id(self):
-        return self.dyn_config.account_id
+        return self.dyn_config.service.account_id
 
     @property
     def account_name(self):
-        return self.dyn_config.account_name
+        return self.dyn_config.service.account_name
 
     @property
     def logging_api_key(self):
-        return self.dyn_config.logging_api_key
+        return self.dyn_config.logging.logging_api_key
 
     @property
     def variables(self):
-        return self.dyn_config.configuration
+        return self.dyn_config.variables
 
     @property
     def metadata(self):
@@ -113,31 +113,44 @@ class ConfigHelper:
 
     def update_dynamic_config(self, data):
         """Updates the dynamic configuration."""
+        if data.service is None:
+            data.service = Service()
+        if data.logging is None:
+            data.logging = Logging()
+
         if not self.dyn_config:
             self.dyn_config = data
         else:
-            self.dyn_config.service_id = data.service_id or self.dyn_config.service_id
-            self.dyn_config.product_id = data.product_id or self.dyn_config.product_id
-            self.dyn_config.hub_id = data.hub_id or self.dyn_config.hub_id
+            self.dyn_config.service.service_id = (
+                data.service.service_id or self.dyn_config.service.service_id
+            )
+            self.dyn_config.service.product_id = (
+                data.service.product_id or self.dyn_config.service.product_id
+            )
+            self.dyn_config.service.hub_id = (
+                data.service.hub_id or self.dyn_config.service.hub_id
+            )
             self.dyn_config.environment_type = (
                 data.environment_type or self.dyn_config.environment_type
             )
-            self.dyn_config.account_id = data.account_id or self.dyn_config.account_id
-            self.dyn_config.account_name = (
-                data.account_name or self.dyn_config.account_name
+            self.dyn_config.service.account_id = (
+                data.service.account_id or self.dyn_config.service.account_id
             )
-            self.dyn_config.configuration = data.configuration or self.dyn_config.configuration
-            self.dyn_config.logging_api_key = (
-                data.logging_api_key or self.dyn_config.logging_api_key
+            self.dyn_config.service.account_name = (
+                data.service.account_name or self.dyn_config.service.account_name
+            )
+            self.dyn_config.variables = data.variables or self.dyn_config.variables
+            self.dyn_config.logging.logging_api_key = (
+                data.logging.logging_api_key or self.dyn_config.logging.logging_api_key
             )
 
         logger.info(f'Runner dynamic config updated {data}')
-        if data.log_level:
-            logger.info(f'Change extesion logger level to {data.log_level}')
+        if data.logging.log_level:
+            logger.info(f'Change extension logger level to {data.logging.log_level}')
             logging.getLogger('eaas.extension').setLevel(
-                getattr(logging, data.log_level),
+                getattr(logging, data.logging.log_level),
             )
-        if data.runner_log_level:
+        if data.logging.runner_log_level:
             logging.getLogger('connect.eaas').setLevel(
-                getattr(logging, data.runner_log_level),
+                getattr(logging, data.logging.runner_log_level),
             )

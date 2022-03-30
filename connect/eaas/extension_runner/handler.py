@@ -1,12 +1,12 @@
 import logging
 
 from connect.client import AsyncConnectClient, ConnectClient
-from connect.eaas.helpers import (
+from connect.eaas.extension_runner.config import ConfigHelper
+from connect.eaas.extension_runner.helpers import (
     get_extension_class,
     get_extension_type,
 )
-from connect.eaas.config import ConfigHelper
-from connect.eaas.logging import ExtensionLogHandler, RequestLogger
+from connect.eaas.extension_runner.logging import ExtensionLogHandler, RequestLogger
 
 
 class ExtensionHandler:

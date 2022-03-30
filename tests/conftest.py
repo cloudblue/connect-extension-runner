@@ -9,7 +9,7 @@ import socket
 import pytest
 import websockets
 
-from connect.eaas.extension import Extension, ProcessingResponse
+from connect.eaas.core.extension import Extension, ProcessingResponse
 
 
 @pytest.fixture(scope='session')
@@ -60,29 +60,38 @@ def extension_cls():
 
 
 @pytest.fixture(scope='session')
-def config_payload():
+def settings_payload():
     return {
-        'configuration': {'conf1': 'val1'},
-        'logging_api_key': None,
+        'variables': {'conf1': 'val1'},
         'environment_type': 'development',
-        'log_level': 'DEBUG',
-        'runner_log_level': 'INFO',
-        'account_id': 'account_id',
-        'account_name': 'account_name',
-        'service_id': 'service_id',
-        'product_id': 'product_id',
-        'hub_id': 'HB-0000',
+        'logging': {
+            'logging_api_key': None,
+            'log_level': 'DEBUG',
+            'runner_log_level': 'INFO',
+        },
+        'service': {
+            'account_id': 'account_id',
+            'account_name': 'account_name',
+            'service_id': 'service_id',
+            'product_id': 'product_id',
+            'hub_id': 'HB-0000',
+        },
     }
 
 
 @pytest.fixture
 def task_payload():
-    def _task_payload(task_category, task_type, object_id, runtime=0.0):
+    def _task_payload(task_category, event_type, object_id, runtime=0.0):
         return {
-            'task_id': 'TQ-000',
-            'task_category': task_category,
-            'task_type': task_type,
-            'object_id': object_id,
-            'runtime': runtime,
+            'options': {
+                'task_id': 'TQ-000',
+                'task_category': task_category,
+                'runtime': runtime,
+            },
+            'input': {
+                'event_type': event_type,
+                'object_id': object_id,
+            },
+
         }
     return _task_payload
