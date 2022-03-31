@@ -14,14 +14,14 @@ from pkg_resources import (
     iter_entry_points,
 )
 
-from connect.eaas.constants import (
+from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    EVENT_TYPE_EXT_METHOD_MAP,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     ORDINAL_SUFFIX,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
-    TASK_TYPE_EXT_METHOD_MAP,
 )
-from connect.eaas.exceptions import EaaSError
+from connect.eaas.runner.exceptions import EaaSError
 
 
 def get_container_id():
@@ -80,14 +80,14 @@ def get_environment():
 
 
 def get_extension_class():
-    ext_class = next(iter_entry_points('connect.eaas.ext', 'extension'), None)
+    ext_class = next(iter_entry_points('connect.eaas.runner.ext', 'extension'), None)
     return ext_class.load() if ext_class else None
 
 
 def get_extension_type(cls):
     descriptor = cls.get_descriptor()
     guess_async = [
-        inspect.iscoroutinefunction(getattr(cls, TASK_TYPE_EXT_METHOD_MAP[name]))
+        inspect.iscoroutinefunction(getattr(cls, EVENT_TYPE_EXT_METHOD_MAP[name]))
         for name in descriptor['capabilities'].keys()
     ] + [
         inspect.iscoroutinefunction(getattr(cls, schedulable['method']))

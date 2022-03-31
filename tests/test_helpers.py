@@ -12,13 +12,13 @@ from pkg_resources import (
     EntryPoint,
 )
 
-from connect.eaas.constants import (
+from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
-from connect.eaas.exceptions import EaaSError
-from connect.eaas.helpers import (
+from connect.eaas.runner.exceptions import EaaSError
+from connect.eaas.runner.helpers import (
     get_container_id,
     get_environment,
     get_extension_class,
@@ -33,7 +33,10 @@ def test_get_container_id(mocker):
     result.stdout = (
         '/docker/e724f0291e6b5a3a37b1c0eb83daa6ee1df5c52f40a01d49f481908766251791\n'.encode('utf-8')
     )
-    mocked = mocker.patch('connect.eaas.helpers.subprocess.run', return_value=result)
+    mocked = mocker.patch(
+        'connect.eaas.runner.helpers.subprocess.run',
+        return_value=result,
+    )
     assert get_container_id() == 'e724f0291e6b5a3a37b1c0eb83daa6ee1df5c52f40a01d49f481908766251791'
     assert mocked.mock_calls[0].args[0] == ['cat', '/proc/1/cpuset']
 
@@ -54,7 +57,7 @@ def test_get_container_id_cgroups2(mocker):
     result.returnvalue = 0
     result.stdout = overlay_mount.encode('utf-8')
     mocked = mocker.patch(
-        'connect.eaas.helpers.subprocess.run',
+        'connect.eaas.runner.helpers.subprocess.run',
         side_effect=[result_cpuset, result],
     )
     assert get_container_id() == 'd296001e9df3fe165e465fc7c37dee126d8dc7720f2a451b270cd7c1d4e9ce66'
@@ -68,7 +71,7 @@ def test_get_container_id_cgroups2_fallback(mocker):
         'lowerdir=/var/lib/docker/overlay2/l/MVS46I7BSZLIJ4CCFBC2HWYOA6,'
         'workdir=/var/lib/docker/overlay2/d296001e9df3fe165e465fc7c37dee126d8dc7720f2a451b270cd7c1d4e9ce66/work\n'  # noqa: E501
     )
-    mocker.patch('connect.eaas.helpers.uuid4', return_value='test_uuid')
+    mocker.patch('connect.eaas.runner.helpers.uuid4', return_value='test_uuid')
     result_cpuset = mocker.MagicMock()
     result_cpuset.returnvalue = 0
     result_cpuset.stdout = (
@@ -78,7 +81,7 @@ def test_get_container_id_cgroups2_fallback(mocker):
     result.returnvalue = 0
     result.stdout = overlay_mount.encode('utf-8')
     mocked = mocker.patch(
-        'connect.eaas.helpers.subprocess.run',
+        'connect.eaas.runner.helpers.subprocess.run',
         side_effect=[result_cpuset, result],
     )
     assert get_container_id() == 'test_uuid'
@@ -87,7 +90,7 @@ def test_get_container_id_cgroups2_fallback(mocker):
 
 
 def test_get_container_id_cgroups2_call_error(mocker):
-    mocker.patch('connect.eaas.helpers.uuid4', return_value='test_uuid')
+    mocker.patch('connect.eaas.runner.helpers.uuid4', return_value='test_uuid')
     result_cpuset = mocker.MagicMock()
     result_cpuset.returnvalue = 0
     result_cpuset.stdout = (
@@ -98,7 +101,7 @@ def test_get_container_id_cgroups2_call_error(mocker):
         side_effect=subprocess.CalledProcessError(128, cmd=[]),
     )
     mocked = mocker.patch(
-        'connect.eaas.helpers.subprocess.run',
+        'connect.eaas.runner.helpers.subprocess.run',
         side_effect=[result_cpuset, result],
     )
     assert get_container_id() == 'test_uuid'
@@ -107,7 +110,7 @@ def test_get_container_id_cgroups2_call_error(mocker):
 
 
 def test_get_container_id_invalid_mount_container_id(mocker):
-    mocker.patch('connect.eaas.helpers.uuid4', return_value='test_uuid')
+    mocker.patch('connect.eaas.runner.helpers.uuid4', return_value='test_uuid')
     result1 = mocker.MagicMock()
     result1.returnvalue = 0
     result1.stdout.decode = mocker.MagicMock(
@@ -118,7 +121,7 @@ def test_get_container_id_invalid_mount_container_id(mocker):
         return_value='upperdir=/hello/you/,you,\n',
     )
     mocker.patch(
-        'connect.eaas.helpers.subprocess.run',
+        'connect.eaas.runner.helpers.subprocess.run',
         side_effect=[result1, result2],
     )
     assert get_container_id() == 'test_uuid'
@@ -130,7 +133,7 @@ def test_get_container_id_ko(mocker):
         side_effect=subprocess.CalledProcessError(128, cmd=[]),
     )
     result.stderr = 'error message'.encode('utf-8')
-    mocker.patch('connect.eaas.helpers.subprocess.run', return_value=result)
+    mocker.patch('connect.eaas.runner.helpers.subprocess.run', return_value=result)
     expected_result = get_container_id()
 
     assert isinstance(expected_result, str)
@@ -144,7 +147,10 @@ def test_get_environment_with_defaults(mocker):
         del os.environ['SERVER_ADDRESS']
     if 'INSTANCE_ID' in os.environ:
         del os.environ['INSTANCE_ID']
-    mocker.patch('connect.eaas.helpers.get_container_id', return_value='container_id')
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_container_id',
+        return_value='container_id',
+    )
     env = get_environment()
     assert env['api_key'] == 'SU-000:XXXX'
     assert env['environment_id'] == 'ENV-0000-0000-01'
@@ -187,7 +193,7 @@ def test_get_extension_class(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.helpers.iter_entry_points',
+        'connect.eaas.runner.helpers.iter_entry_points',
         return_value=iter([
             EntryPoint('extension', 'connect.eaas.ext'),
         ]),
@@ -200,7 +206,7 @@ def test_get_extension_class(mocker):
 
 def test_get_extension_class_not_found(mocker):
     mocker.patch(
-        'connect.eaas.helpers.iter_entry_points',
+        'connect.eaas.runner.helpers.iter_entry_points',
         return_value=iter([
         ]),
     )
@@ -286,7 +292,7 @@ def test_get_version(mocker):
     mocked = mocker.MagicMock()
     mocked.version = '22.0'
     mocker.patch(
-        'connect.eaas.helpers.get_distribution',
+        'connect.eaas.runner.helpers.get_distribution',
         return_value=mocked,
     )
     assert get_version() == '22.0'
@@ -294,7 +300,7 @@ def test_get_version(mocker):
 
 def test_get_version_exception(mocker):
     mocker.patch(
-        'connect.eaas.helpers.get_distribution',
+        'connect.eaas.runner.helpers.get_distribution',
         side_effect=DistributionNotFound(),
     )
     assert get_version() == '0.0.0'

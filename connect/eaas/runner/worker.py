@@ -4,7 +4,6 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 import asyncio
-import dataclasses
 import json
 import logging
 import time
@@ -18,9 +17,14 @@ from websockets.exceptions import (
     InvalidStatusCode,
 )
 
-
-from connect.eaas.config import ConfigHelper
-from connect.eaas.constants import (
+from connect.eaas.core.dataclasses import (
+    ExtensionPayload,
+    Message,
+    MessageType,
+    parse_message,
+)
+from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.constants import (
     DELAY_ON_CONNECT_EXCEPTION_SECONDS,
     MAX_RETRY_DELAY_TIME_SECONDS,
     MAX_RETRY_TIME_GENERIC_SECONDS,
@@ -28,20 +32,14 @@ from connect.eaas.constants import (
     RESULT_SENDER_MAX_RETRIES,
     RESULT_SENDER_WAIT_GRACE_SECONDS,
 )
-from connect.eaas.dataclasses import (
-    CapabilitiesPayload,
-    Message,
-    MessageType,
-    parse_message,
-)
-from connect.eaas.exceptions import (
+from connect.eaas.runner.exceptions import (
     CommunicationError,
     MaintenanceError,
     StopBackoffError,
 )
-from connect.eaas.handler import ExtensionHandler
-from connect.eaas.helpers import get_version, to_ordinal
-from connect.eaas.managers import (
+from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.helpers import get_version, to_ordinal
+from connect.eaas.runner.managers import (
     BackgroundTasksManager,
     InteractiveTasksManager,
     ScheduledTasksManager,
@@ -164,7 +162,7 @@ class Worker:
         await _connect()
 
     async def do_handshake(self):
-        await self.send(self.get_capabilities())
+        await self.send(self.get_extension_message())
         message = await asyncio.wait_for(self.ws.recv(), timeout=5)
         message = parse_message(json.loads(message))
         await self.process_configuration(message.data)
@@ -186,20 +184,21 @@ class Worker:
         except TimeoutError:  # pragma: no cover
             pass
 
-    def get_capabilities(self):
-        return dataclasses.asdict(
-            Message(
-                message_type=MessageType.CAPABILITIES,
-                data=CapabilitiesPayload(
-                    self.handler.capabilities,
-                    self.handler.variables,
-                    self.handler.schedulables,
-                    self.handler.readme,
-                    self.handler.changelog,
-                    get_version(),
-                ),
+    def get_extension_message(self):
+        return Message(
+            version=2,
+            message_type=MessageType.EXTENSION,
+            data=ExtensionPayload(
+                event_subscriptions=self.handler.capabilities,
+                variables=self.handler.variables,
+                schedulables=self.handler.schedulables,
+                repository={
+                    'readme_url': self.handler.readme,
+                    'changelog_url': self.handler.changelog,
+                },
+                runner_version=get_version(),
             ),
-        )
+        ).dict()
 
     async def run(self):  # noqa: CCR001
         """
@@ -257,7 +256,7 @@ class Worker:
         Process a message received from the websocket server.
         """
         message = parse_message(data)
-        if message.message_type == MessageType.CONFIGURATION:
+        if message.message_type == MessageType.SETTINGS:
             await self.process_configuration(message.data)
         elif message.message_type == MessageType.TASK:
             await self.process_task(message.data)
@@ -266,10 +265,12 @@ class Worker:
 
     async def process_task(self, task_data):
         """Send a task to a manager based on task category."""
-        logger.info(f'received new {task_data.task_category} task: {task_data.task_id}')
-        manager = getattr(self, f'{task_data.task_category}_manager')
+        logger.info(
+            f'received new {task_data.options.task_category} task: {task_data.options.task_id}',
+        )
+        manager = getattr(self, f'{task_data.options.task_category}_manager')
         await manager.submit(task_data)
-        logger.info(f'task {task_data.task_id} submitted for processing')
+        logger.info(f'task {task_data.options.task_id} submitted for processing')
 
     async def result_sender(self):  # noqa: CCR001
         """
@@ -289,28 +290,30 @@ class Worker:
                 f'results={self.results_queue.qsize()}',
             )
             result = await self.results_queue.get()
-            logger.info(f'Got a result from queue: {result.task_id}')
+            logger.info(f'Got a result from queue: {result.options.task_id}')
             retries = 0
             while retries < RESULT_SENDER_MAX_RETRIES:
                 try:
                     message = Message(
+                        version=2,
                         message_type=MessageType.TASK,
                         data=result,
                     )
                     await self.ensure_connection()
-                    await self.send(dataclasses.asdict(message))
-                    logger.info(f'Result for task {result.task_id} has been sent.')
+                    await self.send(message.dict())
+                    logger.info(f'Result for task {result.options.task_id} has been sent.')
                     break
                 except Exception:
                     logger.warning(
-                        f'Attemp {retries} to send results for task {result.task_id} has failed.',
+                        f'Attempt {retries} to send results for task '
+                        f'{result.options.task_id} has failed.',
                     )
                     retries += 1
                     await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
             else:
                 logger.warning(
                     f'Max retries exceeded ({RESULT_SENDER_MAX_RETRIES})'
-                    f' for sending results of task {result.task_id}',
+                    f' for sending results of task {result.options.task_id}',
                 )
 
             if not self.run_event.is_set():
@@ -375,8 +378,8 @@ class Worker:
         self.stop_event.set()
 
     async def send_shutdown(self):
-        msg = Message(MessageType.SHUTDOWN)
-        await self.send(dataclasses.asdict(msg))
+        msg = Message(message_type=MessageType.SHUTDOWN)
+        await self.send(msg.dict())
 
     def handle_signal(self):
         asyncio.create_task(self.send_shutdown())
