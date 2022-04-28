@@ -5,7 +5,7 @@ import pytest
 
 from connect.client import ClientError
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.core.dataclasses import SettingsPayload, TaskPayload
+from connect.eaas.core.dataclasses import SetupResponse, Task, TaskOutput
 from connect.eaas.runner.managers.base import TasksManagerBase
 from connect.eaas.runner.handler import ExtensionHandler
 
@@ -43,7 +43,7 @@ async def test_submit(mocker, extension_cls, task_payload):
 
     manager = TaskManager(config, handler, None)
 
-    task_data = TaskPayload(**task_payload('category', 'type', 'ID'))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     assert manager.running_tasks == 0
     await manager.submit(task_data)
 
@@ -62,9 +62,8 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
             try:
                 await future
             except Exception as e:
-                task = TaskPayload(**task_payload('category', 'type', 'ID'))
-                task.options.output = str(e)
-                return task
+                task_data.output = TaskOutput(result='fail', error=str(e))
+                return task_data
 
         async def get_argument(self, task_data):
             pass
@@ -95,13 +94,13 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
 
     manager = TaskManager(config, handler, mocked_put)
 
-    task_data = TaskPayload(**task_payload('category', 'type', 'ID'))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
     mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_not_awaited()
-    task_data.options.output = exc.message
+    task_data.output.error = exc.message
     mocked_put.assert_awaited_once_with(task_data)
     assert manager.running_tasks == 0
 
@@ -113,9 +112,8 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
             try:
                 await future
             except Exception as e:
-                task = TaskPayload(**task_payload('category', 'type', 'ID'))
-                task.options.output = str(e)
-                return task
+                task_data.output = TaskOutput(result='fail', error=str(e))
+                return task_data
 
         async def get_argument(self, task_data):
             pass
@@ -144,12 +142,12 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
 
     manager = TaskManager(config, handler, mocked_put)
 
-    task_data = TaskPayload(**task_payload('category', 'type', 'ID'))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
     mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_get_argument.assert_awaited_once_with(task_data)
-    task_data.options.output = 'invoke exc'
+    task_data.output.error = 'invoke exc'
     mocked_put.assert_awaited_once_with(task_data)
     assert manager.running_tasks == 0
 
@@ -185,7 +183,7 @@ async def test_submit_no_argument(mocker, extension_cls, task_payload):
 
     manager = TaskManager(config, handler, None)
 
-    task_data = TaskPayload(**task_payload('category', 'type', 'ID'))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
     mocked_new_extension.assert_called_once_with(task_data.options.task_id)
@@ -223,7 +221,7 @@ async def test_submit_no_method(mocker, extension_cls, task_payload):
 
     manager = TaskManager(config, handler, None)
 
-    task_data = TaskPayload(**task_payload('category', 'type', 'ID'))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
     mocked_new_extension.assert_called_once_with(task_data.options.task_id)
@@ -244,7 +242,7 @@ async def test_log_exception(mocker, extension_cls, settings_payload, task_paylo
             return None
 
     config = ConfigHelper()
-    dyn = SettingsPayload(**settings_payload)
+    dyn = SetupResponse(**settings_payload)
     dyn.logging.logging_api_key = None
     config.update_dynamic_config(dyn)
     mocker.patch('connect.eaas.runner.handler.get_extension_class')
@@ -256,7 +254,7 @@ async def test_log_exception(mocker, extension_cls, settings_payload, task_paylo
 
     manager = TaskManager(config, handler, None)
 
-    task_data = TaskPayload(**task_payload('category', 'type', 'ID'))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
 
     with caplog.at_level(logging.ERROR):
         manager.log_exception(task_data, Exception('test exc'))

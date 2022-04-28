@@ -12,7 +12,8 @@ from connect.client import R
 from connect.eaas.core.dataclasses import (
     EventType,
     ResultType,
-    TaskPayload,
+    Task,
+    TaskOutput,
 )
 from connect.eaas.core.extension import ProcessingResponse
 from connect.eaas.runner.constants import (
@@ -54,7 +55,7 @@ class BackgroundTasksManager(TasksManagerBase):
         """
         Wait for a background task to be completed and then build the task result message.
         """
-        result_message = TaskPayload(**task_data.dict())
+        result_message = Task(**task_data.dict())
         result = None
         try:
             begin_ts = time.monotonic()
@@ -62,21 +63,21 @@ class BackgroundTasksManager(TasksManagerBase):
                 future,
                 timeout=self.config.get_timeout('background'),
             )
-            result_message.options.result = result.status
-            result_message.options.runtime = time.monotonic() - begin_ts
+            result_message.output = TaskOutput(result=result.status)
+            result_message.output.runtime = time.monotonic() - begin_ts
             logger.info(
                 f'background task {task_data.options.task_id} result: {result.status}, took:'
-                f' {result_message.options.runtime}',
+                f' {result_message.output.runtime}',
             )
             if result.status in (ResultType.SKIP, ResultType.FAIL):
-                result_message.options.output = result.output
+                result_message.output.error = result.output
 
             if result.status == ResultType.RESCHEDULE:
-                result_message.options.countdown = result.countdown
+                result_message.output.countdown = result.countdown
         except Exception as e:
             self.log_exception(task_data, e)
-            result_message.options.result = ResultType.RETRY
-            result_message.options.output = traceback.format_exc()[:4000]
+            result_message.output = TaskOutput(result=ResultType.RETRY)
+            result_message.output.error = traceback.format_exc()[:4000]
 
         return result_message
 

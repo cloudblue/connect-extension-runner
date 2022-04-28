@@ -80,7 +80,7 @@ def get_environment():
 
 
 def get_extension_class():
-    ext_class = next(iter_entry_points('connect.eaas.runner.ext', 'extension'), None)
+    ext_class = next(iter_entry_points('connect.eaas.ext', 'extension'), None)
     return ext_class.load() if ext_class else None
 
 

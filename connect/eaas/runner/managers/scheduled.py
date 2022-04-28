@@ -10,7 +10,8 @@ import traceback
 
 from connect.eaas.core.dataclasses import (
     ResultType,
-    TaskPayload,
+    Task,
+    TaskOutput,
 )
 from connect.eaas.runner.managers.base import TasksManagerBase
 
@@ -37,23 +38,23 @@ class ScheduledTasksManager(TasksManagerBase):
         Wait for a scheduled task to be completed and then build the task result message.
         """
         result = None
-        result_message = TaskPayload(**task_data.dict())
+        result_message = Task(**task_data.dict())
         try:
             begin_ts = time.monotonic()
             result = await asyncio.wait_for(
                 future,
                 timeout=self.config.get_timeout('scheduled'),
             )
-            result_message.options.result = result.status
-            result_message.options.output = result.output
-            result_message.options.runtime = time.monotonic() - begin_ts
+            result_message.output = TaskOutput(result=result.status)
+            result_message.output.error = result.output
+            result_message.output.runtime = time.monotonic() - begin_ts
             logger.info(
                 f'interactive task {task_data.options.task_id} result: {result.status}, took:'
-                f' {result_message.options.runtime}',
+                f' {result_message.output.runtime}',
             )
         except Exception as e:
             self.log_exception(task_data, e)
-            result_message.options.result = ResultType.RETRY
-            result_message.options.output = traceback.format_exc()[:4000]
+            result_message.output = TaskOutput(result=ResultType.RETRY)
+            result_message.output.error = traceback.format_exc()[:4000]
 
         return result_message

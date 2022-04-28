@@ -11,7 +11,8 @@ import traceback
 from connect.eaas.core.dataclasses import (
     EventType,
     ResultType,
-    TaskPayload,
+    Task,
+    TaskOutput,
 )
 from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
 from connect.eaas.runner.managers.base import TasksManagerBase
@@ -33,33 +34,33 @@ class InteractiveTasksManager(TasksManagerBase):
         Wait for an interactive task to be completed and then build the task result message.
         """
         result = None
-        result_message = TaskPayload(**task_data.dict())
+        result_message = Task(**task_data.dict())
         try:
             begin_ts = time.monotonic()
             result = await asyncio.wait_for(
                 future,
                 timeout=self.config.get_timeout('interactive'),
             )
-            result_message.options.result = result.status
-            result_message.input.data = result.data
-            result_message.options.output = result.output
-            result_message.options.runtime = time.monotonic() - begin_ts
+            result_message.output = TaskOutput(result=result.status)
+            result_message.output.data = result.data
+            result_message.output.error = result.output
+            result_message.output.runtime = time.monotonic() - begin_ts
             logger.info(
                 f'interactive task {task_data.options.task_id} result: {result.status}, took:'
-                f' {result_message.options.runtime}',
+                f' {result_message.output.runtime}',
             )
         except Exception as e:
             self.log_exception(task_data, e)
-            result_message.options.result = ResultType.FAIL
-            result_message.options.output = traceback.format_exc()[:4000]
+            result_message.output = TaskOutput(result=ResultType.FAIL)
+            result_message.output.error = traceback.format_exc()[:4000]
             if result_message.input.event_type in (
                 EventType.PRODUCT_ACTION_EXECUTION,
                 EventType.PRODUCT_CUSTOM_EVENT_PROCESSING,
             ):
-                result_message.input.data = {
+                result_message.output.data = {
                     'http_status': 400,
                     'headers': None,
-                    'body': result_message.options.output,
+                    'body': result_message.output.error,
                 }
 
         return result_message

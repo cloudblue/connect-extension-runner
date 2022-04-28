@@ -5,12 +5,12 @@ import pytest
 
 from connect.eaas.core.dataclasses import (
     EventType,
-    Message,
-    MessageType,
+    LogMeta,
     ResultType,
-    SettingsPayload,
+    SetupResponse,
+    Task,
     TaskCategory,
-    TaskPayload,
+    TaskOutput,
 )
 from connect.eaas.core.extension import ProcessingResponse
 from connect.eaas.runner.config import ConfigHelper
@@ -33,7 +33,7 @@ from connect.eaas.runner.managers import BackgroundTasksManager
 async def test_sync(mocker, extension_cls, event_type, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -52,23 +52,24 @@ async def test_sync(mocker, extension_cls, event_type, settings_payload):
     manager = BackgroundTasksManager(config, handler, result_queue)
     manager.get_argument = mocker.AsyncMock(return_value={'id': 'PR-000', 'status': 'pending'})
 
-    task = TaskPayload(
+    task = Task(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.BACKGROUND,
-            'runtime': 1.0,
         },
         input={
             'event_type': event_type,
             'object_id': 'PR-000',
         },
+        output={
+            'result': ResultType.SUCCESS,
+            'runtime': 1.0,
+        },
     )
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(version=2, message_type=MessageType.TASK, data=task)
-    message.data.options.result = ResultType.SUCCESS
-    result_queue.assert_awaited_once_with(message.data)
+    result_queue.assert_awaited_once_with(task)
 
 
 @pytest.mark.asyncio
@@ -79,7 +80,7 @@ async def test_sync(mocker, extension_cls, event_type, settings_payload):
 async def test_async(mocker, extension_cls, event_type, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -98,23 +99,24 @@ async def test_async(mocker, extension_cls, event_type, settings_payload):
     manager = BackgroundTasksManager(config, handler, result_queue)
     manager.get_argument = mocker.AsyncMock(return_value={'id': 'PR-000', 'status': 'pending'})
 
-    task = TaskPayload(
+    task = Task(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.BACKGROUND,
-            'runtime': 1.0,
         },
         input={
             'event_type': event_type,
             'object_id': 'PR-000',
         },
+        output={
+            'result': ResultType.SUCCESS,
+            'runtime': 1.0,
+        },
     )
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(version=2, message_type=MessageType.TASK, data=task)
-    message.data.options.result = ResultType.SUCCESS
-    result_queue.assert_awaited_once_with(message.data)
+    result_queue.assert_awaited_once_with(task)
 
 
 @pytest.mark.asyncio
@@ -142,7 +144,7 @@ async def test_get_argument_subscription(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -171,7 +173,7 @@ async def test_get_argument_subscription(
         url=f'{api_url}/requests/PR-000',
         json=pr_data,
     )
-    task = TaskPayload(
+    task = Task(
         **task_payload(TaskCategory.BACKGROUND, event_type, 'PR-000'),
     )
     assert await manager.get_argument(task) == pr_data
@@ -202,7 +204,7 @@ async def test_get_argument_tcr(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -234,7 +236,7 @@ async def test_get_argument_tcr(
         url=f'{api_url}/tier/config-requests/TCR-000',
         json=tcr_data,
     )
-    task = TaskPayload(
+    task = Task(
         **task_payload(TaskCategory.BACKGROUND, event_type, 'TCR-000'),
     )
     assert await manager.get_argument(task) == tcr_data
@@ -261,7 +263,7 @@ async def test_get_argument_tar(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -315,7 +317,7 @@ async def test_get_argument_tar(
         headers={'Content-Range': 'items 0-1/1'},
     )
 
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND,
             EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
@@ -346,7 +348,7 @@ async def test_get_argument_tar_no_assets(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -401,7 +403,7 @@ async def test_get_argument_tar_no_assets(
         headers={'Content-Range': 'items 0-0/0'},
     )
 
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND,
             EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
@@ -443,7 +445,9 @@ async def test_get_argument_listing_request(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(
+        SetupResponse(**settings_payload, meta=LogMeta(hub_id='HB-0000')),
+    )
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -499,7 +503,7 @@ async def test_get_argument_listing_request(
         json=marketplace_data,
     )
 
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND,
             event_type,
@@ -534,8 +538,8 @@ async def test_get_argument_listing_request_vendor(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    dyn_cfg = SettingsPayload(**settings_payload)
-    dyn_cfg.service.hub_id = None
+    dyn_cfg = SetupResponse(**settings_payload)
+    dyn_cfg.logging.meta.hub_id = None
     config.update_dynamic_config(dyn_cfg)
     mocker.patch.object(
         ExtensionHandler,
@@ -578,7 +582,7 @@ async def test_get_argument_listing_request_vendor(
         json=lstr_data,
     )
 
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND,
             event_type,
@@ -613,7 +617,7 @@ async def test_get_argument_listing_request_no_hub(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -670,7 +674,7 @@ async def test_get_argument_listing_request_no_hub(
         json=marketplace_data,
     )
 
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND,
             event_type,
@@ -708,7 +712,7 @@ async def test_get_argument_usage_file(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -745,7 +749,7 @@ async def test_get_argument_usage_file(
         url=f'{api_url}/usage/files/UF-000',
         json=uf_data,
     )
-    task = TaskPayload(
+    task = Task(
         **task_payload(TaskCategory.BACKGROUND, EventType.USAGE_FILE_REQUEST_PROCESSING, 'UF-000'),
     )
     assert await manager.get_argument(task) == uf_data
@@ -772,7 +776,7 @@ async def test_get_argument_usage_chunks(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -809,7 +813,7 @@ async def test_get_argument_usage_chunks(
         url=f'{api_url}/usage/chunks/UFC-000',
         json=uf_data,
     )
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
@@ -858,7 +862,7 @@ async def test_get_argument_unsupported_status(
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -888,7 +892,7 @@ async def test_get_argument_unsupported_status(
         json=[],
         headers={'Content-Range': 'items 0-0/0'},
     )
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND, event_type, 'OBJ-000',
         ),
@@ -904,7 +908,7 @@ async def test_get_argument_unsupported_status(
 async def test_build_response_done(task_payload):
     config = ConfigHelper()
     manager = BackgroundTasksManager(config, None, None)
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
@@ -915,7 +919,7 @@ async def test_build_response_done(task_payload):
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.options.result == result.status
+    assert response.output.result == result.status
 
 
 @pytest.mark.asyncio
@@ -929,7 +933,7 @@ async def test_build_response_done(task_payload):
 async def test_build_response_fail_skip(task_payload, result):
     config = ConfigHelper()
     manager = BackgroundTasksManager(config, None, None)
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
@@ -939,15 +943,15 @@ async def test_build_response_fail_skip(task_payload, result):
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.options.result == result.status
-    assert response.options.output == result.output
+    assert response.output.result == result.status
+    assert response.output.error == result.output
 
 
 @pytest.mark.asyncio
 async def test_build_response_reschedule(task_payload):
     config = ConfigHelper()
     manager = BackgroundTasksManager(config, None, None)
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
@@ -958,8 +962,8 @@ async def test_build_response_reschedule(task_payload):
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.options.result == result.status
-    assert response.options.countdown == result.countdown
+    assert response.output.result == result.status
+    assert response.output.countdown == result.countdown
 
 
 @pytest.mark.asyncio
@@ -968,7 +972,7 @@ async def test_build_response_exception(mocker, task_payload):
     manager = BackgroundTasksManager(config, None, None)
     manager.log_exception = mocker.MagicMock()
 
-    task = TaskPayload(
+    task = Task(
         **task_payload(
             TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
@@ -978,8 +982,8 @@ async def test_build_response_exception(mocker, task_payload):
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.options.result == ResultType.RETRY
-    assert 'Awesome error message' in response.options.output
+    assert response.output.result == ResultType.RETRY
+    assert 'Awesome error message' in response.output.error
     manager.log_exception.assert_called_once()
 
 
@@ -992,15 +996,14 @@ async def test_send_skip_response(mocker, task_payload):
     mocked_time.monotonic.side_effect = (1.0, 2.0)
     manager = BackgroundTasksManager(config, None, mocked_put)
 
-    task = TaskPayload(
+    task = Task(
         **task_payload(
-            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000', 1.0,
+            TaskCategory.BACKGROUND, EventType.PART_USAGE_FILE_REQUEST_PROCESSING, 'UFC-000',
         ),
     )
 
     manager.send_skip_response(task, 'test output')
     await asyncio.sleep(.01)
-    task.options.result = ResultType.SKIP
-    task.options.output = 'test output'
+    task.output = TaskOutput(result=ResultType.SKIP, error='test output', runtime=1.0)
 
     mocked_put.assert_awaited_once_with(task)

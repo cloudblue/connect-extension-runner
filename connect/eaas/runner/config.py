@@ -10,7 +10,7 @@ from connect.eaas.runner.helpers import (
     get_environment,
     get_version,
 )
-from connect.eaas.core.dataclasses import Logging, Service
+from connect.eaas.core.dataclasses import Logging, LogMeta
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,15 @@ class ConfigHelper:
 
     @property
     def service_id(self):
-        return self.dyn_config.service.service_id
+        return self.dyn_config.logging.meta.service_id
 
     @property
-    def product_id(self):
-        return self.dyn_config.service.product_id
+    def products(self):
+        return self.dyn_config.logging.meta.products
 
     @property
     def hub_id(self):
-        return self.dyn_config.service.hub_id
+        return self.dyn_config.logging.meta.hub_id
 
     @property
     def environment_id(self):
@@ -55,11 +55,11 @@ class ConfigHelper:
 
     @property
     def account_id(self):
-        return self.dyn_config.service.account_id
+        return self.dyn_config.logging.meta.account_id
 
     @property
     def account_name(self):
-        return self.dyn_config.service.account_name
+        return self.dyn_config.logging.meta.account_name
 
     @property
     def logging_api_key(self):
@@ -113,31 +113,32 @@ class ConfigHelper:
 
     def update_dynamic_config(self, data):
         """Updates the dynamic configuration."""
-        if data.service is None:
-            data.service = Service()
         if data.logging is None:
             data.logging = Logging()
+
+        if data.logging.meta is None:
+            data.logging.meta = LogMeta()
 
         if not self.dyn_config:
             self.dyn_config = data
         else:
-            self.dyn_config.service.service_id = (
-                data.service.service_id or self.dyn_config.service.service_id
+            self.dyn_config.logging.meta.service_id = (
+                data.logging.meta.service_id or self.dyn_config.logging.meta.service_id
             )
-            self.dyn_config.service.product_id = (
-                data.service.product_id or self.dyn_config.service.product_id
+            self.dyn_config.logging.meta.products = (
+                data.logging.meta.products or self.dyn_config.logging.meta.products
             )
-            self.dyn_config.service.hub_id = (
-                data.service.hub_id or self.dyn_config.service.hub_id
+            self.dyn_config.logging.meta.hub_id = (
+                data.logging.meta.hub_id or self.dyn_config.logging.meta.hub_id
             )
             self.dyn_config.environment_type = (
                 data.environment_type or self.dyn_config.environment_type
             )
-            self.dyn_config.service.account_id = (
-                data.service.account_id or self.dyn_config.service.account_id
+            self.dyn_config.logging.meta.account_id = (
+                data.logging.meta.account_id or self.dyn_config.logging.meta.account_id
             )
-            self.dyn_config.service.account_name = (
-                data.service.account_name or self.dyn_config.service.account_name
+            self.dyn_config.logging.meta.account_name = (
+                data.logging.meta.account_name or self.dyn_config.logging.meta.account_name
             )
             self.dyn_config.variables = data.variables or self.dyn_config.variables
             self.dyn_config.logging.logging_api_key = (
