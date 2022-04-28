@@ -1,15 +1,14 @@
-from connect.eaas.core.dataclasses import Logging, Service, SettingsPayload
+from connect.eaas.core.dataclasses import Logging, LogMeta, SetupResponse
 from connect.eaas.runner.config import ConfigHelper
 
 
 def test_new_extension(mocker, settings_payload, extension_cls):
     from connect.eaas.runner.handler import ExtensionHandler
     config = ConfigHelper()
-    dyn_config = SettingsPayload(
+    dyn_config = SetupResponse(
         varibles=settings_payload.get('configuration'),
         environment_type=settings_payload.get('environment_type'),
-        logging=Logging(**settings_payload),
-        service=Service(**settings_payload),
+        logging=Logging(**settings_payload, meta=LogMeta(**settings_payload)),
     )
     dyn_config.logging.logging_api_key = 'test_key'
     config.update_dynamic_config(dyn_config)

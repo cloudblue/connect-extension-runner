@@ -18,10 +18,10 @@ from websockets.exceptions import (
 )
 
 from connect.eaas.core.dataclasses import (
-    ExtensionPayload,
     Message,
     MessageType,
     parse_message,
+    SetupRequest,
 )
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.constants import (
@@ -187,8 +187,8 @@ class Worker:
     def get_extension_message(self):
         return Message(
             version=2,
-            message_type=MessageType.EXTENSION,
-            data=ExtensionPayload(
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
                 event_subscriptions=self.handler.capabilities,
                 variables=self.handler.variables,
                 schedulables=self.handler.schedulables,
@@ -256,7 +256,7 @@ class Worker:
         Process a message received from the websocket server.
         """
         message = parse_message(data)
-        if message.message_type == MessageType.SETTINGS:
+        if message.message_type == MessageType.SETUP_RESPONSE:
             await self.process_configuration(message.data)
         elif message.message_type == MessageType.TASK:
             await self.process_task(message.data)

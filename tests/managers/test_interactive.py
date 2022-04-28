@@ -12,12 +12,11 @@ from connect.eaas.runner.constants import (
 )
 from connect.eaas.core.dataclasses import (
     EventType,
-    Message,
-    MessageType,
     ResultType,
-    SettingsPayload,
+    SetupResponse,
+    Task,
     TaskCategory,
-    TaskPayload,
+    TaskOutput,
 )
 from connect.eaas.core.extension import (
     CustomEventResponse,
@@ -36,7 +35,7 @@ from connect.eaas.runner.managers import InteractiveTasksManager
 async def test_validation_sync(mocker, extension_cls, event_type, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -60,11 +59,10 @@ async def test_validation_sync(mocker, extension_cls, event_type, settings_paylo
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = InteractiveTasksManager(config, handler, result_queue)
 
-    task = TaskPayload(
+    task = Task(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.INTERACTIVE,
-            'runtime': 1.0,
         },
         input={
             'event_type': event_type,
@@ -75,10 +73,10 @@ async def test_validation_sync(mocker, extension_cls, event_type, settings_paylo
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(version=2, message_type=MessageType.TASK, data=task)
-    message.data.options.result = ResultType.SUCCESS
-    message.data.input.data = task_response_data
-    result_queue.assert_awaited_once_with(message.data)
+    task.output = TaskOutput(
+        result=ResultType.SUCCESS, runtime=1.0, data={'task': 'data', 'valid': True},
+    )
+    result_queue.assert_awaited_once_with(task)
 
 
 @pytest.mark.asyncio
@@ -89,7 +87,7 @@ async def test_validation_sync(mocker, extension_cls, event_type, settings_paylo
 async def test_validation_async(mocker, extension_cls, event_type, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -114,11 +112,10 @@ async def test_validation_async(mocker, extension_cls, event_type, settings_payl
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = InteractiveTasksManager(config, handler, result_queue)
 
-    task = TaskPayload(
+    task = Task(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.INTERACTIVE,
-            'runtime': 1.0,
         },
         input={
             'event_type': event_type,
@@ -129,10 +126,10 @@ async def test_validation_async(mocker, extension_cls, event_type, settings_payl
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(version=2, message_type=MessageType.TASK, data=task)
-    message.data.options.result = ResultType.SUCCESS
-    message.data.input.data = task_response_data
-    result_queue.assert_awaited_once_with(message.data)
+    task.output = TaskOutput(
+        result=ResultType.SUCCESS, runtime=1.0, data={'task': 'data', 'valid': True},
+    )
+    result_queue.assert_awaited_once_with(task)
 
 
 @pytest.mark.asyncio
@@ -152,7 +149,7 @@ async def test_validation_async(mocker, extension_cls, event_type, settings_payl
 async def test_others_sync(mocker, extension_cls, event_type, result, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -174,11 +171,10 @@ async def test_others_sync(mocker, extension_cls, event_type, result, settings_p
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = InteractiveTasksManager(config, handler, result_queue)
 
-    task = TaskPayload(
+    task = Task(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.INTERACTIVE,
-            'runtime': 1.0,
         },
         input={
             'event_type': event_type,
@@ -189,14 +185,16 @@ async def test_others_sync(mocker, extension_cls, event_type, result, settings_p
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(version=2, message_type=MessageType.TASK, data=task)
-    message.data.options.result = ResultType.SUCCESS
-    message.data.input.data = {
-        'http_status': 200,
-        'headers': {'X-Test': 'value'},
-        'body': {'response': 'data'},
-    }
-    result_queue.assert_awaited_once_with(message.data)
+    task.output = TaskOutput(
+        result=ResultType.SUCCESS,
+        runtime=1.0,
+        data={
+            'http_status': 200,
+            'headers': {'X-Test': 'value'},
+            'body': {'response': 'data'},
+        },
+    )
+    result_queue.assert_awaited_once_with(task)
 
 
 @pytest.mark.asyncio
@@ -216,7 +214,7 @@ async def test_others_sync(mocker, extension_cls, event_type, result, settings_p
 async def test_others_async(mocker, extension_cls, event_type, result, settings_payload):
 
     config = ConfigHelper()
-    config.update_dynamic_config(SettingsPayload(**settings_payload))
+    config.update_dynamic_config(SetupResponse(**settings_payload))
     mocker.patch.object(
         ExtensionHandler,
         'capabilities',
@@ -239,11 +237,10 @@ async def test_others_async(mocker, extension_cls, event_type, result, settings_
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = InteractiveTasksManager(config, handler, result_queue)
 
-    task = TaskPayload(
+    task = Task(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.INTERACTIVE,
-            'runtime': 1.0,
         },
         input={
             'event_type': event_type,
@@ -254,20 +251,22 @@ async def test_others_async(mocker, extension_cls, event_type, result, settings_
 
     await manager.submit(task)
     await asyncio.sleep(.01)
-    message = Message(version=2, message_type=MessageType.TASK, data=task)
-    message.data.options.result = ResultType.SUCCESS
-    message.data.input.data = {
-        'http_status': 200,
-        'headers': {'X-Test': 'value'},
-        'body': {'response': 'data'},
-    }
-    result_queue.assert_awaited_once_with(message.data)
+    task.output = TaskOutput(
+        result=ResultType.SUCCESS,
+        runtime=1.0,
+        data={
+            'http_status': 200,
+            'headers': {'X-Test': 'value'},
+            'body': {'response': 'data'},
+        },
+    )
+    result_queue.assert_awaited_once_with(task)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('event_type', INTERACTIVE_EVENT_TYPES)
 async def test_get_argument(task_payload, event_type):
-    task = TaskPayload(**task_payload(TaskCategory.INTERACTIVE, event_type, 'PR-000'))
+    task = Task(**task_payload(TaskCategory.INTERACTIVE, event_type, 'PR-000'))
     task.input.data = {'some': 'data'}
 
     config = ConfigHelper()
@@ -309,14 +308,14 @@ async def test_get_argument(task_payload, event_type):
 async def test_build_response_done(task_payload, event_type, result):
     config = ConfigHelper()
     manager = InteractiveTasksManager(config, None, None)
-    task = TaskPayload(**task_payload(TaskCategory.INTERACTIVE, event_type, 'ID-000'))
+    task = Task(**task_payload(TaskCategory.INTERACTIVE, event_type, 'ID-000'))
     future = asyncio.Future()
     future.set_result(result)
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.options.result == result.status
-    assert response.input.data == result.data
+    assert response.output.result == result.status
+    assert response.output.data == result.data
 
 
 @pytest.mark.asyncio
@@ -329,14 +328,14 @@ async def test_build_response_exception_validation(mocker, event_type, task_payl
     manager = InteractiveTasksManager(config, None, None)
     manager.log_exception = mocker.MagicMock()
 
-    task = TaskPayload(**task_payload(TaskCategory.INTERACTIVE, event_type, 'ID-000'))
+    task = Task(**task_payload(TaskCategory.INTERACTIVE, event_type, 'ID-000'))
     future = asyncio.Future()
     future.set_exception(Exception('Awesome error message'))
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.options.result == ResultType.FAIL
-    assert 'Awesome error message' in response.options.output
+    assert response.output.result == ResultType.FAIL
+    assert 'Awesome error message' in response.output.error
     manager.log_exception.assert_called_once()
 
 
@@ -350,15 +349,15 @@ async def test_build_response_exception_others(mocker, event_type, task_payload)
     manager = InteractiveTasksManager(config, None, None)
     manager.log_exception = mocker.MagicMock()
 
-    task = TaskPayload(**task_payload(TaskCategory.INTERACTIVE, event_type, 'ID-000'))
+    task = Task(**task_payload(TaskCategory.INTERACTIVE, event_type, 'ID-000'))
     future = asyncio.Future()
     future.set_exception(Exception('Awesome error message'))
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.options.result == ResultType.FAIL
-    assert 'Awesome error message' in response.options.output
-    assert response.input.data['http_status'] == 400
-    assert response.input.data['headers'] is None
-    assert response.input.data['body'] == response.options.output
+    assert response.output.result == ResultType.FAIL
+    assert 'Awesome error message' in response.output.error
+    assert response.output.data['http_status'] == 400
+    assert response.output.data['headers'] is None
+    assert response.output.data['body'] == response.output.error
     manager.log_exception.assert_called_once()

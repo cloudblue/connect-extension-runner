@@ -1,4 +1,4 @@
-from connect.eaas.core.dataclasses import Logging, Service, SettingsPayload
+from connect.eaas.core.dataclasses import Logging, LogMeta, SetupResponse
 from connect.eaas.runner.config import ConfigHelper
 
 
@@ -23,34 +23,34 @@ def test_get_user_agent(mocker):
 
 def test_update_dynamic_config():
     config = ConfigHelper()
-    payload = SettingsPayload(
+    payload = SetupResponse(
         variables={'var': 'value'},
         environment_type='production',
         logging=Logging(
             log_level='DEBUG',
             logging_api_key='logging_api_key',
             runner_log_level='INFO',
-        ),
-        service=Service(
-            service_id='SRVC-0001',
-            product_id='PRD-000',
-            hub_id='HB-0000',
-            account_id='VA-000',
-            account_name='Acme Inc',
+            meta=LogMeta(
+                service_id='SRVC-0001',
+                product_id='PRD-000',
+                hub_id='HB-0000',
+                account_id='VA-000',
+                account_name='Acme Inc',
+            ),
         ),
     )
 
     config.update_dynamic_config(payload)
     assert config.variables == payload.variables
-    assert config.service_id == payload.service.service_id
-    assert config.product_id == payload.service.product_id
-    assert config.hub_id == payload.service.hub_id
-    assert config.account_id == payload.service.account_id
-    assert config.account_name == payload.service.account_name
+    assert config.service_id == payload.logging.meta.service_id
+    assert config.products == payload.logging.meta.products
+    assert config.hub_id == payload.logging.meta.hub_id
+    assert config.account_id == payload.logging.meta.account_id
+    assert config.account_name == payload.logging.meta.account_name
     assert config.logging_api_key == payload.logging.logging_api_key
     assert config.environment_type == payload.environment_type
 
-    payload2 = SettingsPayload(
+    payload2 = SetupResponse(
         logging=Logging(
             log_level='WARNING',
             runner_log_level='ERROR',
@@ -59,24 +59,24 @@ def test_update_dynamic_config():
 
     config.update_dynamic_config(payload2)
     assert config.variables == payload.variables
-    assert config.service_id == payload.service.service_id
-    assert config.product_id == payload.service.product_id
-    assert config.hub_id == payload.service.hub_id
-    assert config.account_id == payload.service.account_id
-    assert config.account_name == payload.service.account_name
+    assert config.service_id == payload.logging.meta.service_id
+    assert config.products == payload.logging.meta.products
+    assert config.hub_id == payload.logging.meta.hub_id
+    assert config.account_id == payload.logging.meta.account_id
+    assert config.account_name == payload.logging.meta.account_name
     assert config.logging_api_key == payload.logging.logging_api_key
     assert config.environment_type == payload.environment_type
 
-    payload3 = SettingsPayload(
+    payload3 = SetupResponse(
         variables={'var2': 'value2'},
     )
 
     config.update_dynamic_config(payload3)
     assert config.variables == payload3.variables
-    assert config.service_id == payload.service.service_id
-    assert config.product_id == payload.service.product_id
-    assert config.hub_id == payload.service.hub_id
-    assert config.account_id == payload.service.account_id
-    assert config.account_name == payload.service.account_name
+    assert config.service_id == payload.logging.meta.service_id
+    assert config.products == payload.logging.meta.products
+    assert config.hub_id == payload.logging.meta.hub_id
+    assert config.account_id == payload.logging.meta.account_id
+    assert config.account_name == payload.logging.meta.account_name
     assert config.logging_api_key == payload.logging.logging_api_key
     assert config.environment_type == payload.environment_type

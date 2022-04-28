@@ -68,13 +68,13 @@ def settings_payload():
             'logging_api_key': None,
             'log_level': 'DEBUG',
             'runner_log_level': 'INFO',
-        },
-        'service': {
-            'account_id': 'account_id',
-            'account_name': 'account_name',
-            'service_id': 'service_id',
-            'product_id': 'product_id',
-            'hub_id': 'HB-0000',
+            'meta': {
+                'account_id': 'account_id',
+                'account_name': 'account_name',
+                'service_id': 'service_id',
+                'products': ['product_id'],
+                'hub_id': 'HB-0000',
+            },
         },
     }
 

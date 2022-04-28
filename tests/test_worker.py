@@ -8,13 +8,13 @@ from websockets.exceptions import ConnectionClosedError, InvalidStatusCode, WebS
 from connect.eaas.runner.constants import RESULT_SENDER_MAX_RETRIES
 from connect.eaas.core.dataclasses import (
     EventType,
-    ExtensionPayload,
     Message,
     MessageType,
     ResultType,
-    SettingsPayload,
+    SetupRequest,
+    SetupResponse,
+    Task,
     TaskCategory,
-    TaskPayload,
 )
 from connect.eaas.runner.exceptions import (
     CommunicationError,
@@ -68,8 +68,8 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
     data_to_send = Message(
         version=2,
-        message_type=MessageType.SETTINGS,
-        data=SettingsPayload(**settings_payload),
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(**settings_payload),
     ).dict()
 
     handler = WSHandler(
@@ -88,8 +88,8 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     handler.assert_received(
         Message(
             version=2,
-            message_type=MessageType.EXTENSION,
-            data=ExtensionPayload(
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
                 event_subscriptions=capabilities,
                 variables=[],
                 schedulables=[],
@@ -105,11 +105,11 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     assert worker.config.variables == settings_payload['variables']
     assert worker.config.logging_api_key == settings_payload['logging']['logging_api_key']
     assert worker.config.environment_type == settings_payload['environment_type']
-    assert worker.config.account_id == settings_payload['service']['account_id']
-    assert worker.config.account_name == settings_payload['service']['account_name']
-    assert worker.config.service_id == settings_payload['service']['service_id']
-    assert worker.config.product_id == settings_payload['service']['product_id']
-    assert worker.config.hub_id == settings_payload['service']['hub_id']
+    assert worker.config.account_id == settings_payload['logging']['meta']['account_id']
+    assert worker.config.account_name == settings_payload['logging']['meta']['account_name']
+    assert worker.config.service_id == settings_payload['logging']['meta']['service_id']
+    assert worker.config.products == settings_payload['logging']['meta']['products']
+    assert worker.config.hub_id == settings_payload['logging']['meta']['hub_id']
 
 
 @pytest.mark.asyncio
@@ -177,13 +177,13 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
     data_to_send = [
         Message(
             version=2,
-            message_type=MessageType.SETTINGS,
-            data=SettingsPayload(**settings_payload),
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
         ).dict(),
         Message(
             version=2,
             message_type=MessageType.TASK,
-            data=TaskPayload(
+            data=Task(
                 options={
                     'task_id': 'TQ-000',
                     'task_category': TaskCategory.BACKGROUND,
@@ -214,8 +214,8 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
     handler.assert_received(
         Message(
             version=2,
-            message_type=MessageType.EXTENSION,
-            data=ExtensionPayload(
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
                 event_subscriptions=capabilities,
                 variables=[],
                 schedulables=[],
@@ -232,16 +232,18 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
         Message(
             version=2,
             message_type=MessageType.TASK,
-            data=TaskPayload(
+            data=Task(
                 options={
                     'task_id': 'TQ-000',
                     'task_category': TaskCategory.BACKGROUND,
-                    'result': ResultType.SUCCESS,
-                    'runtime': 1.0,
                 },
                 input={
                     'event_type': EventType.ASSET_PURCHASE_REQUEST_PROCESSING,
                     'object_id': 'PR-000',
+                },
+                output={
+                    'result': ResultType.SUCCESS,
+                    'runtime': 1.0,
                 },
             ),
         ).dict(),
@@ -315,13 +317,13 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
     data_to_send = [
         Message(
             version=2,
-            message_type=MessageType.SETTINGS,
-            data=SettingsPayload(**settings_payload),
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
         ).dict(),
         Message(
             version=2,
             message_type=MessageType.TASK,
-            data=TaskPayload(
+            data=Task(
                 options={
                     'task_id': 'TQ-000',
                     'task_category': TaskCategory.BACKGROUND,
@@ -352,8 +354,8 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
     handler.assert_received(
         Message(
             version=2,
-            message_type=MessageType.EXTENSION,
-            data=ExtensionPayload(
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
                 event_subscriptions=capabilities,
                 variables=[],
                 schedulables=[],
@@ -369,16 +371,18 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
         Message(
             version=2,
             message_type=MessageType.TASK,
-            data=TaskPayload(
+            data=Task(
                 options={
                     'task_id': 'TQ-000',
                     'task_category': TaskCategory.BACKGROUND,
-                    'result': ResultType.SUCCESS,
-                    'runtime': 1.0,
                 },
                 input={
                     'event_type': EventType.TIER_CONFIG_SETUP_REQUEST_PROCESSING,
                     'object_id': 'TCR-000',
+                },
+                output={
+                    'result': ResultType.SUCCESS,
+                    'runtime': 1.0,
                 },
             ),
         ).dict(),
@@ -395,7 +399,7 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
     }
 
     schedule_url = f'https://127.0.0.1:{unused_port}/public/v1/devops'
-    service_id = settings_payload['service']['service_id']
+    service_id = settings_payload['logging']['meta']['service_id']
     schedule_url = f'{schedule_url}/services/{service_id}/environments/ENV-000-0001'
     schedule_url = f'{schedule_url}/schedules/{schedule_data["id"]}'
 
@@ -455,13 +459,13 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
     data_to_send = [
         Message(
             version=2,
-            message_type=MessageType.SETTINGS,
-            data=SettingsPayload(**settings_payload),
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
         ).dict(),
         Message(
             version=2,
             message_type=MessageType.TASK,
-            data=TaskPayload(
+            data=Task(
                 options={
                     'task_id': 'TQ-000',
                     'task_category': TaskCategory.SCHEDULED,
@@ -493,8 +497,8 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
     handler.assert_received(
         Message(
             version=2,
-            message_type=MessageType.EXTENSION,
-            data=ExtensionPayload(
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
                 event_subscriptions=capabilities,
                 variables=[],
                 schedulables=[
@@ -517,16 +521,18 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
         Message(
             version=2,
             message_type=MessageType.TASK,
-            data=TaskPayload(
+            data=Task(
                 options={
                     'task_id': 'TQ-000',
                     'task_category': TaskCategory.SCHEDULED,
-                    'result': ResultType.SUCCESS,
-                    'runtime': 1.0,
                 },
                 input={
                     'event_type': EventType.SCHEDULED_EXECUTION,
                     'object_id': schedule_data['id'],
+                },
+                output={
+                    'result': ResultType.SUCCESS,
+                    'runtime': 1.0,
                 },
             ),
         ).dict(),
@@ -575,8 +581,8 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     data_to_send = [
         Message(
             version=2,
-            message_type=MessageType.SETTINGS,
-            data=SettingsPayload(**settings_payload),
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
         ).dict(),
         Message(message_type=MessageType.SHUTDOWN).dict(),
     ]
@@ -853,8 +859,8 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
 
     data_to_send = Message(
         version=2,
-        message_type=MessageType.SETTINGS,
-        data=SettingsPayload(
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(
             variables={
                 'var1': 'value1',
                 'var2': 'value2',
@@ -880,8 +886,8 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
     handler.assert_received(
         Message(
             version=2,
-            message_type=MessageType.EXTENSION,
-            data=ExtensionPayload(
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
                 event_subscriptions=capabilities,
                 variables=variables,
                 schedulables=[],
@@ -934,8 +940,8 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
 
     data_to_send = Message(
         version=2,
-        message_type=MessageType.SETTINGS,
-        data=SettingsPayload(
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(
             variables={
                 'var1': 'value1',
                 'var2': 'value2',
@@ -961,8 +967,8 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
     handler.assert_received(
         Message(
             version=2,
-            message_type=MessageType.EXTENSION,
-            data=ExtensionPayload(
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
                 event_subscriptions=capabilities,
                 variables=None,
                 schedulables=None,
@@ -983,12 +989,13 @@ async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
 
     with caplog.at_level(logging.WARNING):
         worker = Worker(secure=True)
-        worker.config.update_dynamic_config(SettingsPayload(**settings_payload))
+        worker.get_extension_message = mocker.MagicMock(return_value={})
+        worker.config.update_dynamic_config(SetupResponse(**settings_payload))
         worker.run = mocker.AsyncMock()
         worker.send = mocker.AsyncMock(side_effect=[Exception('retry'), None])
         worker.ws = mocker.AsyncMock(closed=False)
         await worker.results_queue.put(
-            TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
+            Task(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
         )
         assert worker.results_queue.empty() is False
         task = asyncio.create_task(worker.start())
@@ -1009,14 +1016,15 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
 
     with caplog.at_level(logging.WARNING):
         worker = Worker(secure=True)
-        worker.config.update_dynamic_config(SettingsPayload(**settings_payload))
+        worker.get_extension_message = mocker.MagicMock(return_value={})
+        worker.config.update_dynamic_config(SetupResponse(**settings_payload))
         worker.run = mocker.AsyncMock()
         worker.send = mocker.AsyncMock(
             side_effect=[Exception('retry') for _ in range(RESULT_SENDER_MAX_RETRIES)],
         )
         worker.ws = mocker.AsyncMock(closed=False)
         await worker.results_queue.put(
-            TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
+            Task(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
         )
         assert worker.results_queue.empty() is False
         task = asyncio.create_task(worker.start())
@@ -1031,27 +1039,6 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
         )
         in [r.message for r in caplog.records]
     )
-
-
-@pytest.mark.asyncio
-async def test_sender_ws_closed(mocker, settings_payload, task_payload):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
-
-    worker = Worker(secure=True)
-    worker.config.update_dynamic_config(SettingsPayload(**settings_payload))
-    worker.run = mocker.AsyncMock()
-    worker.send = mocker.AsyncMock()
-    worker.ws = mocker.AsyncMock(open=False)
-    await worker.results_queue.put(
-        TaskPayload(**task_payload(TaskCategory.BACKGROUND, 'test', 'TQ-000')),
-    )
-    assert worker.results_queue.empty() is False
-    task = asyncio.create_task(worker.start())
-    await asyncio.sleep(.1)
-    worker.stop()
-    await task
-    worker.send.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
@@ -1237,8 +1224,8 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
     data_to_send = [
         Message(
             version=2,
-            message_type=MessageType.SETTINGS,
-            data=SettingsPayload(**settings_payload),
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
         ).dict(),
         Message(message_type=MessageType.SHUTDOWN).dict(),
     ]
@@ -1249,7 +1236,7 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
         ['receive', 'send', 'send'] + ['receive' for _ in range(100)],
     )
 
-    task_result = TaskPayload(
+    task_result = Task(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.BACKGROUND,
@@ -1307,19 +1294,19 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
     )
     mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
 
-    dyn_config = SettingsPayload(**settings_payload)
+    dyn_config = SetupResponse(**settings_payload)
     settings_payload['variables'] = {'conf2': 'val2'}
-    updated_config = SettingsPayload(**settings_payload)
+    updated_config = SetupResponse(**settings_payload)
 
     data_to_send = [
         Message(
             version=2,
-            message_type=MessageType.SETTINGS,
+            message_type=MessageType.SETUP_RESPONSE,
             data=dyn_config,
         ).dict(),
         Message(
             version=2,
-            message_type=MessageType.SETTINGS,
+            message_type=MessageType.SETUP_RESPONSE,
             data=updated_config,
         ).dict(),
     ]
@@ -1345,7 +1332,7 @@ async def test_handle_signal(mocker, settings_payload, task_payload, caplog):
     mocker.patch('connect.eaas.runner.handler.get_extension_type')
 
     worker = Worker(secure=True)
-    worker.config.update_dynamic_config(SettingsPayload(**settings_payload))
+    worker.config.update_dynamic_config(SetupResponse(**settings_payload))
     worker.run = mocker.AsyncMock()
     worker.send = mocker.AsyncMock()
     worker.result_sender = mocker.AsyncMock()
