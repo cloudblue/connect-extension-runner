@@ -9,13 +9,9 @@ import time
 import traceback
 
 from connect.client import R
-from connect.eaas.core.dataclasses import (
-    EventType,
-    ResultType,
-    Task,
-    TaskOutput,
-)
+from connect.eaas.core.enums import EventType, ResultType
 from connect.eaas.core.extension import ProcessingResponse
+from connect.eaas.core.proto import Task, TaskOutput
 from connect.eaas.runner.constants import (
     ASSET_REQUEST_EVENT_TYPES,
     EVENT_TYPE_EXT_METHOD_MAP,
@@ -70,14 +66,14 @@ class BackgroundTasksManager(TasksManagerBase):
                 f' {result_message.output.runtime}',
             )
             if result.status in (ResultType.SKIP, ResultType.FAIL):
-                result_message.output.error = result.output
+                result_message.output.message = result.output
 
             if result.status == ResultType.RESCHEDULE:
                 result_message.output.countdown = result.countdown
         except Exception as e:
             self.log_exception(task_data, e)
             result_message.output = TaskOutput(result=ResultType.RETRY)
-            result_message.output.error = traceback.format_exc()[:4000]
+            result_message.output.message = traceback.format_exc()[:4000]
 
         return result_message
 

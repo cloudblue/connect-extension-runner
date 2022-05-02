@@ -17,10 +17,9 @@ from websockets.exceptions import (
     InvalidStatusCode,
 )
 
-from connect.eaas.core.dataclasses import (
+from connect.eaas.core.proto import (
     Message,
     MessageType,
-    parse_message,
     SetupRequest,
 )
 from connect.eaas.runner.config import ConfigHelper
@@ -164,7 +163,7 @@ class Worker:
     async def do_handshake(self):
         await self.send(self.get_extension_message())
         message = await asyncio.wait_for(self.ws.recv(), timeout=5)
-        message = parse_message(json.loads(message))
+        message = Message.deserialize(json.loads(message))
         await self.process_configuration(message.data)
 
     async def send(self, message):
@@ -255,7 +254,7 @@ class Worker:
         """
         Process a message received from the websocket server.
         """
-        message = parse_message(data)
+        message = Message.deserialize(data)
         if message.message_type == MessageType.SETUP_RESPONSE:
             await self.process_configuration(message.data)
         elif message.message_type == MessageType.TASK:
@@ -300,7 +299,7 @@ class Worker:
                         data=result,
                     )
                     await self.ensure_connection()
-                    await self.send(message.dict())
+                    await self.send(message.serialize())
                     logger.info(f'Result for task {result.options.task_id} has been sent.')
                     break
                 except Exception:
@@ -378,8 +377,8 @@ class Worker:
         self.stop_event.set()
 
     async def send_shutdown(self):
-        msg = Message(message_type=MessageType.SHUTDOWN)
-        await self.send(msg.dict())
+        msg = Message(version=2, message_type=MessageType.SHUTDOWN)
+        await self.send(msg.serialize())
 
     def handle_signal(self):
         asyncio.create_task(self.send_shutdown())

@@ -3,16 +3,14 @@ import time
 
 import pytest
 
-from connect.eaas.core.dataclasses import (
-    EventType,
+from connect.eaas.core.enums import EventType, ResultType, TaskCategory
+from connect.eaas.core.extension import ProcessingResponse
+from connect.eaas.core.proto import (
     LogMeta,
-    ResultType,
     SetupResponse,
     Task,
-    TaskCategory,
     TaskOutput,
 )
-from connect.eaas.core.extension import ProcessingResponse
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.constants import (
     ASSET_REQUEST_EVENT_TYPES,
@@ -944,7 +942,7 @@ async def test_build_response_fail_skip(task_payload, result):
 
     assert response.options.task_id == task.options.task_id
     assert response.output.result == result.status
-    assert response.output.error == result.output
+    assert response.output.message == result.output
 
 
 @pytest.mark.asyncio
@@ -983,7 +981,7 @@ async def test_build_response_exception(mocker, task_payload):
 
     assert response.options.task_id == task.options.task_id
     assert response.output.result == ResultType.RETRY
-    assert 'Awesome error message' in response.output.error
+    assert 'Awesome error message' in response.output.message
     manager.log_exception.assert_called_once()
 
 
@@ -1004,6 +1002,6 @@ async def test_send_skip_response(mocker, task_payload):
 
     manager.send_skip_response(task, 'test output')
     await asyncio.sleep(.01)
-    task.output = TaskOutput(result=ResultType.SKIP, error='test output', runtime=1.0)
+    task.output = TaskOutput(result=ResultType.SKIP, message='test output', runtime=1.0)
 
     mocked_put.assert_awaited_once_with(task)

@@ -5,23 +5,21 @@ import time
 import pytest
 from websockets.exceptions import ConnectionClosedError, InvalidStatusCode, WebSocketException
 
-from connect.eaas.runner.constants import RESULT_SENDER_MAX_RETRIES
-from connect.eaas.core.dataclasses import (
-    EventType,
+from connect.eaas.core.enums import EventType, ResultType, TaskCategory
+from connect.eaas.core.extension import Extension, ProcessingResponse, ScheduledExecutionResponse
+from connect.eaas.core.proto import (
     Message,
     MessageType,
-    ResultType,
     SetupRequest,
     SetupResponse,
     Task,
-    TaskCategory,
 )
+from connect.eaas.runner.constants import RESULT_SENDER_MAX_RETRIES
 from connect.eaas.runner.exceptions import (
     CommunicationError,
     MaintenanceError,
     StopBackoffError,
 )
-from connect.eaas.core.extension import Extension, ProcessingResponse, ScheduledExecutionResponse
 from connect.eaas.runner.worker import Worker
 
 from tests.utils import WSHandler
@@ -1340,4 +1338,4 @@ async def test_handle_signal(mocker, settings_payload, task_payload, caplog):
     task = asyncio.create_task(worker.start())
     worker.handle_signal()
     await task
-    worker.send.assert_awaited_once_with({'data': None, 'message_type': 'shutdown', 'version': 1})
+    worker.send.assert_awaited_once_with({'data': None, 'message_type': 'shutdown', 'version': 2})

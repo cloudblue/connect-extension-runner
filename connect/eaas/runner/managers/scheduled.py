@@ -8,8 +8,8 @@ import logging
 import time
 import traceback
 
-from connect.eaas.core.dataclasses import (
-    ResultType,
+from connect.eaas.core.enums import ResultType
+from connect.eaas.core.proto import (
     Task,
     TaskOutput,
 )
@@ -46,7 +46,7 @@ class ScheduledTasksManager(TasksManagerBase):
                 timeout=self.config.get_timeout('scheduled'),
             )
             result_message.output = TaskOutput(result=result.status)
-            result_message.output.error = result.output
+            result_message.output.message = result.output
             result_message.output.runtime = time.monotonic() - begin_ts
             logger.info(
                 f'interactive task {task_data.options.task_id} result: {result.status}, took:'
@@ -55,6 +55,6 @@ class ScheduledTasksManager(TasksManagerBase):
         except Exception as e:
             self.log_exception(task_data, e)
             result_message.output = TaskOutput(result=ResultType.RETRY)
-            result_message.output.error = traceback.format_exc()[:4000]
+            result_message.output.message = traceback.format_exc()[:4000]
 
         return result_message

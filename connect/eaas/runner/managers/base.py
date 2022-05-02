@@ -40,7 +40,7 @@ class TasksManagerBase(ABC):
         Submit a new task for its processing.
 
         :param task_data: Task data.
-        :type task_data: connect.eaas.core.dataclasses.TaskPayload
+        :type task_data: connect.eaas.core.proto.Task
         """
         try:
             extension = self.handler.new_extension(task_data.options.task_id)
@@ -83,7 +83,7 @@ class TasksManagerBase(ABC):
         Enqueue a future to send back to EaaS a failed task
         with exception info.
         :param data: Task data.
-        :type data: connect.eaas.core.dataclasses.TaskPayload
+        :type data: connect.eaas.core.proto.Task
         :param e: The exception that need to be sent back.
         :type e: Exception
         """
@@ -109,7 +109,7 @@ class TasksManagerBase(ABC):
         it will be executed on a ThreadPoolExecutor.
 
         :param task_data: Data of the task to be processed.
-        :type task_data: connect.eaas.core.dataclasses.TaskPayload
+        :type task_data: connect.eaas.core.proto.Task
         :param method: The method that has to be invoked.
         :param argument: The Connect object that need to be processed.
         :type argument: dict
