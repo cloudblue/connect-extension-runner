@@ -8,9 +8,11 @@ import logging
 import time
 import traceback
 
-from connect.eaas.core.dataclasses import (
+from connect.eaas.core.enums import (
     EventType,
     ResultType,
+)
+from connect.eaas.core.proto import (
     Task,
     TaskOutput,
 )
@@ -43,7 +45,7 @@ class InteractiveTasksManager(TasksManagerBase):
             )
             result_message.output = TaskOutput(result=result.status)
             result_message.output.data = result.data
-            result_message.output.error = result.output
+            result_message.output.message = result.output
             result_message.output.runtime = time.monotonic() - begin_ts
             logger.info(
                 f'interactive task {task_data.options.task_id} result: {result.status}, took:'
@@ -52,7 +54,7 @@ class InteractiveTasksManager(TasksManagerBase):
         except Exception as e:
             self.log_exception(task_data, e)
             result_message.output = TaskOutput(result=ResultType.FAIL)
-            result_message.output.error = traceback.format_exc()[:4000]
+            result_message.output.message = traceback.format_exc()[:4000]
             if result_message.input.event_type in (
                 EventType.PRODUCT_ACTION_EXECUTION,
                 EventType.PRODUCT_CUSTOM_EVENT_PROCESSING,
@@ -60,7 +62,7 @@ class InteractiveTasksManager(TasksManagerBase):
                 result_message.output.data = {
                     'http_status': 400,
                     'headers': None,
-                    'body': result_message.output.error,
+                    'body': result_message.output.message,
                 }
 
         return result_message

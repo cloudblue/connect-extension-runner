@@ -10,18 +10,20 @@ from connect.eaas.runner.constants import (
     OTHER_INTERACTIVE_EVENT_TYPES,
     VALIDATION_EVENT_TYPES,
 )
-from connect.eaas.core.dataclasses import (
+from connect.eaas.core.enums import (
     EventType,
     ResultType,
-    SetupResponse,
-    Task,
     TaskCategory,
-    TaskOutput,
 )
 from connect.eaas.core.extension import (
     CustomEventResponse,
     ProductActionResponse,
     ValidationResponse,
+)
+from connect.eaas.core.proto import (
+    SetupResponse,
+    Task,
+    TaskOutput,
 )
 from connect.eaas.runner.handler import ExtensionHandler
 from connect.eaas.runner.managers import InteractiveTasksManager
@@ -335,7 +337,7 @@ async def test_build_response_exception_validation(mocker, event_type, task_payl
 
     assert response.options.task_id == task.options.task_id
     assert response.output.result == ResultType.FAIL
-    assert 'Awesome error message' in response.output.error
+    assert 'Awesome error message' in response.output.message
     manager.log_exception.assert_called_once()
 
 
@@ -356,8 +358,8 @@ async def test_build_response_exception_others(mocker, event_type, task_payload)
 
     assert response.options.task_id == task.options.task_id
     assert response.output.result == ResultType.FAIL
-    assert 'Awesome error message' in response.output.error
+    assert 'Awesome error message' in response.output.message
     assert response.output.data['http_status'] == 400
     assert response.output.data['headers'] is None
-    assert response.output.data['body'] == response.output.error
+    assert response.output.data['body'] == response.output.message
     manager.log_exception.assert_called_once()

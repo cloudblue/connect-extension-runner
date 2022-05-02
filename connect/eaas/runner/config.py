@@ -10,7 +10,7 @@ from connect.eaas.runner.helpers import (
     get_environment,
     get_version,
 )
-from connect.eaas.core.dataclasses import Logging, LogMeta
+from connect.eaas.core.proto import Logging, LogMeta
 
 logger = logging.getLogger(__name__)
 

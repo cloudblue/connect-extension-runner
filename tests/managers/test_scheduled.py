@@ -4,15 +4,17 @@ import time
 import pytest
 
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.core.dataclasses import (
+from connect.eaas.core.enums import (
     EventType,
     ResultType,
-    SetupResponse,
-    Task,
     TaskCategory,
-    TaskOutput,
 )
 from connect.eaas.core.extension import ScheduledExecutionResponse
+from connect.eaas.core.proto import (
+    SetupResponse,
+    Task,
+    TaskOutput,
+)
 from connect.eaas.runner.handler import ExtensionHandler
 from connect.eaas.runner.managers import ScheduledTasksManager
 
@@ -176,5 +178,5 @@ async def test_build_response_exception(mocker, task_payload):
 
     assert response.options.task_id == task.options.task_id
     assert response.output.result == ResultType.RETRY
-    assert 'Awesome error message' in response.output.error
+    assert 'Awesome error message' in response.output.message
     manager.log_exception.assert_called_once()

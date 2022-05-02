@@ -4,8 +4,8 @@ import logging
 import pytest
 
 from connect.client import ClientError
+from connect.eaas.core.proto import SetupResponse, Task, TaskOutput
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.core.dataclasses import SetupResponse, Task, TaskOutput
 from connect.eaas.runner.managers.base import TasksManagerBase
 from connect.eaas.runner.handler import ExtensionHandler
 
@@ -62,7 +62,7 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
             try:
                 await future
             except Exception as e:
-                task_data.output = TaskOutput(result='fail', error=str(e))
+                task_data.output = TaskOutput(result='fail', message=str(e))
                 return task_data
 
         async def get_argument(self, task_data):
@@ -100,7 +100,7 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
     mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_not_awaited()
-    task_data.output.error = exc.message
+    task_data.output.message = exc.message
     mocked_put.assert_awaited_once_with(task_data)
     assert manager.running_tasks == 0
 
@@ -112,7 +112,7 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
             try:
                 await future
             except Exception as e:
-                task_data.output = TaskOutput(result='fail', error=str(e))
+                task_data.output = TaskOutput(result='fail', message=str(e))
                 return task_data
 
         async def get_argument(self, task_data):
@@ -147,7 +147,7 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
     await asyncio.sleep(.01)
     mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_get_argument.assert_awaited_once_with(task_data)
-    task_data.output.error = 'invoke exc'
+    task_data.output.message = 'invoke exc'
     mocked_put.assert_awaited_once_with(task_data)
     assert manager.running_tasks == 0
 

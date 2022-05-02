@@ -1,4 +1,4 @@
-from connect.eaas.core.dataclasses import Logging, LogMeta, SetupResponse
+from connect.eaas.core.proto import Logging, LogMeta, SetupResponse
 from connect.eaas.runner.config import ConfigHelper
 
 

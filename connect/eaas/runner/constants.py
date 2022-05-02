@@ -4,7 +4,7 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 
-from connect.eaas.core.dataclasses import EventType
+from connect.eaas.core.enums import EventType
 
 
 EVENT_TYPE_EXT_METHOD_MAP = {
