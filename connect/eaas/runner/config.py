@@ -81,6 +81,13 @@ class ConfigHelper:
             'account_name': self.account_name,
         }
 
+    @property
+    def event_definitions(self):
+        return {
+            definition.event_type: definition
+            for definition in (self.dyn_config.event_definitions or [])
+        }
+
     def get_ws_url(self):
         proto = 'wss' if self.secure else 'ws'
         return (
@@ -143,6 +150,9 @@ class ConfigHelper:
             self.dyn_config.variables = data.variables or self.dyn_config.variables
             self.dyn_config.logging.logging_api_key = (
                 data.logging.logging_api_key or self.dyn_config.logging.logging_api_key
+            )
+            self.dyn_config.event_definitions = (
+                data.event_definitions or self.dyn_config.event_definitions
             )
 
         logger.info(f'Runner dynamic config updated {data}')
