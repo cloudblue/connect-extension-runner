@@ -119,14 +119,14 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
 
     httpx_mock.add_response(
         method='GET',
-        url=f'{api_url}/requests?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        url=f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
         json=[],
         headers={'Content-Range': 'items 0-0/1'},
     )
 
     httpx_mock.add_response(
         method='GET',
-        url=f'{api_url}/requests/PR-000',
+        url=f'{api_url}/collection/PR-000',
         json=pr_data,
     )
 
@@ -258,7 +258,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
     httpx_mock.add_response(
         method='GET',
         url=(
-            f'{api_url}/tier/config-requests?'
+            f'{api_url}/collection?'
             'and(eq(id,TCR-000),in(status,(pending)))&limit=0&offset=0'
         ),
         json=[],
@@ -267,7 +267,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
 
     httpx_mock.add_response(
         method='GET',
-        url=f'{api_url}/tier/config-requests/TCR-000',
+        url=f'{api_url}/collection/TCR-000',
         json=tcr_data,
     )
 

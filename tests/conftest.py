@@ -10,6 +10,7 @@ import pytest
 import websockets
 
 from connect.eaas.core.extension import Extension, ProcessingResponse
+from connect.eaas.runner.constants import BACKGROUND_EVENT_TYPES
 
 
 @pytest.fixture(scope='session')
@@ -76,6 +77,15 @@ def settings_payload():
                 'hub_id': 'HB-0000',
             },
         },
+        'event_definitions': [
+            {
+                'event_type': evt_type,
+                'api_collection_endpoint': 'collection',
+                'api_resource_endpoint': 'collection/{pk}',
+                'api_collection_filter': 'and(eq(id,${_object_id_}),in(status,${_statuses_}))',
+            }
+            for evt_type in BACKGROUND_EVENT_TYPES
+        ],
     }
 
 
