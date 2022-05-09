@@ -19,27 +19,23 @@ async def test_submit(mocker, extension_cls, task_payload):
         async def get_argument(self, task_data):
             pass
 
-        def get_method(self, task_data, extension, argument):
-            return extension.my_method
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
 
     mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
     mocked_get_argument.return_value = {'test': 'data'}
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
-    mocked_new_extension = mocker.patch.object(ExtensionHandler, 'new_extension')
-
-    config = ConfigHelper()
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
-    handler = ExtensionHandler(config)
+    mocked_get_method = mocker.patch.object(ExtensionHandler, 'get_method')
 
     cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    config = ConfigHelper()
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    handler = ExtensionHandler(config)
 
     extension_instance = cls(None, None, None)
 
-    mocked_new_extension.return_value = extension_instance
-
-    handler.extension_class = cls
-    handler.extension_type = 'sync'
+    mocked_get_method.return_value = extension_instance.my_method
 
     manager = TaskManager(config, handler, None)
 
@@ -47,7 +43,7 @@ async def test_submit(mocker, extension_cls, task_payload):
     assert manager.running_tasks == 0
     await manager.submit(task_data)
 
-    mocked_new_extension.assert_called_once_with(task_data.options.task_id)
+    mocked_get_method.assert_called_once_with(task_data.options.task_id, 'my_method')
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_awaited_once_with(
         task_data, extension_instance.my_method, {'test': 'data'},
@@ -68,37 +64,31 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
         async def get_argument(self, task_data):
             pass
 
-        def get_method(self, task_data, extension, argument):
-            return extension.my_method
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
 
     mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
     exc = ClientError('test error')
     mocked_get_argument.side_effect = exc
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
-    mocked_new_extension = mocker.patch.object(ExtensionHandler, 'new_extension')
+
     mocked_put = mocker.AsyncMock()
 
-    config = ConfigHelper()
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
-    handler = ExtensionHandler(config)
+    mocked_get_method = mocker.patch.object(ExtensionHandler, 'get_method')
 
     cls = extension_cls('my_method')
-
-    extension_instance = cls(None, None, None)
-
-    mocked_new_extension.return_value = extension_instance
-
-    handler.extension_class = cls
-    handler.extension_type = 'sync'
+    mocker.patch.object(cls, 'get_descriptor')
+    config = ConfigHelper()
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    handler = ExtensionHandler(config)
 
     manager = TaskManager(config, handler, mocked_put)
 
     task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
-    mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_get_argument.assert_awaited_once_with(task_data)
+    mocked_get_method.assert_not_called()
     mocked_invoke.assert_not_awaited()
     task_data.output.message = exc.message
     mocked_put.assert_awaited_once_with(task_data)
@@ -118,34 +108,24 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
         async def get_argument(self, task_data):
             pass
 
-        def get_method(self, task_data, extension, argument):
-            return extension.my_method
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
 
     mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
     mocker.patch.object(TaskManager, 'invoke', side_effect=Exception('invoke exc'))
-    mocked_new_extension = mocker.patch.object(ExtensionHandler, 'new_extension')
-    mocked_put = mocker.AsyncMock()
-
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
     handler = ExtensionHandler(config)
 
-    cls = extension_cls('my_method')
-
-    extension_instance = cls(None, None, None)
-
-    mocked_new_extension.return_value = extension_instance
-
-    handler.extension_class = cls
-    handler.extension_type = 'sync'
+    mocked_put = mocker.AsyncMock()
 
     manager = TaskManager(config, handler, mocked_put)
 
     task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
-    mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_get_argument.assert_awaited_once_with(task_data)
     task_data.output.message = 'invoke exc'
     mocked_put.assert_awaited_once_with(task_data)
@@ -161,32 +141,22 @@ async def test_submit_no_argument(mocker, extension_cls, task_payload):
         async def get_argument(self, task_data):
             return None
 
-        def get_method(self, task_data, extension, argument):
-            return extension.my_method
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
 
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
-    mocked_new_extension = mocker.patch.object(ExtensionHandler, 'new_extension')
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
 
     config = ConfigHelper()
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
     handler = ExtensionHandler(config)
-
-    cls = extension_cls('my_method')
-
-    extension_instance = cls(None, None, None)
-
-    mocked_new_extension.return_value = extension_instance
-
-    handler.extension_class = cls
-    handler.extension_type = 'sync'
 
     manager = TaskManager(config, handler, None)
 
     task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
-    mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_invoke.assert_not_awaited()
 
 
@@ -199,32 +169,24 @@ async def test_submit_no_method(mocker, extension_cls, task_payload):
         async def get_argument(self, task_data):
             return True
 
-        def get_method(self, task_data, extension, argument):
-            return None
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
 
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
-    mocked_new_extension = mocker.patch.object(ExtensionHandler, 'new_extension')
-
-    config = ConfigHelper()
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
-    handler = ExtensionHandler(config)
 
     cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    mocker.patch.object(ExtensionHandler, 'get_method', return_value=None)
 
-    extension_instance = cls(None, None, None)
-
-    mocked_new_extension.return_value = extension_instance
-
-    handler.extension_class = cls
-    handler.extension_type = 'sync'
+    config = ConfigHelper()
+    handler = ExtensionHandler(config)
 
     manager = TaskManager(config, handler, None)
 
     task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
     await asyncio.sleep(.01)
-    mocked_new_extension.assert_called_once_with(task_data.options.task_id)
     mocked_invoke.assert_not_awaited()
     assert manager.running_tasks == 0
 
@@ -238,19 +200,17 @@ async def test_log_exception(mocker, extension_cls, settings_payload, task_paylo
         async def get_argument(self, task_data):
             return True
 
-        def get_method(self, task_data, extension, argument):
+        def get_method_name(self, task_data, argument):
             return None
 
     config = ConfigHelper()
     dyn = SetupResponse(**settings_payload)
     dyn.logging.logging_api_key = None
     config.update_dynamic_config(dyn)
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
     handler = ExtensionHandler(config)
-
-    handler.extension_class = extension_cls('my_method')
-    handler.extension_type = 'sync'
 
     manager = TaskManager(config, handler, None)
 

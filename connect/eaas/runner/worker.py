@@ -187,7 +187,10 @@ class Worker:
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
-                event_subscriptions=self.handler.capabilities,
+                event_subscriptions={
+                    event_type: event['statuses']
+                    for event_type, event in self.handler.events.items()
+                },
                 variables=self.handler.variables,
                 schedulables=self.handler.schedulables,
                 repository={

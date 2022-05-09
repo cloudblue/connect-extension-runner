@@ -43,7 +43,6 @@ class TasksManagerBase(ABC):
         :type task_data: connect.eaas.core.proto.Task
         """
         try:
-            extension = self.handler.new_extension(task_data.options.task_id)
             method = None
             argument = None
             async with self.lock:
@@ -56,7 +55,8 @@ class TasksManagerBase(ABC):
             if not argument:
                 return
 
-            method = self.get_method(task_data, extension, argument)
+            method_name = self.get_method_name(task_data, argument)
+            method = self.handler.get_method(task_data.options.task_id, method_name)
             if not method:
                 async with self.lock:
                     self.running_tasks -= 1
@@ -133,7 +133,8 @@ class TasksManagerBase(ABC):
         logger.warning(
             f'Got exception during execution of task {task_data.options.task_id}: {e}',
         )
-        self.handler.new_extension(task_data.options.task_id).logger.exception(
+        ext_logger = self.handler.get_logger(task_data.options.task_id)
+        ext_logger.exception(
             f'Unhandled exception during execution of task {task_data.options.task_id}',
         )
 
@@ -155,7 +156,7 @@ class TasksManagerBase(ABC):
         pass
 
     @abstractmethod
-    def get_method(self, task_data, extension, argument):  # pragma: no cover
+    def get_method_name(self, task_data, argument):  # pragma: no cover
         """
         Returns the extension method has to be invoked.
         """

@@ -9,7 +9,8 @@ import socket
 import pytest
 import websockets
 
-from connect.eaas.core.extension import Extension, ProcessingResponse
+from connect.eaas.core.extension import Extension
+from connect.eaas.core.responses import ProcessingResponse
 from connect.eaas.runner.constants import BACKGROUND_EVENT_TYPES
 
 
@@ -51,8 +52,10 @@ def extension_cls():
             return result or ProcessingResponse.done()
 
         if async_impl:
+            async_ext_method.__name__ = method_name
             setattr(TestExtension, method_name, async_ext_method)
         else:
+            ext_method.__name__ = method_name
             setattr(TestExtension, method_name, ext_method)
 
         return TestExtension

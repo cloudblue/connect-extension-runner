@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 class ScheduledTasksManager(TasksManagerBase):
 
-    def get_method(self, task_data, extension, argument):
-        return getattr(extension, argument['method'], None)
+    def get_method_name(self, task_data, argument):
+        return argument['method']
 
     async def get_argument(self, task_data):
         return (
