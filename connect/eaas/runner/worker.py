@@ -178,7 +178,6 @@ class Worker:
         """
         try:
             message = await asyncio.wait_for(self.ws.recv(), timeout=1)
-            # message = await self.ws.recv()
             return json.loads(message)
         except TimeoutError:  # pragma: no cover
             pass
