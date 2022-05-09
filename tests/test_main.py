@@ -8,6 +8,7 @@ import sys
 from collections import namedtuple
 
 from connect.eaas.runner.main import main, start
+from connect.eaas.runner.handler import ExtensionHandler
 from connect.eaas.runner.worker import Worker
 
 
@@ -34,8 +35,9 @@ def test_start(mocker):
             pass
     start_mock = mocker.AsyncMock()
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
     mocker.patch.object(Worker, 'start', start_mock)

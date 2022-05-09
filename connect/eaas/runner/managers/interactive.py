@@ -16,7 +16,6 @@ from connect.eaas.core.proto import (
     Task,
     TaskOutput,
 )
-from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
 from connect.eaas.runner.managers.base import TasksManagerBase
 
 logger = logging.getLogger(__name__)
@@ -24,9 +23,8 @@ logger = logging.getLogger(__name__)
 
 class InteractiveTasksManager(TasksManagerBase):
 
-    def get_method(self, task_data, extension, argument):
-        method_name = EVENT_TYPE_EXT_METHOD_MAP[task_data.input.event_type]
-        return getattr(extension, method_name, None)
+    def get_method_name(self, task_data, argument):
+        return self.handler.events[task_data.input.event_type]['method']
 
     async def get_argument(self, task_data):
         return task_data.input.data

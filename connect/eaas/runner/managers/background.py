@@ -11,11 +11,8 @@ from string import Template
 
 from connect.client.models import AsyncCollection, AsyncResource
 from connect.eaas.core.enums import ResultType
-from connect.eaas.core.extension import ProcessingResponse
+from connect.eaas.core.responses import ProcessingResponse
 from connect.eaas.core.proto import Task, TaskOutput
-from connect.eaas.runner.constants import (
-    EVENT_TYPE_EXT_METHOD_MAP,
-)
 from connect.eaas.runner.managers.base import TasksManagerBase
 
 logger = logging.getLogger(__name__)
@@ -23,9 +20,8 @@ logger = logging.getLogger(__name__)
 
 class BackgroundTasksManager(TasksManagerBase):
 
-    def get_method(self, task_data, extension, argument):
-        method_name = EVENT_TYPE_EXT_METHOD_MAP[task_data.input.event_type]
-        return getattr(extension, method_name, None)
+    def get_method_name(self, task_data, argument):
+        return self.handler.events[task_data.input.event_type]['method']
 
     async def get_argument(self, task_data):
         """
@@ -33,7 +29,7 @@ class BackgroundTasksManager(TasksManagerBase):
         related to the task that need processing.
         """
         definition = self.config.event_definitions[task_data.input.event_type]
-        supported_statuses = self.handler.capabilities[task_data.input.event_type]
+        supported_statuses = self.handler.events[task_data.input.event_type]['statuses']
         rql_filter = Template(definition.api_collection_filter).substitute(
             {
                 '_statuses_': f'({",".join(supported_statuses)})',

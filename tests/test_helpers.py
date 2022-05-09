@@ -6,10 +6,8 @@
 import os
 import subprocess
 
-import pytest
 from pkg_resources import (
     DistributionNotFound,
-    EntryPoint,
 )
 
 from connect.eaas.runner.constants import (
@@ -17,12 +15,9 @@ from connect.eaas.runner.constants import (
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
-from connect.eaas.runner.exceptions import EaaSError
 from connect.eaas.runner.helpers import (
     get_container_id,
     get_environment,
-    get_extension_class,
-    get_extension_type,
     get_version,
 )
 
@@ -181,111 +176,6 @@ def test_get_environment(mocker):
     assert env['background_task_max_execution_time'] == 1
     assert env['interactive_task_max_execution_time'] == 2
     assert env['scheduled_task_max_execution_time'] == 3
-
-
-def test_get_extension_class(mocker):
-    class MyExtension:
-        pass
-
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.helpers.iter_entry_points',
-        return_value=iter([
-            EntryPoint('extension', 'connect.eaas.ext'),
-        ]),
-    )
-
-    extension_class = get_extension_class()
-
-    assert extension_class == MyExtension
-
-
-def test_get_extension_class_not_found(mocker):
-    mocker.patch(
-        'connect.eaas.runner.helpers.iter_entry_points',
-        return_value=iter([
-        ]),
-    )
-
-    assert get_extension_class() is None
-
-
-def test_get_extension_type_ok_sync():
-    class MyExtension:
-
-        @classmethod
-        def get_descriptor(cls):
-            return {
-                'capabilities': {
-                    'asset_purchase_request_processing': [],
-                    'asset_purchase_request_validation': [],
-                },
-                'readme_url': 'https://example.com/README.md',
-                'changelog_url': 'https://example.com/CHANGELOG.md',
-            }
-
-        def process_asset_purchase_request(self, request):
-            pass
-
-        def validate_asset_purchase_request(self, request):
-            pass
-
-    assert get_extension_type(MyExtension) == 'sync'
-
-
-def test_get_extension_type_ok_async():
-    class MyExtension:
-
-        @classmethod
-        def get_descriptor(cls):
-            return {
-                'capabilities': {
-                    'asset_purchase_request_processing': [],
-                    'asset_purchase_request_validation': [],
-                },
-                'readme_url': 'https://example.com/README.md',
-                'changelog_url': 'https://example.com/CHANGELOG.md',
-            }
-
-        async def process_asset_purchase_request(self, request):
-            pass
-
-        async def validate_asset_purchase_request(self, request):
-            pass
-
-    assert get_extension_type(MyExtension) == 'async'
-
-
-def test_get_extension_type_ko():
-    class MyExtension:
-
-        @classmethod
-        def get_descriptor(cls):
-            return {
-                'capabilities': {
-                    'asset_purchase_request_processing': [],
-                    'asset_purchase_request_validation': [],
-                },
-                'readme_url': 'https://example.com/README.md',
-                'changelog_url': 'https://example.com/CHANGELOG.md',
-            }
-
-        def process_asset_purchase_request(self, request):
-            pass
-
-        async def validate_asset_purchase_request(self, request):
-            pass
-
-    with pytest.raises(EaaSError) as cv:
-        get_extension_type(MyExtension)
-
-    assert (
-        str(cv.value) == 'An Extension class can only have sync or async methods not a mix of both.'
-    )
 
 
 def test_get_version(mocker):
