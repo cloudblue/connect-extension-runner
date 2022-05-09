@@ -101,7 +101,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "connect-eaas-core"
-version = "1.6.0"
+version = "1.7.0"
 description = "Connect Eaas Core"
 category = "main"
 optional = false
@@ -596,7 +596,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "e3cc2865d03f1eabf9f1f3e4cdb29d6d44a69c3a5c8534628710e0aa2d86ecd0"
+content-hash = "8b1aed04b4012165dac556970097dac6fc8aef7042c044844bc6c8dd7f2e0dc8"
 
 [metadata.files]
 ansicolors = [
@@ -639,8 +639,8 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 connect-eaas-core = [
-    {file = "connect-eaas-core-1.6.0.tar.gz", hash = "sha256:9d97a0523f9cc4723072d05f449396ac11ba25c7d5190ded0cb75f22f58168fc"},
-    {file = "connect_eaas_core-1.6.0-py3-none-any.whl", hash = "sha256:cb560ded7c91dc62d60af5b539a2af3822407f235de9a603cd94990e5ff8e3cc"},
+    {file = "connect-eaas-core-1.7.0.tar.gz", hash = "sha256:1b73925f799e6fe3b26bfb82f3214cbef6cead2bee9b39d8b5dde927a101baaf"},
+    {file = "connect_eaas_core-1.7.0-py3-none-any.whl", hash = "sha256:81169dbbe656397e97c51e203877503f4a4202b1bb8728b44ea24efada907454"},
 ]
 connect-markdown-renderer = [
     {file = "connect-markdown-renderer-1.0.1.tar.gz", hash = "sha256:d969582b4961ebf915ac7366a82ecfa84856470d12b8bced652dfb421f5c6559"},

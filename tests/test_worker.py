@@ -5,8 +5,9 @@ import time
 import pytest
 from websockets.exceptions import ConnectionClosedError, InvalidStatusCode, WebSocketException
 
+from connect.eaas.core.decorators import event, schedulable, variables
 from connect.eaas.core.enums import EventType, ResultType, TaskCategory
-from connect.eaas.core.extension import Extension, ProcessingResponse, ScheduledExecutionResponse
+from connect.eaas.core.extension import Extension
 from connect.eaas.core.proto import (
     Message,
     MessageType,
@@ -14,12 +15,14 @@ from connect.eaas.core.proto import (
     SetupResponse,
     Task,
 )
+from connect.eaas.core.responses import ProcessingResponse, ScheduledExecutionResponse
 from connect.eaas.runner.constants import RESULT_SENDER_MAX_RETRIES
 from connect.eaas.runner.exceptions import (
     CommunicationError,
     MaintenanceError,
     StopBackoffError,
 )
+from connect.eaas.runner.handler import ExtensionHandler
 from connect.eaas.runner.worker import Worker
 
 from tests.utils import WSHandler
@@ -57,11 +60,11 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
     mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
 
     data_to_send = Message(
@@ -165,11 +168,11 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
             assert request == pr_data
             return ProcessingResponse.done()
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
     mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
 
     data_to_send = [
@@ -215,6 +218,142 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
                 event_subscriptions=capabilities,
+                variables=[],
+                schedulables=[],
+                repository={
+                    'readme_url': 'https://example.com/README.md',
+                    'changelog_url': 'https://example.com/CHANGELOG.md',
+                },
+                runner_version='24.1',
+            ),
+        ).dict(),
+    )
+
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.TASK,
+            data=Task(
+                options={
+                    'task_id': 'TQ-000',
+                    'task_category': TaskCategory.BACKGROUND,
+                },
+                input={
+                    'event_type': EventType.ASSET_PURCHASE_REQUEST_PROCESSING,
+                    'object_id': 'PR-000',
+                },
+                output={
+                    'result': ResultType.SUCCESS,
+                    'runtime': 1.0,
+                },
+            ),
+        ).dict(),
+    )
+
+
+@pytest.mark.asyncio
+async def test_pr_task_decorated(mocker, ws_server, unused_port, httpx_mock, settings_payload):
+
+    pr_data = {'id': 'PR-000', 'status': 'pending'}
+
+    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        json=[],
+        headers={'Content-Range': 'items 0-0/1'},
+    )
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/collection/PR-000',
+        json=pr_data,
+    )
+
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+        @event(
+            EventType.ASSET_PURCHASE_REQUEST_PROCESSING,
+            statuses=['pending', 'inquiring'],
+        )
+        def process_purchase(self, request):
+            self.logger.info('test log message')
+            assert request == pr_data
+            return ProcessingResponse.done()
+
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+        return_value=MyExtension,
+    )
+    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+
+    data_to_send = [
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
+        ).dict(),
+        Message(
+            version=2,
+            message_type=MessageType.TASK,
+            data=Task(
+                options={
+                    'task_id': 'TQ-000',
+                    'task_category': TaskCategory.BACKGROUND,
+                },
+                input={
+                    'event_type': EventType.ASSET_PURCHASE_REQUEST_PROCESSING,
+                    'object_id': 'PR-000',
+                },
+            ),
+        ).dict(),
+    ]
+
+    mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
+        data_to_send,
+        ['receive', 'send', 'send', 'receive'],
+    )
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
+                event_subscriptions={
+                    EventType.ASSET_PURCHASE_REQUEST_PROCESSING: ['pending', 'inquiring'],
+                },
                 variables=[],
                 schedulables=[],
                 repository={
@@ -305,11 +444,11 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
             assert request == tcr_data
             return ProcessingResponse.done()
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
     mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
 
     data_to_send = [
@@ -447,11 +586,11 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
             assert schedule == schedule_data
             return ScheduledExecutionResponse.done()
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
     mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
 
     data_to_send = [
@@ -538,6 +677,145 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
 
 
 @pytest.mark.asyncio
+async def test_scheduled_task_decorated(
+    mocker, ws_server, unused_port, httpx_mock, settings_payload,
+):
+
+    schedule_data = {
+        'id': 'EFS-000',
+        'method': 'run_scheduled_task',
+        'parameter': {'param': 'data'},
+    }
+
+    schedule_url = f'https://127.0.0.1:{unused_port}/public/v1/devops'
+    service_id = settings_payload['logging']['meta']['service_id']
+    schedule_url = f'{schedule_url}/services/{service_id}/environments/ENV-000-0001'
+    schedule_url = f'{schedule_url}/schedules/{schedule_data["id"]}'
+
+    httpx_mock.add_response(
+        method='GET',
+        url=schedule_url,
+        json=schedule_data,
+    )
+
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+        @schedulable('name', 'description')
+        def run_scheduled_task(self, schedule):
+            assert schedule == schedule_data
+            return ScheduledExecutionResponse.done()
+
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+        return_value=MyExtension,
+    )
+    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+
+    data_to_send = [
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
+        ).dict(),
+        Message(
+            version=2,
+            message_type=MessageType.TASK,
+            data=Task(
+                options={
+                    'task_id': 'TQ-000',
+                    'task_category': TaskCategory.SCHEDULED,
+                },
+                input={
+                    'event_type': EventType.SCHEDULED_EXECUTION,
+                    'object_id': schedule_data['id'],
+                },
+            ),
+        ).dict(),
+    ]
+
+    mocked_time = mocker.patch('connect.eaas.runner.managers.scheduled.time')
+    mocked_time.sleep = time.sleep
+    mocked_time.monotonic.side_effect = (1.0, 2.0)
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
+        data_to_send,
+        ['receive', 'send', 'send', 'receive'],
+    )
+
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
+                event_subscriptions={},
+                variables=[],
+                schedulables=[
+                    {
+                        'method': 'run_scheduled_task',
+                        'name': 'name',
+                        'description': 'description',
+                    },
+                ],
+                repository={
+                    'readme_url': 'https://example.com/README.md',
+                    'changelog_url': 'https://example.com/CHANGELOG.md',
+                },
+                runner_version='24.1',
+            ),
+        ).dict(),
+    )
+
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.TASK,
+            data=Task(
+                options={
+                    'task_id': 'TQ-000',
+                    'task_category': TaskCategory.SCHEDULED,
+                },
+                input={
+                    'event_type': EventType.SCHEDULED_EXECUTION,
+                    'object_id': schedule_data['id'],
+                },
+                output={
+                    'result': ResultType.SUCCESS,
+                    'runtime': 1.0,
+                },
+            ),
+        ).dict(),
+    )
+
+
+@pytest.mark.asyncio
 async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
 
     mocker.patch(
@@ -570,11 +848,11 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
 
     data_to_send = [
         Message(
@@ -603,8 +881,10 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
         return_value={
@@ -644,8 +924,10 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 @pytest.mark.asyncio
 async def test_connection_websocket_exception(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
         return_value={
@@ -683,8 +965,10 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
         return_value={
@@ -722,8 +1006,10 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
     mocker.patch('connect.eaas.runner.worker.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
         return_value={
@@ -788,11 +1074,11 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
 
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
@@ -848,11 +1134,11 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
     mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
 
     data_to_send = Message(
@@ -900,6 +1186,87 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
 
 
 @pytest.mark.asyncio
+async def test_extension_settings_with_vars_decorated(mocker, ws_server, unused_port):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    vars = [
+        {'name': 'foo_var', 'initial_value': 'foo_value'},
+        {'name': 'bar_var', 'initial_value': 'bar_value'},
+    ]
+
+    @variables(vars)
+    class MyExtension(Extension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'readme_url': 'https://example.com/README.md',
+                'changelog_url': 'https://example.com/CHANGELOG.md',
+            }
+
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+        return_value=MyExtension,
+    )
+    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+
+    data_to_send = Message(
+        version=2,
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(
+            variables={
+                'var1': 'value1',
+                'var2': 'value2',
+            },
+            logging={'logging_api_key': 'token'},
+            environment_type='development',
+        ),
+    ).dict()
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
+        data_to_send,
+        ['receive', 'send'],
+    )
+
+    async with ws_server(handler):
+        worker = Worker(secure=False)
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
+                event_subscriptions={},
+                variables=vars,
+                schedulables=[],
+                repository={
+                    'readme_url': 'https://example.com/README.md',
+                    'changelog_url': 'https://example.com/CHANGELOG.md',
+                },
+                runner_version='24.1',
+            ),
+        ).dict(),
+    )
+
+
+@pytest.mark.asyncio
 async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -929,11 +1296,11 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
     mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
 
     data_to_send = Message(
@@ -968,8 +1335,8 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
                 event_subscriptions=capabilities,
-                variables=None,
-                schedulables=None,
+                variables=[],
+                schedulables=[],
                 repository={
                     'readme_url': 'https://example.com/README.md',
                     'changelog_url': 'https://example.com/CHANGELOG.md',
@@ -982,8 +1349,10 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
 
 @pytest.mark.asyncio
 async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
 
     with caplog.at_level(logging.WARNING):
         worker = Worker(secure=True)
@@ -1009,8 +1378,10 @@ async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
 
 @pytest.mark.asyncio
 async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payload, caplog):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
 
     with caplog.at_level(logging.WARNING):
         worker = Worker(secure=True)
@@ -1049,8 +1420,10 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
     ),
 )
 def test_backoff_log(mocker, caplog, tries, ordinal):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     details = {'tries': tries, 'elapsed': 2.2, 'wait': 1.1}
     expected = (
         f'{tries}{ordinal} communication attempt failed, backing off waiting '
@@ -1065,8 +1438,10 @@ def test_backoff_log(mocker, caplog, tries, ordinal):
 
 @pytest.mark.asyncio
 async def test_ensure_connection_maintenance(mocker, caplog):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
@@ -1089,8 +1464,10 @@ async def test_ensure_connection_maintenance(mocker, caplog):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('status', (400, 401, 403, 500, 501))
 async def test_ensure_connection_other_statuses(mocker, caplog, status):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
@@ -1112,8 +1489,10 @@ async def test_ensure_connection_other_statuses(mocker, caplog, status):
 
 @pytest.mark.asyncio
 async def test_ensure_connection_generic_exception(mocker, caplog):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
@@ -1135,8 +1514,10 @@ async def test_ensure_connection_generic_exception(mocker, caplog):
 
 @pytest.mark.asyncio
 async def test_ensure_connection_exit_backoff(mocker, caplog):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 600)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch(
@@ -1159,8 +1540,10 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
 
 @pytest.mark.asyncio
 async def test_ensure_connection_exit_max_attemps(mocker, caplog):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_TIME_GENERIC_SECONDS', 10)
     mocker.patch('connect.eaas.runner.worker.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch(
@@ -1212,11 +1595,11 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
     mocker.patch('connect.eaas.runner.worker.RESULT_SENDER_WAIT_GRACE_SECONDS', .1)
 
     data_to_send = [
@@ -1286,11 +1669,11 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
                 'changelog_url': 'https://example.com/CHANGELOG.md',
             }
 
-    mocker.patch(
-        'connect.eaas.runner.handler.get_extension_class',
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.handler.get_extension_type', return_value='sync')
 
     dyn_config = SetupResponse(**settings_payload)
     settings_payload['variables'] = {'conf2': 'val2'}
@@ -1325,9 +1708,11 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
 
 
 @pytest.mark.asyncio
-async def test_handle_signal(mocker, settings_payload, task_payload, caplog):
-    mocker.patch('connect.eaas.runner.handler.get_extension_class')
-    mocker.patch('connect.eaas.runner.handler.get_extension_type')
+async def test_handle_signal(mocker, settings_payload):
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+    )
 
     worker = Worker(secure=True)
     worker.config.update_dynamic_config(SetupResponse(**settings_payload))
