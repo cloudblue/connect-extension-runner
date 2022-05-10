@@ -9,7 +9,9 @@ import socket
 import pytest
 import websockets
 
-from connect.eaas.extension import Extension, ProcessingResponse
+from connect.eaas.core.extension import Extension
+from connect.eaas.core.responses import ProcessingResponse
+from connect.eaas.runner.constants import BACKGROUND_EVENT_TYPES
 
 
 @pytest.fixture(scope='session')
@@ -50,8 +52,10 @@ def extension_cls():
             return result or ProcessingResponse.done()
 
         if async_impl:
+            async_ext_method.__name__ = method_name
             setattr(TestExtension, method_name, async_ext_method)
         else:
+            ext_method.__name__ = method_name
             setattr(TestExtension, method_name, ext_method)
 
         return TestExtension
@@ -60,29 +64,47 @@ def extension_cls():
 
 
 @pytest.fixture(scope='session')
-def config_payload():
+def settings_payload():
     return {
-        'configuration': {'conf1': 'val1'},
-        'logging_api_key': None,
+        'variables': {'conf1': 'val1'},
         'environment_type': 'development',
-        'log_level': 'DEBUG',
-        'runner_log_level': 'INFO',
-        'account_id': 'account_id',
-        'account_name': 'account_name',
-        'service_id': 'service_id',
-        'product_id': 'product_id',
-        'hub_id': 'HB-0000',
+        'logging': {
+            'logging_api_key': None,
+            'log_level': 'DEBUG',
+            'runner_log_level': 'INFO',
+            'meta': {
+                'account_id': 'account_id',
+                'account_name': 'account_name',
+                'service_id': 'service_id',
+                'products': ['product_id'],
+                'hub_id': 'HB-0000',
+            },
+        },
+        'event_definitions': [
+            {
+                'event_type': evt_type,
+                'api_collection_endpoint': 'collection',
+                'api_resource_endpoint': 'collection/{pk}',
+                'api_collection_filter': 'and(eq(id,${_object_id_}),in(status,${_statuses_}))',
+            }
+            for evt_type in BACKGROUND_EVENT_TYPES
+        ],
     }
 
 
 @pytest.fixture
 def task_payload():
-    def _task_payload(task_category, task_type, object_id, runtime=0.0):
+    def _task_payload(task_category, event_type, object_id, runtime=0.0):
         return {
-            'task_id': 'TQ-000',
-            'task_category': task_category,
-            'task_type': task_type,
-            'object_id': object_id,
-            'runtime': runtime,
+            'options': {
+                'task_id': 'TQ-000',
+                'task_category': task_category,
+                'runtime': runtime,
+            },
+            'input': {
+                'event_type': event_type,
+                'object_id': object_id,
+            },
+
         }
     return _task_payload

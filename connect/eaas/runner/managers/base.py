@@ -11,9 +11,8 @@ from asyncio.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 
 from connect.client import AsyncConnectClient, ClientError
-from connect.eaas.config import ConfigHelper
-from connect.eaas.handler import ExtensionHandler
-
+from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.handler import ExtensionHandler
 
 logger = logging.getLogger(__name__)
 
@@ -41,39 +40,40 @@ class TasksManagerBase(ABC):
         Submit a new task for its processing.
 
         :param task_data: Task data.
-        :type task_data: connect.eaas.dataclasses.TaskPayload
+        :type task_data: connect.eaas.core.proto.Task
         """
         try:
-            extension = self.handler.new_extension(task_data.task_id)
             method = None
             argument = None
             async with self.lock:
                 self.running_tasks += 1
             logger.info(
-                f'new {task_data.task_category} task received: {task_data.task_id}, '
-                f'running tasks: {self.running_tasks}',
+                f'new {task_data.options.task_category} task received: '
+                f'{task_data.options.task_id}, running tasks: {self.running_tasks}',
             )
             argument = await self.get_argument(task_data)
             if not argument:
                 return
 
-            method = self.get_method(task_data, extension, argument)
+            method_name = self.get_method_name(task_data, argument)
+            method = self.handler.get_method(task_data.options.task_id, method_name)
             if not method:
                 async with self.lock:
                     self.running_tasks -= 1
                 return
 
-            logger.info(f'invoke method {method.__name__} for task {task_data.task_id}')
+            logger.info(f'invoke method {method.__name__} for task {task_data.options.task_id}')
             await self.invoke(task_data, method, argument)
         except ClientError as ce:
             logger.warning(
-                f'Cannot retrieve object {task_data.object_id} for task {task_data.task_id}',
+                f'Cannot retrieve object {task_data.input.object_id} '
+                f'for task {task_data.options.task_id}',
             )
             self.send_exception_response(task_data, ce)
             return
         except Exception as e:
             logger.error(
-                f'Exceptions while processing task {task_data.task_id}',
+                f'Exceptions while processing task {task_data.options.task_id}',
             )
             self.send_exception_response(task_data, e)
             return
@@ -83,7 +83,7 @@ class TasksManagerBase(ABC):
         Enqueue a future to send back to EaaS a failed task
         with exception info.
         :param data: Task data.
-        :type data: connect.eaas.dataclasses.TaskPayload
+        :type data: connect.eaas.core.proto.Task
         :param e: The exception that need to be sent back.
         :type e: Exception
         """
@@ -109,7 +109,7 @@ class TasksManagerBase(ABC):
         it will be executed on a ThreadPoolExecutor.
 
         :param task_data: Data of the task to be processed.
-        :type task_data: connect.eaas.dataclasses.TaskPayload
+        :type task_data: connect.eaas.core.proto.Task
         :param method: The method that has to be invoked.
         :param argument: The Connect object that need to be processed.
         :type argument: dict
@@ -122,7 +122,7 @@ class TasksManagerBase(ABC):
                 method,
                 argument,
             )
-        logger.info(f'enqueue result for task {task_data.task_id}')
+        logger.info(f'enqueue result for task {task_data.options.task_id}')
         asyncio.create_task(self.enqueue_result(task_data, future))
 
     def log_exception(self, task_data, e):
@@ -130,9 +130,12 @@ class TasksManagerBase(ABC):
         Logs an unhandled exception both with the runner logger
         and the extension one.
         """
-        logger.warning(f'Got exception during execution of task {task_data.task_id}: {e}')
-        self.handler.new_extension(task_data.task_id).logger.exception(
-            f'Unhandled exception during execution of task {task_data.task_id}',
+        logger.warning(
+            f'Got exception during execution of task {task_data.options.task_id}: {e}',
+        )
+        ext_logger = self.handler.get_logger(task_data.options.task_id)
+        ext_logger.exception(
+            f'Unhandled exception during execution of task {task_data.options.task_id}',
         )
 
     @abstractmethod
@@ -153,7 +156,7 @@ class TasksManagerBase(ABC):
         pass
 
     @abstractmethod
-    def get_method(self, task_data, extension, argument):  # pragma: no cover
+    def get_method_name(self, task_data, argument):  # pragma: no cover
         """
         Returns the extension method has to be invoked.
         """

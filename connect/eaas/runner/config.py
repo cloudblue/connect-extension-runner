@@ -6,11 +6,11 @@
 import logging
 import platform
 
-from connect.eaas.helpers import (
+from connect.eaas.runner.helpers import (
     get_environment,
     get_version,
 )
-
+from connect.eaas.core.proto import Logging, LogMeta
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,15 @@ class ConfigHelper:
 
     @property
     def service_id(self):
-        return self.dyn_config.service_id
+        return self.dyn_config.logging.meta.service_id
 
     @property
-    def product_id(self):
-        return self.dyn_config.product_id
+    def products(self):
+        return self.dyn_config.logging.meta.products
 
     @property
     def hub_id(self):
-        return self.dyn_config.hub_id
+        return self.dyn_config.logging.meta.hub_id
 
     @property
     def environment_id(self):
@@ -55,19 +55,19 @@ class ConfigHelper:
 
     @property
     def account_id(self):
-        return self.dyn_config.account_id
+        return self.dyn_config.logging.meta.account_id
 
     @property
     def account_name(self):
-        return self.dyn_config.account_name
+        return self.dyn_config.logging.meta.account_name
 
     @property
     def logging_api_key(self):
-        return self.dyn_config.logging_api_key
+        return self.dyn_config.logging.logging_api_key
 
     @property
     def variables(self):
-        return self.dyn_config.configuration
+        return self.dyn_config.variables
 
     @property
     def metadata(self):
@@ -79,6 +79,13 @@ class ConfigHelper:
             'instance_id': self.instance_id,
             'account_id': self.account_id,
             'account_name': self.account_name,
+        }
+
+    @property
+    def event_definitions(self):
+        return {
+            definition.event_type: definition
+            for definition in (self.dyn_config.event_definitions or [])
         }
 
     def get_ws_url(self):
@@ -113,31 +120,48 @@ class ConfigHelper:
 
     def update_dynamic_config(self, data):
         """Updates the dynamic configuration."""
+        if data.logging is None:
+            data.logging = Logging()
+
+        if data.logging.meta is None:
+            data.logging.meta = LogMeta()
+
         if not self.dyn_config:
             self.dyn_config = data
         else:
-            self.dyn_config.service_id = data.service_id or self.dyn_config.service_id
-            self.dyn_config.product_id = data.product_id or self.dyn_config.product_id
-            self.dyn_config.hub_id = data.hub_id or self.dyn_config.hub_id
+            self.dyn_config.logging.meta.service_id = (
+                data.logging.meta.service_id or self.dyn_config.logging.meta.service_id
+            )
+            self.dyn_config.logging.meta.products = (
+                data.logging.meta.products or self.dyn_config.logging.meta.products
+            )
+            self.dyn_config.logging.meta.hub_id = (
+                data.logging.meta.hub_id or self.dyn_config.logging.meta.hub_id
+            )
             self.dyn_config.environment_type = (
                 data.environment_type or self.dyn_config.environment_type
             )
-            self.dyn_config.account_id = data.account_id or self.dyn_config.account_id
-            self.dyn_config.account_name = (
-                data.account_name or self.dyn_config.account_name
+            self.dyn_config.logging.meta.account_id = (
+                data.logging.meta.account_id or self.dyn_config.logging.meta.account_id
             )
-            self.dyn_config.configuration = data.configuration or self.dyn_config.configuration
-            self.dyn_config.logging_api_key = (
-                data.logging_api_key or self.dyn_config.logging_api_key
+            self.dyn_config.logging.meta.account_name = (
+                data.logging.meta.account_name or self.dyn_config.logging.meta.account_name
+            )
+            self.dyn_config.variables = data.variables or self.dyn_config.variables
+            self.dyn_config.logging.logging_api_key = (
+                data.logging.logging_api_key or self.dyn_config.logging.logging_api_key
+            )
+            self.dyn_config.event_definitions = (
+                data.event_definitions or self.dyn_config.event_definitions
             )
 
-        logger.info(f'Runner dynamic config updated {data}')
-        if data.log_level:
-            logger.info(f'Change extesion logger level to {data.log_level}')
+        logger.debug(f'Runner dynamic config updated {data}')
+        if data.logging.log_level:
+            logger.info(f'Change extension logger level to {data.logging.log_level}')
             logging.getLogger('eaas.extension').setLevel(
-                getattr(logging, data.log_level),
+                getattr(logging, data.logging.log_level),
             )
-        if data.runner_log_level:
+        if data.logging.runner_log_level:
             logging.getLogger('connect.eaas').setLevel(
-                getattr(logging, data.runner_log_level),
+                getattr(logging, data.logging.runner_log_level),
             )

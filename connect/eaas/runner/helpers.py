@@ -3,7 +3,6 @@
 #
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
-import inspect
 import os
 import subprocess
 from uuid import uuid4
@@ -11,17 +10,14 @@ from uuid import uuid4
 from pkg_resources import (
     DistributionNotFound,
     get_distribution,
-    iter_entry_points,
 )
 
-from connect.eaas.constants import (
+from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     ORDINAL_SUFFIX,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
-    TASK_TYPE_EXT_METHOD_MAP,
 )
-from connect.eaas.exceptions import EaaSError
 
 
 def get_container_id():
@@ -77,29 +73,6 @@ def get_environment():
             'SCHEDULED_TASK_MAX_EXECUTION_TIME', SCHEDULED_TASK_MAX_EXECUTION_TIME,
         )),
     }
-
-
-def get_extension_class():
-    ext_class = next(iter_entry_points('connect.eaas.ext', 'extension'), None)
-    return ext_class.load() if ext_class else None
-
-
-def get_extension_type(cls):
-    descriptor = cls.get_descriptor()
-    guess_async = [
-        inspect.iscoroutinefunction(getattr(cls, TASK_TYPE_EXT_METHOD_MAP[name]))
-        for name in descriptor['capabilities'].keys()
-    ] + [
-        inspect.iscoroutinefunction(getattr(cls, schedulable['method']))
-        for schedulable in descriptor.get('schedulables', [])
-    ]
-
-    if all(guess_async):
-        return 'async'
-    if not any(guess_async):
-        return 'sync'
-
-    raise EaaSError('An Extension class can only have sync or async methods not a mix of both.')
 
 
 def get_version():
