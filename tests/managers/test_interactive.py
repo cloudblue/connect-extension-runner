@@ -77,7 +77,11 @@ async def test_validation_sync(mocker, extension_cls, event_type, settings_paylo
     await manager.submit(task)
     await asyncio.sleep(.01)
     task.output = TaskOutput(
-        result=ResultType.SUCCESS, runtime=1.0, data={'task': 'data', 'valid': True},
+        result=ResultType.SUCCESS, runtime=1.0, data={
+            'body': {'task': 'data', 'valid': True},
+            'http_status': 200,
+            'headers': None,
+        },
     )
     result_queue.assert_awaited_once_with(task)
 
@@ -134,7 +138,11 @@ async def test_validation_async(mocker, extension_cls, event_type, settings_payl
     await manager.submit(task)
     await asyncio.sleep(.01)
     task.output = TaskOutput(
-        result=ResultType.SUCCESS, runtime=1.0, data={'task': 'data', 'valid': True},
+        result=ResultType.SUCCESS, runtime=1.0, data={
+            'body': {'task': 'data', 'valid': True},
+            'http_status': 200,
+            'headers': None,
+        },
     )
     result_queue.assert_awaited_once_with(task)
 
