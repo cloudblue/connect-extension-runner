@@ -63,6 +63,7 @@ def get_environment():
         'instance_id': os.getenv('INSTANCE_ID', get_container_id()),
         'ws_address': os.getenv('SERVER_ADDRESS', 'api.cnct.info'),
         'api_address': os.getenv('API_ADDRESS', os.getenv('SERVER_ADDRESS', 'api.cnct.info')),
+        'webapp_port': int(os.getenv('WEBAPP_PORT', '53537')),
         'background_task_max_execution_time': int(os.getenv(
             'BACKGROUND_TASK_MAX_EXECUTION_TIME', BACKGROUND_TASK_MAX_EXECUTION_TIME,
         )),

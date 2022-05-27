@@ -14,7 +14,7 @@ from connect.eaas.core.responses import ProcessingResponse
 from connect.eaas.runner.constants import BACKGROUND_EVENT_TYPES
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture
 def unused_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
@@ -89,6 +89,7 @@ def settings_payload():
             }
             for evt_type in BACKGROUND_EVENT_TYPES
         ],
+        'model_type': 'setup_response',
     }
 
 

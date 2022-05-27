@@ -19,11 +19,16 @@ class ExtensionHandler:
     def __init__(self, config: ConfigHelper):
         self._config = config
         self._extension_class = self.get_extension_class()
-        self._descriptor = self._extension_class.get_descriptor()
-        self._events = self.get_events()
-        self._schedulables = self.get_schedulables()
-        self._variables = self.get_variables()
+        if self._extension_class:
+            self._descriptor = self._extension_class.get_descriptor()
+            self._events = self.get_events()
+            self._schedulables = self.get_schedulables()
+            self._variables = self.get_variables()
         self._logging_handler = None
+
+    @property
+    def should_start(self):
+        return self._extension_class is not None
 
     @property
     def events(self):
