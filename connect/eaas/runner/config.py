@@ -66,6 +66,10 @@ class ConfigHelper:
         return self.dyn_config.logging.logging_api_key
 
     @property
+    def logging_level(self):
+        return self.dyn_config.logging.log_level
+
+    @property
     def variables(self):
         return self.dyn_config.variables
 
@@ -162,8 +166,13 @@ class ConfigHelper:
             self.dyn_config.logging.logging_api_key = (
                 data.logging.logging_api_key or self.dyn_config.logging.logging_api_key
             )
-            self.dyn_config.event_definitions = (
-                data.event_definitions or self.dyn_config.event_definitions
+
+            self.dyn_config.logging.logging_api_key = (
+                data.logging.logging_api_key or self.dyn_config.logging.logging_api_key
+            )
+
+            self.dyn_config.logging.log_level = (
+                data.logging.log_level or self.dyn_config.logging.log_level
             )
 
         logger.debug(f'Runner dynamic config updated {data}')

@@ -4,9 +4,9 @@ import logging
 from pkg_resources import iter_entry_points
 
 from connect.client import AsyncConnectClient, ConnectClient
+from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
-from connect.eaas.runner.logging import ExtensionLogHandler, RequestLogger
 
 
 logger = logging.getLogger(__name__)
