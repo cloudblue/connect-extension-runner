@@ -13,9 +13,15 @@ from multiprocessing import Process
 
 import uvloop
 
+from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.webworker import WebWorker
+from connect.eaas.runner.webapp import WebApp
 from connect.eaas.runner.worker import Worker
 
 logger = logging.getLogger('eaas')
+
+workers = []
 
 
 def configure_logger(debug):
@@ -52,8 +58,8 @@ def configure_logger(debug):
     )
 
 
-def start_worker_process(unsecure, runner_type):
-    worker = Worker(secure=not unsecure, runner_type=runner_type)
+def start_event_worker_process(config, handler, runner_type):
+    worker = Worker(config, handler, runner_type=runner_type)
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
         signal.SIGINT,
@@ -66,32 +72,74 @@ def start_worker_process(unsecure, runner_type):
     loop.run_until_complete(worker.start())
 
 
+def start_webapp_worker_process(config, handler):
+    worker = WebWorker(config, handler)
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(
+        signal.SIGINT,
+        worker.handle_signal,
+    )
+    loop.add_signal_handler(
+        signal.SIGTERM,
+        worker.handle_signal,
+    )
+    loop.run_until_complete(worker.start())
+
+
+def start_event_worker(data):
+    config = ConfigHelper(secure=not data.unsecure)
+    handler = ExtensionHandler(config)
+
+    if not handler.should_start:
+        return
+
+    runner_types = ('interactive', 'background') if data.split else (None,)
+
+    for runner_type in runner_types:
+        p = Process(
+            target=start_event_worker_process,
+            args=(config, handler, runner_type),
+        )
+        workers.append(p)
+        p.start()
+        logger.info(f'{runner_type or "Events"} tasks worker pid: {p.pid}')
+
+
+def start_webapp_worker(data):
+    config = ConfigHelper(secure=not data.unsecure)
+    handler = WebApp(config)
+    if not handler.should_start:
+        return
+
+    p = Process(
+        target=start_webapp_worker_process,
+        args=(config, handler),
+    )
+    workers.append(p)
+    p.start()
+    logger.info(f'Webapp worker pid: {p.pid}')
+
+
 def start(data):
     uvloop.install()
     logger.info('Starting Connect EaaS runtime....')
     if data.unsecure:
         logger.warning('Websocket connections will be established using unsecure protocol (ws).')
 
-    if not data.split:
-        start_worker_process(data.unsecure, None)
-    else:  # pragma: no cover
-        workers = []
-        stop_event = threading.Event()
-        for runner_type in ('interactive', 'background'):
-            p = Process(daemon=True, target=start_worker_process, args=(data.unsecure, runner_type))
-            workers.append(p)
-            p.start()
-            logger.info(f'{runner_type} tasks worker pid: {p.pid}')
+    stop_event = threading.Event()
 
-        def _terminate(*args, **kwargs):
-            for p in workers:
-                p.join()
-            stop_event.set()
+    def _terminate(*args, **kwargs):  # pragma: no cover
+        for p in workers:
+            p.join()
+        stop_event.set()
 
-        signal.signal(signal.SIGINT, _terminate)
-        signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGINT, _terminate)
+    signal.signal(signal.SIGTERM, _terminate)
 
-        stop_event.wait()
+    start_event_worker(data)
+    start_webapp_worker(data)
+
+    stop_event.wait()
 
 
 def main():

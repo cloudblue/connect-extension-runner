@@ -70,6 +70,10 @@ class ConfigHelper:
         return self.dyn_config.variables
 
     @property
+    def webapp_port(self):
+        return self.env['webapp_port']
+
+    @property
     def metadata(self):
         return {
             'api_address': self.env['api_address'],
@@ -88,11 +92,18 @@ class ConfigHelper:
             for definition in (self.dyn_config.event_definitions or [])
         }
 
-    def get_ws_url(self):
+    def get_events_ws_url(self):
         proto = 'wss' if self.secure else 'ws'
         return (
             f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
             f'/{self.env["environment_id"]}/{self.env["instance_id"]}'
+        )
+
+    def get_webapp_ws_url(self):
+        proto = 'wss' if self.secure else 'ws'
+        return (
+            f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
+            f'/{self.env["environment_id"]}/{self.env["instance_id"]}/webapp'
         )
 
     def get_api_url(self):
