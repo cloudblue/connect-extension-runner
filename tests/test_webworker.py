@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import base64
 import json
 
@@ -115,7 +116,8 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
 @pytest.mark.asyncio
 async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_payload):
-
+    setup_response = copy.deepcopy(settings_payload)
+    setup_response['logging']['logging_api_key'] = 'logging_api_key'
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
         return_value={
@@ -169,7 +171,7 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
         Message(
             version=2,
             message_type=MessageType.SETUP_RESPONSE,
-            data=SetupResponse(**settings_payload),
+            data=SetupResponse(**setup_response),
         ).dict(),
         Message(
             version=2,

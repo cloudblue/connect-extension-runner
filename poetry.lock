@@ -115,7 +115,7 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
 name = "connect-eaas-core"
-version = "2.1.1"
+version = "2.2.0"
 description = "Connect Eaas Core"
 category = "main"
 optional = false
@@ -125,6 +125,7 @@ python-versions = ">=3.8,<4.0"
 connect-openapi-client = ">=25.4"
 fastapi = ">=0.78.0,<0.79.0"
 fastapi-utils = ">=0.2.1,<0.3.0"
+logzio-python-handler = ">=3.1.1,<4.0.0"
 pydantic = ">=1.9.0,<2.0.0"
 
 [[package]]
@@ -757,7 +758,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "6ca7856899d5c3664dcc065146facdd0bd4a1699dbbf54dde3ba9f292edf5750"
+content-hash = "ee67c4a61c173786fec672f115a86adf6ba38cbc8313ad6e7326b4ab2eb02c91"
 
 [metadata.files]
 anyio = [
@@ -804,8 +805,8 @@ commonmark = [
     {file = "commonmark-0.9.1.tar.gz", hash = "sha256:452f9dc859be7f06631ddcb328b6919c67984aca654e5fefb3914d54691aed60"},
 ]
 connect-eaas-core = [
-    {file = "connect-eaas-core-2.1.1.tar.gz", hash = "sha256:92f84f60ccb6005fd080192cf236bbde1d44d79181207248251f0f8f5142a364"},
-    {file = "connect_eaas_core-2.1.1-py3-none-any.whl", hash = "sha256:83d4ce239850d8581c0618d20e78cfd4149c30ca34efec84e76b8c44c2e8d2f6"},
+    {file = "connect-eaas-core-2.2.0.tar.gz", hash = "sha256:228b6a87f7b216b71108378684dbc3f1a8176be5b6b374a4a368113df7616c2b"},
+    {file = "connect_eaas_core-2.2.0-py3-none-any.whl", hash = "sha256:762eb6c9ff83b2390e99cb0a8016cb075614fa6d97d53f7af73cf1e4a8890c6c"},
 ]
 connect-markdown-renderer = [
     {file = "connect-markdown-renderer-2.0.1.tar.gz", hash = "sha256:fbaefff195a6c347a7f89e75a09e78f6be35c903d72a2766c8f263ca75758757"},

@@ -1,5 +1,6 @@
 import base64
 import copy
+import json
 
 import httpx
 
@@ -64,14 +65,19 @@ class WebWorker(WorkerBase):
 
     async def process_task(self, task):
         headers = copy.copy(task.request.headers)
-        headers.update(
-            {
-                'X-Connect-Api-Gateway-Url': self.config.get_api_url(),
-                'X-Connect-User-Agent': self.config.get_user_agent()['User-Agent'],
-                'X-Connect-Installation-Api-Key': task.options.api_key or 'testame la key',
-                'X-Connect-Installation-Id': task.options.installation_id or '',
-            },
-        )
+        extra_headers = {
+            'X-Connect-Api-Gateway-Url': self.config.get_api_url(),
+            'X-Connect-User-Agent': self.config.get_user_agent()['User-Agent'],
+            'X-Connect-Installation-Api-Key': task.options.api_key,
+            'X-Connect-Installation-Id': task.options.installation_id,
+            'X-Connect-Logging-Level': self.config.logging_level,
+        }
+
+        if self.config.logging_api_key is not None:
+            extra_headers['X-Connect-Logging-Api-Key'] = self.config.logging_api_key
+            extra_headers['X-Connect-Logging-Metadata'] = json.dumps(self.config.metadata)
+
+        headers.update(extra_headers)
 
         async with httpx.AsyncClient() as client:
             url = f'http://localhost:{self.config.webapp_port}{task.request.url}'
