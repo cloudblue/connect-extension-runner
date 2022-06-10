@@ -31,7 +31,7 @@ connect-openapi-client = ">=25.4"
 logzio-python-handler = "^3.0.0"
 backoff = "^1.11.1"
 uvloop = "^0.16.0"
-connect-eaas-core = ">=2.2.0,<3"
+connect-eaas-core = ">=2.3.0,<3"
 uvicorn = "^0.17.6"
 httpx = "^0.23.0"
 

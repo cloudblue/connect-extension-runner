@@ -95,12 +95,17 @@ def settings_payload():
 
 @pytest.fixture
 def task_payload():
-    def _task_payload(task_category, event_type, object_id, runtime=0.0):
+    def _task_payload(
+        task_category, event_type, object_id,
+        runtime=0.0, api_key=None, installation_id=None,
+    ):
         return {
             'options': {
                 'task_id': 'TQ-000',
                 'task_category': task_category,
                 'runtime': runtime,
+                'api_key': api_key,
+                'installation_id': installation_id,
             },
             'input': {
                 'event_type': event_type,

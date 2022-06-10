@@ -43,12 +43,71 @@ async def test_submit(mocker, extension_cls, task_payload):
     assert manager.running_tasks == 0
     await manager.submit(task_data)
 
-    mocked_get_method.assert_called_once_with(task_data.options.task_id, 'my_method')
+    mocked_get_method.assert_called_once_with(
+        task_data.options.task_id,
+        'my_method',
+        installation=None,
+        api_key=None,
+    )
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_awaited_once_with(
         task_data, extension_instance.my_method, {'test': 'data'},
     )
     assert manager.running_tasks == 1
+
+
+@pytest.mark.asyncio
+async def test_submit_multi_account(mocker, extension_cls, task_payload):
+    class TaskManager(TasksManagerBase):
+        async def build_response(self, task_data, future):
+            pass
+
+        async def get_argument(self, task_data):
+            pass
+
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
+
+    mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
+    mocked_get_argument.return_value = {'test': 'data'}
+    mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
+    mocked_get_method = mocker.patch.object(ExtensionHandler, 'get_method')
+    mocked_get_installation = mocker.patch.object(
+        TaskManager,
+        'get_installation',
+        return_value={'installation': 'data'},
+    )
+
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    config = ConfigHelper()
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    handler = ExtensionHandler(config)
+
+    extension_instance = cls(None, None, None)
+
+    mocked_get_method.return_value = extension_instance.my_method
+
+    manager = TaskManager(config, handler, None)
+
+    task_data = Task(**task_payload(
+        'category', 'type', 'ID', api_key='api_key', installation_id='installation_id',
+    ))
+    assert manager.running_tasks == 0
+    await manager.submit(task_data)
+
+    mocked_get_method.assert_called_once_with(
+        task_data.options.task_id,
+        'my_method',
+        installation={'installation': 'data'},
+        api_key='api_key',
+    )
+    mocked_get_argument.assert_awaited_once_with(task_data)
+    mocked_invoke.assert_awaited_once_with(
+        task_data, extension_instance.my_method, {'test': 'data'},
+    )
+    assert manager.running_tasks == 1
+    mocked_get_installation.assert_called_once_with(task_data)
 
 
 @pytest.mark.asyncio
@@ -224,3 +283,58 @@ async def test_log_exception(mocker, extension_cls, settings_payload, task_paylo
         logging.ERROR,
         'Unhandled exception during execution of task TQ-000',
     )
+
+
+@pytest.mark.asyncio
+async def test_get_installation(
+    mocker, httpx_mock, extension_cls,
+    settings_payload, task_payload, unused_port,
+):
+
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+
+    class TaskManager(TasksManagerBase):
+        async def build_response(self, task_data, future):
+            pass
+
+        async def get_argument(self, task_data):
+            pass
+
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
+
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    config = ConfigHelper()
+    config.update_dynamic_config(SetupResponse(**settings_payload))
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    handler = ExtensionHandler(config)
+
+    manager = TaskManager(config, handler, None)
+
+    task_data = Task(**task_payload(
+        'category', 'type', 'ID', api_key='api_key', installation_id='installation_id',
+    ))
+
+    installation = {'installation': 'data'}
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/devops/services/{config.service_id}/installations/installation_id',
+        json=installation,
+    )
+    assert await manager.get_installation(task_data) == installation
