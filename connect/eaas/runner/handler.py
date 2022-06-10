@@ -50,14 +50,21 @@ class ExtensionHandler:
     def changelog(self):
         return self._descriptor['changelog_url']
 
-    def get_method(self, task_id, method_name):
+    def get_method(self, task_id, method_name, installation=None, api_key=None):
         if not method_name:  # pragma: no cover
             return
-        ext = self._extension_class(
-            self._create_client(task_id, method_name),
+        args = (
+            self._create_client(task_id, method_name, self._config.api_key),
             self.get_logger(task_id),
             self._config.variables,
         )
+        kwargs = {}
+        if installation:
+            kwargs['installation'] = installation
+            kwargs['installation_client'] = self._create_client(task_id, method_name, api_key)
+
+        ext = self._extension_class(*args, **kwargs)
+
         return getattr(ext, method_name, None)
 
     def get_logger(self, task_id):
@@ -78,7 +85,7 @@ class ExtensionHandler:
             {'task_id': task_id},
         )
 
-    def _create_client(self, task_id, method_name):
+    def _create_client(self, task_id, method_name, api_key):
         """
         Get an instance of the Connect Openapi Client. If the extension is asyncrhonous
         it returns an instance of the AsyncConnectClient otherwise the ConnectClient.
@@ -88,7 +95,7 @@ class ExtensionHandler:
         Client = ConnectClient if not inspect.iscoroutinefunction(method) else AsyncConnectClient
 
         return Client(
-            self._config.api_key,
+            api_key,
             endpoint=self._config.get_api_url(),
             use_specs=False,
             logger=RequestLogger(

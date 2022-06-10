@@ -81,3 +81,44 @@ def test_get_extension_class(mocker, settings_payload):
     handler = ExtensionHandler(config)
 
     assert handler._extension_class == MyExtension
+
+
+def test_get_method_multi_account(mocker, settings_payload, extension_cls):
+    config = ConfigHelper()
+    dyn_config = SetupResponse(
+        varibles=settings_payload.get('configuration'),
+        environment_type=settings_payload.get('environment_type'),
+        logging=Logging(**settings_payload, meta=LogMeta(**settings_payload)),
+    )
+    dyn_config.logging.logging_api_key = 'test_key'
+    config.update_dynamic_config(dyn_config)
+    mocker.patch('connect.eaas.runner.handler.logging.getLogger')
+    ext_class = extension_cls('test_method')
+    mocker.patch.object(ext_class, 'get_descriptor')
+    mocker.patch.object(
+        ExtensionHandler,
+        'get_extension_class',
+        return_value=ext_class,
+    )
+    mocked_log_handler = mocker.patch(
+        'connect.eaas.runner.handler.ExtensionLogHandler',
+        autospec=True,
+    )
+    handler = ExtensionHandler(config)
+
+    method = handler.get_method(
+        'TQ-000',
+        'test_method',
+        installation={'installation': 'data'},
+        api_key='installation_key',
+    )
+    assert method.__name__ == 'test_method'
+    assert method.__self__.__class__ == ext_class
+
+    assert method.__self__.installation == {'installation': 'data'}
+    assert method.__self__.installation_client.api_key == 'installation_key'
+
+    mocked_log_handler.assert_called_once_with(
+        config.logging_api_key,
+        default_extra_fields=config.metadata,
+    )

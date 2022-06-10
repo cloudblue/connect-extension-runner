@@ -54,9 +54,16 @@ class TasksManagerBase(ABC):
             argument = await self.get_argument(task_data)
             if not argument:
                 return
-
+            installation = None
+            if task_data.options.installation_id:
+                installation = await self.get_installation(task_data)
             method_name = self.get_method_name(task_data, argument)
-            method = self.handler.get_method(task_data.options.task_id, method_name)
+            method = self.handler.get_method(
+                task_data.options.task_id,
+                method_name,
+                installation=installation,
+                api_key=task_data.options.api_key,
+            )
             if not method:
                 async with self.lock:
                     self.running_tasks -= 1
@@ -154,6 +161,15 @@ class TasksManagerBase(ABC):
         method argument.
         """
         pass
+
+    async def get_installation(self, task_data):
+        """
+        Get the related event installation for multi-account
+        extension.
+        """
+        return await self.client(
+            'devops',
+        ).services[self.config.service_id].installations[task_data.options.installation_id].get()
 
     @abstractmethod
     def get_method_name(self, task_data, argument):  # pragma: no cover
