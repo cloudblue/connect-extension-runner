@@ -15,7 +15,7 @@ from connect.eaas.runner.constants import (
     BACKGROUND_EVENT_TYPES,
     EVENT_TYPE_EXT_METHOD_MAP,
 )
-from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.handlers.events import ExtensionHandler
 from connect.eaas.runner.managers import BackgroundTasksManager
 
 

@@ -12,7 +12,7 @@ from connect.eaas.core.proto import (
     SetupRequest,
     WebTask,
 )
-from connect.eaas.runner.base import WorkerBase
+from connect.eaas.runner.workers.base import WorkerBase
 from connect.eaas.runner.helpers import get_version
 
 
@@ -23,9 +23,8 @@ class WebWorker(WorkerBase):
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, config, handler, runner_type=None):
+    def __init__(self, config, handler):
         super().__init__(config)
-        self.runner_type = runner_type
         self.handler = handler
         self.handler.start()
 

@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from connect.eaas.core.extension import UIExtension
+from connect.eaas.core.extension import WebAppExtension
 from connect.eaas.core.proto import (
     HttpRequest,
     HttpResponse,
@@ -17,8 +17,8 @@ from connect.eaas.core.proto import (
     WebTaskOptions,
 )
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.webworker import WebWorker
-from connect.eaas.runner.webapp import WebApp
+from connect.eaas.runner.workers.webapp import WebWorker
+from connect.eaas.runner.handlers.webapp import WebApp
 
 from tests.utils import WSHandler
 
@@ -47,7 +47,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         },
     }
 
-    class MyExtension(UIExtension):
+    class MyExtension(WebAppExtension):
         @classmethod
         def get_descriptor(cls):
             return {
@@ -63,7 +63,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     )
     mocker.patch.object(WebApp, 'start')
     mocker.patch.object(WebApp, 'stop')
-    mocker.patch('connect.eaas.runner.webworker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.webapp.get_version', return_value='24.1')
 
     data_to_send = Message(
         version=2,
@@ -140,7 +140,7 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
         },
     }
 
-    class MyExtension(UIExtension):
+    class MyExtension(WebAppExtension):
         @classmethod
         def get_descriptor(cls):
             return {
@@ -156,7 +156,7 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
     )
     mocker.patch.object(WebApp, 'start')
     mocker.patch.object(WebApp, 'stop')
-    mocker.patch('connect.eaas.runner.webworker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.webapp.get_version', return_value='24.1')
 
     httpx_mock.add_response(
         method='GET',
@@ -283,7 +283,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
         },
     }
 
-    class MyExtension(UIExtension):
+    class MyExtension(WebAppExtension):
         @classmethod
         def get_descriptor(cls):
             return {

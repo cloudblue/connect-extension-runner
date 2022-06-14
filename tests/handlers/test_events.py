@@ -2,7 +2,7 @@ from pkg_resources import EntryPoint
 
 from connect.eaas.core.proto import Logging, LogMeta, SetupResponse
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.handlers.events import ExtensionHandler
 
 
 def test_get_method(mocker, settings_payload, extension_cls):
@@ -14,7 +14,7 @@ def test_get_method(mocker, settings_payload, extension_cls):
     )
     dyn_config.logging.logging_api_key = 'test_key'
     config.update_dynamic_config(dyn_config)
-    mocker.patch('connect.eaas.runner.handler.logging.getLogger')
+    mocker.patch('connect.eaas.runner.handlers.events.logging.getLogger')
     ext_class = extension_cls('test_method')
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
@@ -23,7 +23,7 @@ def test_get_method(mocker, settings_payload, extension_cls):
         return_value=ext_class,
     )
     mocked_log_handler = mocker.patch(
-        'connect.eaas.runner.handler.ExtensionLogHandler',
+        'connect.eaas.runner.handlers.events.ExtensionLogHandler',
         autospec=True,
     )
     handler = ExtensionHandler(config)
@@ -72,7 +72,7 @@ def test_get_extension_class(mocker, settings_payload):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handler.iter_entry_points',
+        'connect.eaas.runner.handlers.events.iter_entry_points',
         return_value=iter([
             EntryPoint('extension', 'connect.eaas.ext'),
         ]),
@@ -92,7 +92,7 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
     )
     dyn_config.logging.logging_api_key = 'test_key'
     config.update_dynamic_config(dyn_config)
-    mocker.patch('connect.eaas.runner.handler.logging.getLogger')
+    mocker.patch('connect.eaas.runner.handlers.events.logging.getLogger')
     ext_class = extension_cls('test_method')
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
@@ -101,7 +101,7 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
         return_value=ext_class,
     )
     mocked_log_handler = mocker.patch(
-        'connect.eaas.runner.handler.ExtensionLogHandler',
+        'connect.eaas.runner.handlers.events.ExtensionLogHandler',
         autospec=True,
     )
     handler = ExtensionHandler(config)

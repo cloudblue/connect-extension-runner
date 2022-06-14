@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from connect.client import AsyncConnectClient, ClientError
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.handlers.events import ExtensionHandler
 
 logger = logging.getLogger(__name__)
 

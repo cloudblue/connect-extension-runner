@@ -13,13 +13,14 @@ from multiprocessing import Process
 
 import uvloop
 
+from connect.eaas.runner.handlers.anvilapp import AnvilApp
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handler import ExtensionHandler
-from connect.eaas.runner.webworker import WebWorker
-from connect.eaas.runner.webapp import WebApp
-from connect.eaas.runner.worker import Worker
+from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.workers.webapp import WebWorker
+from connect.eaas.runner.handlers.webapp import WebApp
+from connect.eaas.runner.workers.events import Worker
 
-logger = logging.getLogger('eaas')
+logger = logging.getLogger('connect.eaas')
 
 workers = []
 
@@ -120,6 +121,20 @@ def start_webapp_worker(data):
     logger.info(f'Webapp worker pid: {p.pid}')
 
 
+def start_anvilapp(data):
+    config = ConfigHelper(secure=not data.unsecure)
+    handler = AnvilApp(config)
+    if not handler.should_start:
+        return
+
+    p = Process(
+        target=handler.run_server,
+    )
+    workers.append(p)
+    p.start()
+    logger.info(f'Anvil App worker pid: {p.pid}')
+
+
 def start(data):
     uvloop.install()
     logger.info('Starting Connect EaaS runtime....')
@@ -127,6 +142,9 @@ def start(data):
         logger.warning('Websocket connections will be established using unsecure protocol (ws).')
 
     stop_event = threading.Event()
+    start_event_worker(data)
+    start_webapp_worker(data)
+    start_anvilapp(data)
 
     def _terminate(*args, **kwargs):  # pragma: no cover
         for p in workers:
@@ -135,10 +153,6 @@ def start(data):
 
     signal.signal(signal.SIGINT, _terminate)
     signal.signal(signal.SIGTERM, _terminate)
-
-    start_event_worker(data)
-    start_webapp_worker(data)
-
     stop_event.wait()
 
 

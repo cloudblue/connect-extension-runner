@@ -15,10 +15,10 @@ from connect.eaas.runner.main import (
     start_webapp_worker,
     start_webapp_worker_process,
 )
-from connect.eaas.runner.handler import ExtensionHandler
-from connect.eaas.runner.webapp import WebApp
-from connect.eaas.runner.webworker import WebWorker
-from connect.eaas.runner.worker import Worker
+from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.handlers.webapp import WebApp
+from connect.eaas.runner.workers.webapp import WebWorker
+from connect.eaas.runner.workers.events import Worker
 
 
 def test_start(mocker):

@@ -2,7 +2,7 @@ from pkg_resources import EntryPoint
 
 from connect.eaas.core.decorators import router
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.webapp import WebApp
+from connect.eaas.runner.handlers.webapp import WebApp
 
 
 def test_get_webapp_class(mocker, settings_payload):
@@ -18,7 +18,7 @@ def test_get_webapp_class(mocker, settings_payload):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.webapp.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
@@ -66,7 +66,7 @@ def test_properties(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.webapp.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
@@ -95,7 +95,7 @@ def test_start(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.webapp.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
@@ -103,7 +103,7 @@ def test_start(mocker):
 
     mocked_process = mocker.MagicMock()
     mocked_process_cls = mocker.patch(
-        'connect.eaas.runner.webapp.Process',
+        'connect.eaas.runner.handlers.webapp.Process',
         return_value=mocked_process,
     )
 
@@ -128,7 +128,7 @@ def test_stop(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.webapp.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
@@ -155,7 +155,7 @@ def test_run_server(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.webapp.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
@@ -163,14 +163,14 @@ def test_run_server(mocker):
 
     mocked_fast_api = mocker.MagicMock()
 
-    mocker.patch('connect.eaas.runner.webapp.FastAPI', return_value=mocked_fast_api)
+    mocker.patch('connect.eaas.runner.handlers.webapp.FastAPI', return_value=mocked_fast_api)
 
     mocked_static_app = mocker.MagicMock()
     mocked_staticfiles = mocker.patch(
-        'connect.eaas.runner.webapp.StaticFiles',
+        'connect.eaas.runner.handlers.webapp.StaticFiles',
         return_value=mocked_static_app,
     )
-    mocked_run = mocker.patch('connect.eaas.runner.webapp.uvicorn.run')
+    mocked_run = mocker.patch('connect.eaas.runner.handlers.webapp.uvicorn.run')
 
     handler = WebApp(config)
     handler.run_server()

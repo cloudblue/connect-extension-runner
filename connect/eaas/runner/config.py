@@ -63,7 +63,7 @@ class ConfigHelper:
 
     @property
     def logging_api_key(self):
-        return self.dyn_config.logging.logging_api_key
+        return self.dyn_config.logging.logging_api_key if self.dyn_config else None
 
     @property
     def logging_level(self):
@@ -71,7 +71,7 @@ class ConfigHelper:
 
     @property
     def variables(self):
-        return self.dyn_config.variables
+        return self.dyn_config.variables if self.dyn_config else {}
 
     @property
     def webapp_port(self):
@@ -108,6 +108,13 @@ class ConfigHelper:
         return (
             f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
             f'/{self.env["environment_id"]}/{self.env["instance_id"]}/webapp'
+        )
+
+    def get_anvilapp_ws_url(self):
+        proto = 'wss' if self.secure else 'ws'
+        return (
+            f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
+            f'/{self.env["environment_id"]}/{self.env["instance_id"]}/anvilapp'
         )
 
     def get_api_url(self):

@@ -25,7 +25,7 @@ from connect.eaas.core.responses import (
     ProductActionResponse,
     ValidationResponse,
 )
-from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.handlers.events import ExtensionHandler
 from connect.eaas.runner.managers import InteractiveTasksManager
 
 
