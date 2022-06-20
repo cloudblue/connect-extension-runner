@@ -35,6 +35,14 @@ class WebApp:
     def variables(self):
         return self._webapp_class.get_variables()
 
+    @property
+    def readme(self):
+        return self._webapp_class.get_descriptor()['readme_url']
+
+    @property
+    def changelog(self):
+        return self._webapp_class.get_descriptor()['changelog_url']
+
     def start(self):
         if self._webapp_class:
             self._server_process = Process(daemon=True, target=self.run_server)
@@ -55,14 +63,6 @@ class WebApp:
             host='127.0.0.1',
             port=self._config.webapp_port,
         )
-
-    @property
-    def readme(self):
-        return self._webapp_class.get_descriptor()['readme_url']
-
-    @property
-    def changelog(self):
-        return self._webapp_class.get_descriptor()['changelog_url']
 
     def get_webapp_class(self):
         ext_class = next(iter_entry_points('connect.eaas.ext', 'webapp'), None)

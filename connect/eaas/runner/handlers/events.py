@@ -98,6 +98,7 @@ class ExtensionHandler:
             api_key,
             endpoint=self._config.get_api_url(),
             use_specs=False,
+            max_retries=3,
             logger=RequestLogger(
                 self.get_logger(task_id),
             ),

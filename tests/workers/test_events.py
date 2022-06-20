@@ -23,8 +23,8 @@ from connect.eaas.runner.exceptions import (
     MaintenanceError,
     StopBackoffError,
 )
-from connect.eaas.runner.handler import ExtensionHandler
-from connect.eaas.runner.worker import Worker
+from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.workers.events import Worker
 
 from tests.utils import WSHandler
 
@@ -66,7 +66,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = Message(
         version=2,
@@ -178,7 +178,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = [
         Message(
@@ -316,7 +316,7 @@ async def test_pr_task_decorated(mocker, ws_server, unused_port, httpx_mock, set
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = [
         Message(
@@ -462,7 +462,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = [
         Message(
@@ -607,7 +607,7 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = [
         Message(
@@ -749,7 +749,7 @@ async def test_scheduled_task_decorated(
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = [
         Message(
@@ -903,9 +903,9 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
 
 @pytest.mark.asyncio
 async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch.object(
         ExtensionHandler,
         'get_extension_class',
@@ -951,7 +951,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 
 @pytest.mark.asyncio
 async def test_connection_websocket_exception(mocker, ws_server, unused_port, caplog):
-    mocker.patch('connect.eaas.runner.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch.object(
         ExtensionHandler,
         'get_extension_class',
@@ -993,9 +993,9 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
 
 @pytest.mark.asyncio
 async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
-    mocker.patch('connect.eaas.runner.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch.object(
         ExtensionHandler,
         'get_extension_class',
@@ -1037,9 +1037,9 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
 
 @pytest.mark.asyncio
 async def test_connection_internal_server_error(mocker, ws_server, unused_port, caplog):
-    mocker.patch('connect.eaas.runner.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch.object(
         ExtensionHandler,
         'get_extension_class',
@@ -1179,7 +1179,7 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = Message(
         version=2,
@@ -1263,7 +1263,7 @@ async def test_extension_settings_with_vars_decorated(mocker, ws_server, unused_
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = Message(
         version=2,
@@ -1347,7 +1347,7 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
 
     data_to_send = Message(
         version=2,
@@ -1501,11 +1501,11 @@ async def test_ensure_connection_maintenance(mocker, caplog):
         ExtensionHandler,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch(
-        'connect.eaas.runner.base.websockets.connect',
+        'connect.eaas.runner.workers.base.websockets.connect',
         side_effect=InvalidStatusCode(502, None),
     )
 
@@ -1530,11 +1530,11 @@ async def test_ensure_connection_other_statuses(mocker, caplog, status):
         ExtensionHandler,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch(
-        'connect.eaas.runner.base.websockets.connect',
+        'connect.eaas.runner.workers.base.websockets.connect',
         side_effect=InvalidStatusCode(status, None),
     )
 
@@ -1558,11 +1558,11 @@ async def test_ensure_connection_generic_exception(mocker, caplog):
         ExtensionHandler,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch(
-        'connect.eaas.runner.base.websockets.connect',
+        'connect.eaas.runner.workers.base.websockets.connect',
         side_effect=RuntimeError('generic error'),
     )
 
@@ -1586,10 +1586,10 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
         ExtensionHandler,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_GENERIC_SECONDS', 600)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 600)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch(
-        'connect.eaas.runner.base.websockets.connect',
+        'connect.eaas.runner.workers.base.websockets.connect',
         side_effect=RuntimeError('generic error'),
     )
 
@@ -1615,10 +1615,10 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
         ExtensionHandler,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_TIME_GENERIC_SECONDS', 10)
-    mocker.patch('connect.eaas.runner.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 10)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch(
-        'connect.eaas.runner.base.websockets.connect',
+        'connect.eaas.runner.workers.base.websockets.connect',
         side_effect=RuntimeError('generic error'),
     )
 
@@ -1674,7 +1674,7 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
         'get_extension_class',
         return_value=MyExtension,
     )
-    mocker.patch('connect.eaas.runner.worker.RESULT_SENDER_WAIT_GRACE_SECONDS', .1)
+    mocker.patch('connect.eaas.runner.workers.events.RESULT_SENDER_WAIT_GRACE_SECONDS', .1)
 
     data_to_send = [
         Message(

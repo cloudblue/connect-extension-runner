@@ -15,7 +15,7 @@ from connect.eaas.core.proto import (
     TaskOutput,
 )
 from connect.eaas.core.responses import ScheduledExecutionResponse
-from connect.eaas.runner.handler import ExtensionHandler
+from connect.eaas.runner.handlers.events import ExtensionHandler
 from connect.eaas.runner.managers import ScheduledTasksManager
 
 

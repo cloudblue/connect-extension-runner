@@ -12,7 +12,7 @@ from connect.eaas.core.proto import (
     MessageType,
     SetupRequest,
 )
-from connect.eaas.runner.base import WorkerBase
+from connect.eaas.runner.workers.base import WorkerBase
 from connect.eaas.runner.constants import (
     DELAY_ON_CONNECT_EXCEPTION_SECONDS,
     RESULT_SENDER_MAX_RETRIES,
