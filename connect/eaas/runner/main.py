@@ -13,11 +13,12 @@ from multiprocessing import Process
 
 import uvloop
 
-from connect.eaas.runner.handlers.anvilapp import AnvilApp
 from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.handlers.anvilapp import AnvilApp
 from connect.eaas.runner.handlers.events import ExtensionHandler
-from connect.eaas.runner.workers.webapp import WebWorker
 from connect.eaas.runner.handlers.webapp import WebApp
+from connect.eaas.runner.workers.anvilapp import AnvilWorker
+from connect.eaas.runner.workers.webapp import WebWorker
 from connect.eaas.runner.workers.events import Worker
 
 logger = logging.getLogger('connect.eaas')
@@ -87,6 +88,20 @@ def start_webapp_worker_process(config, handler):
     loop.run_until_complete(worker.start())
 
 
+def start_anvilapp_worker_process(config, handler):
+    worker = AnvilWorker(config, handler)
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(
+        signal.SIGINT,
+        worker.handle_signal,
+    )
+    loop.add_signal_handler(
+        signal.SIGTERM,
+        worker.handle_signal,
+    )
+    loop.run_until_complete(worker.start())
+
+
 def start_event_worker(data):
     config = ConfigHelper(secure=not data.unsecure)
     handler = ExtensionHandler(config)
@@ -121,14 +136,15 @@ def start_webapp_worker(data):
     logger.info(f'Webapp worker pid: {p.pid}')
 
 
-def start_anvilapp(data):
+def start_anvilapp_worker(data):
     config = ConfigHelper(secure=not data.unsecure)
     handler = AnvilApp(config)
     if not handler.should_start:
         return
 
     p = Process(
-        target=handler.run_server,
+        target=start_anvilapp_worker_process,
+        args=(config, handler),
     )
     workers.append(p)
     p.start()
@@ -144,7 +160,7 @@ def start(data):
     stop_event = threading.Event()
     start_event_worker(data)
     start_webapp_worker(data)
-    start_anvilapp(data)
+    start_anvilapp_worker(data)
 
     def _terminate(*args, **kwargs):  # pragma: no cover
         for p in workers:
