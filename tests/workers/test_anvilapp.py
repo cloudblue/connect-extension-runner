@@ -80,7 +80,9 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         message_type=MessageType.SETUP_REQUEST,
         data=SetupRequest(
             event_subscriptions=None,
-            variables=[],
+            variables=[
+                {'name': 'MY_ANVIL_API_KEY', 'initial_value': 'changeme!', 'secure': True},
+            ],
             schedulables=None,
             repository={
                 'readme_url': 'https://read.me',

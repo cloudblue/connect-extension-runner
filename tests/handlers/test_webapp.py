@@ -1,3 +1,4 @@
+import pytest
 from pkg_resources import EntryPoint
 
 from connect.eaas.core.decorators import router
@@ -10,7 +11,9 @@ def test_get_webapp_class(mocker, settings_payload):
     config = ConfigHelper()
 
     class MyExtension:
-        pass
+        @classmethod
+        def get_static_root(cls):
+            return ''
 
     mocker.patch.object(
         EntryPoint,
@@ -60,6 +63,10 @@ def test_properties(mocker):
         def get_variables(cls):
             return variables
 
+        @classmethod
+        def get_static_root(cls):
+            return ''
+
     mocker.patch.object(
         EntryPoint,
         'load',
@@ -82,72 +89,23 @@ def test_properties(mocker):
     assert handler.should_start is True
 
 
-def test_start(mocker):
+@pytest.mark.parametrize('static_root', ('static', None))
+def test_get_asgi_application(mocker, static_root):
 
-    config = ConfigHelper()
-
-    class MyExtension:
-        pass
-
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.webapp.iter_entry_points',
-        return_value=iter([
-            EntryPoint('webapp', 'connect.eaas.ext'),
-        ]),
-    )
-
-    mocked_process = mocker.MagicMock()
-    mocked_process_cls = mocker.patch(
-        'connect.eaas.runner.handlers.webapp.Process',
-        return_value=mocked_process,
-    )
-
-    handler = WebApp(config)
-
-    handler.start()
-
-    mocked_process_cls.assert_called_once_with(daemon=True, target=handler.run_server)
-    mocked_process.start.assert_called_once()
-
-
-def test_stop(mocker):
-
-    config = ConfigHelper()
-
-    class MyExtension:
-        pass
-
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.webapp.iter_entry_points',
-        return_value=iter([
-            EntryPoint('webapp', 'connect.eaas.ext'),
-        ]),
-    )
-
-    handler = WebApp(config)
-    handler._server_process = mocker.MagicMock()
-
-    handler.stop()
-    handler._server_process.terminate.assert_called_once()
-
-
-def test_run_server(mocker):
     config = ConfigHelper()
 
     class MyExtension:
         @classmethod
+        def get_descriptor(cls):
+            return {}
+
+        @classmethod
+        def get_variables(cls):
+            return []
+
+        @classmethod
         def get_static_root(cls):
-            return '/path/to/static'
+            return static_root
 
     mocker.patch.object(
         EntryPoint,
@@ -161,29 +119,24 @@ def test_run_server(mocker):
         ]),
     )
 
-    mocked_fast_api = mocker.MagicMock()
+    mocked_fastapi = mocker.MagicMock()
+    mocker.patch('connect.eaas.runner.handlers.webapp.FastAPI', return_value=mocked_fastapi)
 
-    mocker.patch('connect.eaas.runner.handlers.webapp.FastAPI', return_value=mocked_fast_api)
+    mocked_static = mocker.MagicMock()
 
-    mocked_static_app = mocker.MagicMock()
-    mocked_staticfiles = mocker.patch(
+    mocked_static_files = mocker.patch(
         'connect.eaas.runner.handlers.webapp.StaticFiles',
-        return_value=mocked_static_app,
+        return_value=mocked_static,
     )
-    mocked_run = mocker.patch('connect.eaas.runner.handlers.webapp.uvicorn.run')
 
     handler = WebApp(config)
-    handler.run_server()
 
-    mocked_fast_api.include_router.assert_called_once_with(router)
-    mocked_staticfiles.assert_called_once_with(directory='/path/to/static')
-    mocked_fast_api.mount.assert_called_once_with(
-        '/static',
-        mocked_static_app,
-        name='static',
-    )
-    mocked_run.assert_called_once_with(
-        mocked_fast_api,
-        host='127.0.0.1',
-        port=config.webapp_port,
-    )
+    assert handler.app == mocked_fastapi
+    mocked_fastapi.include_router.assert_called_once_with(router)
+    if static_root:
+        mocked_static_files.assert_called_once_with(directory=static_root)
+        mocked_fastapi.mount.assert_called_once_with(
+            '/static',
+            mocked_static,
+            name='static',
+        )

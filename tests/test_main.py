@@ -185,6 +185,10 @@ def test_start_webapp_worker_should_not_start(mocker):
         'should_start',
         new_callable=mocker.PropertyMock(return_value=False),
     )
+    mocker.patch.object(
+        WebApp,
+        'get_asgi_application',
+    )
 
     mocked_process_cls = mocker.patch(
         'connect.eaas.runner.main.Process',
@@ -273,7 +277,6 @@ def test_start_webapp_worker_process(mocker):
     start_webapp_worker_process(mocked_config, mocked_handler)
 
     start_mock.assert_awaited_once()
-    mocked_handler.start.assert_called_once()
 
 
 def test_start_anvilapp_worker_process(mocker):
