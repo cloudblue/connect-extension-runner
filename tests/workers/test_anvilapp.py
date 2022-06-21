@@ -98,3 +98,60 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     assert worker.config.account_id == settings_payload['logging']['meta']['account_id']
     assert worker.config.account_name == settings_payload['logging']['meta']['account_name']
     assert worker.config.service_id == settings_payload['logging']['meta']['service_id']
+
+
+@pytest.mark.asyncio
+async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
+
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    @anvil_key_variable('MY_ANVIL_API_KEY')
+    class MyExtension(AnvilExtension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+    mocker.patch.object(
+        AnvilApp,
+        'get_anvilapp_class',
+        return_value=MyExtension,
+    )
+
+    data_to_send = [
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
+        ).dict(),
+        Message(message_type=MessageType.SHUTDOWN).dict(),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/anvilapp',
+        data_to_send,
+        ['receive', 'send', 'send'],
+    )
+
+    config = ConfigHelper(secure=False)
+    ext_handler = AnvilApp(config)
+
+    async with ws_server(handler):
+        worker = AnvilWorker(config, ext_handler)
+        asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        assert worker.run_event.is_set() is False

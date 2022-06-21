@@ -1,5 +1,9 @@
+#
+# This file is part of the Ingram Micro CloudBlue Connect EaaS Extension Runner.
+#
+# Copyright (c) 2022 Ingram Micro. All Rights Reserved.
+#
 import logging
-from multiprocessing import Process
 
 import anvil.server
 
@@ -16,14 +20,13 @@ logger = logging.getLogger(__name__)
 
 class AnvilApp:
     """
-    Handle the lifecycle of an extension.
+    Handle the lifecycle of an Anvil extension.
     """
     def __init__(self, config: ConfigHelper):
         self._config = config
         self._anvilapp_class = self.get_anvilapp_class()
         self._anvilapp_instance = None
         self._logging_handler = None
-        self._server_process = None
 
     @property
     def should_start(self):
@@ -42,28 +45,23 @@ class AnvilApp:
         return self._anvilapp_class.get_descriptor()['changelog_url']
 
     def start(self):
+        logger.info('Create anvil connection...')
         var_name = self._anvilapp_class.get_anvil_key_variable()
+        logger.info(f'Anvil key variable name: {var_name}')
         anvil_api_key = self._config.variables.get(var_name)
         if not anvil_api_key:
             logger.error(f'Cannot start Anvil application: variable {var_name} not found!')
             return
-        if self._anvilapp_class:
-            self._server_process = Process(
-                daemon=True,
-                target=self.run_server,
-                args=(anvil_api_key,),
-            )
-            self._server_process.start()
+
+        logger.info('Starting anvil server...')
+        anvil.server.connect(anvil_api_key)
+        logger.info('Anvil server started successfully.')
+        self.setup_anvilapp()
 
     def stop(self):
-        if self._server_process:
-            self._server_process.terminate()
-
-    def run_server(self, anvil_api_key):
-        logger.info('Start anvil server')
-        anvil.server.connect(anvil_api_key)
-        self.setup_anvilapp()
-        anvil.server.wait_forever()
+        logger.info('Stopping anvil server...')
+        anvil.server.disconnect()
+        logger.info('Anvil server stopped successfully.')
 
     def get_anvilapp_class(self):
         anvil_class = next(iter_entry_points('connect.eaas.ext', 'anvilapp'), None)

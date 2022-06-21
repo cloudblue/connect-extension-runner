@@ -101,7 +101,7 @@ class Worker(WorkerBase):
         """
         message = Message.deserialize(data)
         if message.message_type == MessageType.SETUP_RESPONSE:
-            await self.process_setup_response(message.data)
+            self.process_setup_response(message.data)
         elif message.message_type == MessageType.TASK:
             await self.process_task(message.data)
         elif message.message_type == MessageType.SHUTDOWN:

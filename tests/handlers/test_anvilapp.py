@@ -75,120 +75,8 @@ def test_properties(mocker):
     assert handler.should_start is True
 
 
-def test_start(mocker):
-
-    mocker.patch.object(
-        ConfigHelper,
-        'variables',
-        new_callable=mocker.PropertyMock(return_value={'ANVIL_API_KEY': 'my_anvil_key'}),
-    )
-
-    config = ConfigHelper()
-
-    class MyExtension:
-        @classmethod
-        def get_anvil_key_variable(cls):
-            return 'ANVIL_API_KEY'
-
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
-        ]),
-    )
-
-    mocked_process = mocker.MagicMock()
-    mocked_process_cls = mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.Process',
-        return_value=mocked_process,
-    )
-
-    handler = AnvilApp(config)
-
-    handler.start()
-
-    mocked_process_cls.assert_called_once_with(
-        daemon=True,
-        target=handler.run_server,
-        args=('my_anvil_key',),
-    )
-    mocked_process.start.assert_called_once()
-
-
-def test_start_no_api_key(mocker):
-
-    mocker.patch.object(
-        ConfigHelper,
-        'variables',
-        new_callable=mocker.PropertyMock(return_value={}),
-    )
-
-    config = ConfigHelper()
-
-    class MyExtension:
-        @classmethod
-        def get_anvil_key_variable(cls):
-            return 'ANVIL_API_KEY'
-
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
-        ]),
-    )
-
-    mocked_process = mocker.MagicMock()
-    mocked_process_cls = mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.Process',
-        return_value=mocked_process,
-    )
-
-    handler = AnvilApp(config)
-
-    handler.start()
-
-    mocked_process_cls.assert_not_called()
-    mocked_process.start.assert_not_called()
-
-
-def test_stop(mocker):
-
-    config = ConfigHelper()
-
-    class MyExtension:
-        pass
-
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
-        ]),
-    )
-
-    handler = AnvilApp(config)
-    handler._server_process = mocker.MagicMock()
-
-    handler.stop()
-    handler._server_process.terminate.assert_called_once()
-
-
 @pytest.mark.parametrize('logging_key', ('test', None))
-def test_run_server(mocker, logging_key):
+def test_start(mocker, logging_key):
 
     mocker.patch.object(
         ConfigHelper,
@@ -239,13 +127,96 @@ def test_run_server(mocker, logging_key):
     mocked_anvil_connect = mocker.patch(
         'connect.eaas.runner.handlers.anvilapp.anvil.server.connect',
     )
-    mocked_wait_forever = mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.anvil.server.wait_forever',
+
+    handler = AnvilApp(config)
+    handler.start()
+
+    mocked_anvil_connect.assert_called_once_with('my_anvil_key')
+    mocked_setup_callables.assert_called_once()
+
+
+def test_start_no_api_key(mocker):
+
+    mocker.patch.object(
+        ConfigHelper,
+        'logging_api_key',
+        new_callable=mocker.PropertyMock(return_value=None),
+    )
+
+    mocker.patch.object(
+        ConfigHelper,
+        'metadata',
+        new_callable=mocker.PropertyMock(return_value={}),
+    )
+
+    mocker.patch.object(
+        ConfigHelper,
+        'variables',
+        new_callable=mocker.PropertyMock(return_value={}),
+    )
+
+    config = ConfigHelper()
+
+    class MyExtension:
+
+        def __init__(self, *args):
+            pass
+
+        @classmethod
+        def get_anvil_key_variable(cls):
+            return 'ANVIL_API_KEY'
+
+        def setup_anvil_callables(self):
+            pass
+
+    mocked_setup_callables = mocker.patch.object(MyExtension, 'setup_anvil_callables')
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
+        return_value=iter([
+            EntryPoint('anvilapp', 'connect.eaas.ext'),
+        ]),
+    )
+
+    mocked_anvil_connect = mocker.patch(
+        'connect.eaas.runner.handlers.anvilapp.anvil.server.connect',
     )
 
     handler = AnvilApp(config)
-    handler.run_server('anvil_api_key')
+    handler.start()
 
-    mocked_anvil_connect.assert_called_once_with('anvil_api_key')
-    mocked_wait_forever.assert_called_once()
-    mocked_setup_callables.assert_called_once()
+    mocked_anvil_connect.assert_not_called()
+    mocked_setup_callables.assert_not_called()
+
+
+def test_stop(mocker):
+
+    config = ConfigHelper()
+
+    class MyExtension:
+        pass
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
+        return_value=iter([
+            EntryPoint('anvilapp', 'connect.eaas.ext'),
+        ]),
+    )
+
+    mocked_anvil_disconnect = mocker.patch(
+        'connect.eaas.runner.handlers.anvilapp.anvil.server.disconnect',
+    )
+
+    handler = AnvilApp(config)
+    handler.stop()
+    mocked_anvil_disconnect.assert_called_once()
