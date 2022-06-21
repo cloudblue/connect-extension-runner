@@ -1,7 +1,7 @@
 #
 # This file is part of the Ingram Micro CloudBlue Connect EaaS Extension Runner.
 #
-# Copyright (c) 2021 Ingram Micro. All Rights Reserved.
+# Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
 import asyncio
 import json
@@ -125,14 +125,14 @@ class WorkerBase(ABC):
     async def do_handshake(self):
         await self.send(self.get_setup_request())
         message = await asyncio.wait_for(self.ws.recv(), timeout=5)
-        message = Message.deserialize(json.loads(message))
-        self.process_setup_response(message.data)
+        await self.process_message(json.loads(message))
 
     async def send(self, message):
         """
         Send a message to the websocket server.
         """
-        await self.ws.send(json.dumps(message))
+        if self.ws:
+            await self.ws.send(json.dumps(message))
 
     async def receive(self):
         """

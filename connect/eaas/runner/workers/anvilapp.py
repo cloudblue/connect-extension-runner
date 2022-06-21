@@ -1,3 +1,8 @@
+#
+# This file is part of the Ingram Micro CloudBlue Connect EaaS Extension Runner.
+#
+# Copyright (c) 2022 Ingram Micro. All Rights Reserved.
+#
 from connect.eaas.core.proto import (
     Message,
     MessageType,
