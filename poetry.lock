@@ -98,17 +98,6 @@ python-versions = ">=3.5.0"
 unicode_backport = ["unicodedata2"]
 
 [[package]]
-name = "click"
-version = "8.1.3"
-description = "Composable command line interface toolkit"
-category = "main"
-optional = false
-python-versions = ">=3.7"
-
-[package.dependencies]
-colorama = {version = "*", markers = "platform_system == \"Windows\""}
-
-[[package]]
 name = "cognitive-complexity"
 version = "1.2.0"
 description = "Library to calculate Python functions cognitive complexity via code"
@@ -120,7 +109,7 @@ python-versions = ">=3.6"
 name = "colorama"
 version = "0.4.5"
 description = "Cross-platform colored terminal text."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
@@ -137,7 +126,7 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
 name = "connect-eaas-core"
-version = "3.0.0"
+version = "3.1.0"
 description = "Connect Eaas Core"
 category = "main"
 optional = false
@@ -758,22 +747,6 @@ secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "cer
 socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
-name = "uvicorn"
-version = "0.17.6"
-description = "The lightning-fast ASGI server."
-category = "main"
-optional = false
-python-versions = ">=3.7"
-
-[package.dependencies]
-asgiref = ">=3.4.0"
-click = ">=7.0"
-h11 = ">=0.8"
-
-[package.extras]
-standard = ["websockets (>=10.0)", "httptools (>=0.4.0)", "watchgod (>=0.6)", "python-dotenv (>=0.13)", "PyYAML (>=5.1)", "uvloop (>=0.14.0,!=0.15.0,!=0.15.1)", "colorama (>=0.4)"]
-
-[[package]]
 name = "uvloop"
 version = "0.16.0"
 description = "Fast implementation of asyncio event loop on top of libuv"
@@ -805,7 +778,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "5ba25d4592446870ac44cefe090ef5008c0b54dd4085b74ee7f36d2438590d6a"
+content-hash = "d46b95d2a1a6655d588dde023f6543562bb7774122adcc29323e353c710c4b19"
 
 [metadata.files]
 anvil-uplink = [
@@ -844,10 +817,6 @@ charset-normalizer = [
     {file = "charset-normalizer-2.0.12.tar.gz", hash = "sha256:2857e29ff0d34db842cd7ca3230549d1a697f96ee6d3fb071cfa6c7393832597"},
     {file = "charset_normalizer-2.0.12-py3-none-any.whl", hash = "sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df"},
 ]
-click = [
-    {file = "click-8.1.3-py3-none-any.whl", hash = "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"},
-    {file = "click-8.1.3.tar.gz", hash = "sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e"},
-]
 cognitive-complexity = [
     {file = "cognitive_complexity-1.2.0.tar.gz", hash = "sha256:3c2b433a9e41502932f6aa629e1f57a5e8f145956c54facbb5241a9492af6fb7"},
 ]
@@ -860,8 +829,8 @@ commonmark = [
     {file = "commonmark-0.9.1.tar.gz", hash = "sha256:452f9dc859be7f06631ddcb328b6919c67984aca654e5fefb3914d54691aed60"},
 ]
 connect-eaas-core = [
-    {file = "connect-eaas-core-3.0.0.tar.gz", hash = "sha256:6fdc9d05bd1c3522f90293c6bce15d58b8cce37452a4690e27efab73a4ade26f"},
-    {file = "connect_eaas_core-3.0.0-py3-none-any.whl", hash = "sha256:5f6c226a4d0b5b466e707cbb64280d6abb991b5c11c9d61c2a6e5c7d3284f8d3"},
+    {file = "connect-eaas-core-3.1.0.tar.gz", hash = "sha256:f295dd8ee89a6540062382525a728ffa1b8418db80f3c4c73ed7a5bb40271118"},
+    {file = "connect_eaas_core-3.1.0-py3-none-any.whl", hash = "sha256:b200b3ba7b3532d5f4ef45a1c787dd70628a5f1314de9406d609733f8f7edef2"},
 ]
 connect-markdown-renderer = [
     {file = "connect-markdown-renderer-2.0.1.tar.gz", hash = "sha256:fbaefff195a6c347a7f89e75a09e78f6be35c903d72a2766c8f263ca75758757"},
@@ -1253,10 +1222,6 @@ typing-extensions = [
 urllib3 = [
     {file = "urllib3-1.26.9-py2.py3-none-any.whl", hash = "sha256:44ece4d53fb1706f667c9bd1c648f5469a2ec925fcf3a776667042d645472c14"},
     {file = "urllib3-1.26.9.tar.gz", hash = "sha256:aabaf16477806a5e1dd19aa41f8c2b7950dd3c746362d7e3223dbe6de6ac448e"},
-]
-uvicorn = [
-    {file = "uvicorn-0.17.6-py3-none-any.whl", hash = "sha256:19e2a0e96c9ac5581c01eb1a79a7d2f72bb479691acd2b8921fce48ed5b961a6"},
-    {file = "uvicorn-0.17.6.tar.gz", hash = "sha256:5180f9d059611747d841a4a4c4ab675edf54c8489e97f96d0583ee90ac3bfc23"},
 ]
 uvloop = [
     {file = "uvloop-0.16.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:6224f1401025b748ffecb7a6e2652b17768f30b1a6a3f7b44660e5b5b690b12d"},

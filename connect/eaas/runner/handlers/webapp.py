@@ -1,7 +1,5 @@
 import logging
-from multiprocessing import Process
 
-import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pkg_resources import iter_entry_points
@@ -21,7 +19,7 @@ class WebApp:
         self._config = config
         self._webapp_class = self.get_webapp_class()
         self._logging_handler = None
-        self._server_process = None
+        self._app = self.get_asgi_application()
 
     @property
     def should_start(self):
@@ -43,26 +41,18 @@ class WebApp:
     def changelog(self):
         return self._webapp_class.get_descriptor()['changelog_url']
 
-    def start(self):
-        if self._webapp_class:
-            self._server_process = Process(daemon=True, target=self.run_server)
-            self._server_process.start()
+    @property
+    def app(self):
+        return self._app
 
-    def stop(self):
-        if self._server_process:
-            self._server_process.terminate()
-
-    def run_server(self):
+    def get_asgi_application(self):
         app = FastAPI()
         app.include_router(router)
         static_root = self._webapp_class.get_static_root()
         if static_root:
             app.mount('/static', StaticFiles(directory=static_root), name='static')
-        uvicorn.run(
-            app,
-            host='127.0.0.1',
-            port=self._config.webapp_port,
-        )
+
+        return app
 
     def get_webapp_class(self):
         ext_class = next(iter_entry_points('connect.eaas.ext', 'webapp'), None)

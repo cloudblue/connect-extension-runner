@@ -1,14 +1,11 @@
 import asyncio
 import copy
-import base64
-import json
 
 import pytest
 
 from connect.eaas.core.extension import WebAppExtension
 from connect.eaas.core.proto import (
     HttpRequest,
-    HttpResponse,
     Message,
     MessageType,
     SetupRequest,
@@ -61,8 +58,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         'get_webapp_class',
         return_value=MyExtension,
     )
-    mocker.patch.object(WebApp, 'start')
-    mocker.patch.object(WebApp, 'stop')
+
     mocker.patch('connect.eaas.runner.workers.webapp.get_version', return_value='24.1')
 
     data_to_send = Message(
@@ -154,17 +150,28 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
         'get_webapp_class',
         return_value=MyExtension,
     )
-    mocker.patch.object(WebApp, 'start')
-    mocker.patch.object(WebApp, 'stop')
+
     mocker.patch('connect.eaas.runner.workers.webapp.get_version', return_value='24.1')
 
-    httpx_mock.add_response(
-        method='GET',
-        url='http://localhost:53575/test/url',
-        json={
-            'test_response': 'value',
-        },
-        headers={'X-Response-Header': 'my-value'},
+    mocked_cycle = mocker.AsyncMock()
+
+    mocked_cycle_cls = mocker.patch(
+        'connect.eaas.runner.workers.webapp.RequestResponseCycle',
+        return_value=mocked_cycle,
+    )
+
+    web_task = WebTask(
+        options=WebTaskOptions(
+            correlation_id='correlation_id',
+            reply_to='reply_to',
+            api_key='api_key',
+            installation_id='installation_id',
+        ),
+        request=HttpRequest(
+            method='GET',
+            url='/test/url',
+            headers={'X-My-Header': 'my-value'},
+        ),
     )
 
     data_to_send = [
@@ -176,31 +183,20 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
         Message(
             version=2,
             message_type=MessageType.WEB_TASK,
-            data=WebTask(
-                options=WebTaskOptions(
-                    correlation_id='correlation_id',
-                    reply_to='reply_to',
-                    api_key='api_key',
-                    installation_id='installation_id',
-                ),
-                request=HttpRequest(
-                    method='GET',
-                    url='/test/url',
-                    headers={'X-My-Header': 'my-value'},
-                ),
-            ),
+            data=web_task,
         ).dict(),
     ]
 
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
         data_to_send,
-        ['receive', 'send', 'send', 'receive'],
+        ['receive', 'send', 'send'],
     )
 
     config = ConfigHelper(secure=False)
     ext_handler = WebApp(config)
 
+    worker = None
     async with ws_server(handler):
         worker = WebWorker(config, ext_handler)
         task = asyncio.create_task(worker.start())
@@ -225,37 +221,12 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
             ),
         ),
     )
-
-    handler.assert_received(
-        Message(
-            version=2,
-            message_type=MessageType.WEB_TASK,
-            data=WebTask(
-                options=WebTaskOptions(
-                    correlation_id='correlation_id',
-                    reply_to='reply_to',
-                    api_key='api_key',
-                    installation_id='installation_id',
-                ),
-                request=HttpRequest(
-                    method='GET',
-                    url='/test/url',
-                    headers={},
-                ),
-                response=HttpResponse(
-                    status=200,
-                    headers={
-                        'x-response-header': 'my-value',
-                        'content-type': 'application/json',
-                        'content-length': '26',
-                    },
-                    content=base64.encodebytes(
-                        json.dumps({'test_response': 'value'}).encode('utf-8'),
-                    ).decode('utf-8'),
-                ),
-            ),
-        ).dict(),
-    )
+    assert mocked_cycle_cls.call_count == 1
+    assert mocked_cycle_cls.mock_calls[0].args[0] == config
+    assert mocked_cycle_cls.mock_calls[0].args[1] == ext_handler.app
+    assert mocked_cycle_cls.mock_calls[0].args[2].dict() == web_task.dict()
+    assert mocked_cycle_cls.mock_calls[0].args[3] == worker.send
+    mocked_cycle.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -297,11 +268,6 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
         'get_webapp_class',
         return_value=MyExtension,
     )
-    mocker.patch.object(WebApp, 'start')
-    mocked_stop = mocker.patch.object(
-        WebApp,
-        'stop',
-    )
 
     data_to_send = [
         Message(
@@ -326,4 +292,3 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
         asyncio.create_task(worker.start())
         await asyncio.sleep(1)
         assert worker.run_event.is_set() is False
-        mocked_stop.assert_called_once()
