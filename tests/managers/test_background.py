@@ -197,6 +197,82 @@ async def test_get_argument(
     'event_type',
     BACKGROUND_EVENT_TYPES,
 )
+async def test_get_argument_multi_account(
+    mocker, httpx_mock, extension_cls, event_type,
+    settings_payload, task_payload, unused_port,
+):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+    mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
+    config = ConfigHelper()
+    config.update_dynamic_config(SetupResponse(**settings_payload))
+    method = EVENT_TYPE_EXT_METHOD_MAP[event_type]
+    mocker.patch.object(
+        ExtensionHandler,
+        'events',
+        new_callable=mocker.PropertyMock(return_value={
+            event_type: {
+                'statuses': ['pending'],
+                'method': EVENT_TYPE_EXT_METHOD_MAP[event_type],
+            },
+        }),
+    )
+
+    cls = extension_cls(method, async_impl=True)
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    handler = ExtensionHandler(config)
+
+    result_queue = mocker.patch.object(asyncio.Queue, 'put')
+    manager = BackgroundTasksManager(config, handler, result_queue)
+
+    pr_data = {'id': 'PR-000', 'status': 'pending'}
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        json=[],
+        headers={'Content-Range': 'items 0-0/1'},
+    )
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/collection/PR-000',
+        json=pr_data,
+    )
+    task = Task(
+        **task_payload(
+            TaskCategory.BACKGROUND,
+            event_type,
+            'PR-000',
+            api_key='inst_api_key',
+        ),
+    )
+    assert await manager.get_argument(task) == pr_data
+    requests = httpx_mock.get_requests()
+    for req in requests:
+        auth_header = req.headers['Authorization']
+        assert auth_header == 'inst_api_key'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'event_type',
+    BACKGROUND_EVENT_TYPES,
+)
 async def test_get_argument_status_changed(
     mocker, httpx_mock, extension_cls, event_type,
     settings_payload, task_payload, unused_port,
