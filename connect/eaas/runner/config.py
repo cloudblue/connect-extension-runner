@@ -74,10 +74,6 @@ class ConfigHelper:
         return self.dyn_config.variables if self.dyn_config else {}
 
     @property
-    def webapp_port(self):
-        return self.env['webapp_port']
-
-    @property
     def metadata(self):
         return {
             'api_address': self.env['api_address'],

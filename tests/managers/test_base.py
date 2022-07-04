@@ -44,10 +44,12 @@ async def test_submit(mocker, extension_cls, task_payload):
     await manager.submit(task_data)
 
     mocked_get_method.assert_called_once_with(
+        'type',
         task_data.options.task_id,
         'my_method',
         installation=None,
         api_key=None,
+        connect_correlation_id=None,
     )
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_awaited_once_with(
@@ -91,16 +93,20 @@ async def test_submit_multi_account(mocker, extension_cls, task_payload):
     manager = TaskManager(config, handler, None)
 
     task_data = Task(**task_payload(
-        'category', 'type', 'ID', api_key='api_key', installation_id='installation_id',
+        'category', 'type', 'ID',
+        api_key='api_key', installation_id='installation_id',
+        connect_correlation_id='correlation_id',
     ))
     assert manager.running_tasks == 0
     await manager.submit(task_data)
 
     mocked_get_method.assert_called_once_with(
+        'type',
         task_data.options.task_id,
         'my_method',
         installation={'installation': 'data'},
         api_key='api_key',
+        connect_correlation_id='correlation_id',
     )
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_awaited_once_with(

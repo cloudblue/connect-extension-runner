@@ -50,18 +50,34 @@ class ExtensionHandler:
     def changelog(self):
         return self._descriptor['changelog_url']
 
-    def get_method(self, task_id, method_name, installation=None, api_key=None):
+    def get_method(
+        self,
+        event_type,
+        task_id,
+        method_name,
+        installation=None,
+        api_key=None,
+        connect_correlation_id=None,
+    ):
         if not method_name:  # pragma: no cover
             return
         args = (
-            self._create_client(task_id, method_name, self._config.api_key),
+            self._create_client(
+                event_type, task_id, method_name, self._config.api_key, connect_correlation_id,
+            ),
             self.get_logger(task_id),
             self._config.variables,
         )
         kwargs = {}
         if installation:
             kwargs['installation'] = installation
-            kwargs['installation_client'] = self._create_client(task_id, method_name, api_key)
+            kwargs['installation_client'] = self._create_client(
+                event_type,
+                task_id,
+                method_name,
+                api_key,
+                connect_correlation_id,
+            )
 
         ext = self._extension_class(*args, **kwargs)
 
@@ -85,7 +101,7 @@ class ExtensionHandler:
             {'task_id': task_id},
         )
 
-    def _create_client(self, task_id, method_name, api_key):
+    def _create_client(self, event_type, task_id, method_name, api_key, connect_correlation_id):
         """
         Get an instance of the Connect Openapi Client. If the extension is asyncrhonous
         it returns an instance of the AsyncConnectClient otherwise the ConnectClient.
@@ -93,6 +109,17 @@ class ExtensionHandler:
         method = getattr(self._extension_class, method_name)
 
         Client = ConnectClient if not inspect.iscoroutinefunction(method) else AsyncConnectClient
+
+        default_headers = {
+            'EAAS_EXT_ID': self._config.service_id,
+            'EAAS_TASK_ID': task_id,
+            'EAAS_TASK_TYPE': event_type,
+        }
+
+        default_headers.update(self._config.get_user_agent())
+
+        if connect_correlation_id:
+            default_headers['traceparent'] = connect_correlation_id
 
         return Client(
             api_key,
@@ -102,7 +129,7 @@ class ExtensionHandler:
             logger=RequestLogger(
                 self.get_logger(task_id),
             ),
-            default_headers=self._config.get_user_agent(),
+            default_headers=default_headers,
         )
 
     def get_events(self):

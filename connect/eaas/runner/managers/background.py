@@ -9,11 +9,13 @@ import time
 import traceback
 from string import Template
 
+from connect.client import AsyncConnectClient
 from connect.client.models import AsyncCollection, AsyncResource
 from connect.eaas.core.enums import ResultType
 from connect.eaas.core.responses import ProcessingResponse
 from connect.eaas.core.proto import Task, TaskOutput
 from connect.eaas.runner.managers.base import TasksManagerBase
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,15 @@ class BackgroundTasksManager(TasksManagerBase):
         Get the request object through the Connect public API
         related to the task that need processing.
         """
+        client = self.client
+        if task_data.options.api_key:
+            client = AsyncConnectClient(
+                task_data.options.api_key,
+                endpoint=self.config.get_api_url(),
+                use_specs=False,
+                default_headers=self.config.get_user_agent(),
+            )
+
         definition = self.config.event_definitions[task_data.input.event_type]
         supported_statuses = self.handler.events[task_data.input.event_type]['statuses']
         rql_filter = Template(definition.api_collection_filter).substitute(
@@ -37,7 +48,7 @@ class BackgroundTasksManager(TasksManagerBase):
             },
         )
 
-        collection = AsyncCollection(self.client, definition.api_collection_endpoint)
+        collection = AsyncCollection(client, definition.api_collection_endpoint)
         if await collection.filter(rql_filter).count() == 0:
             logger.info(
                 f'Send skip response for {task_data.options.task_id} since '
@@ -51,7 +62,7 @@ class BackgroundTasksManager(TasksManagerBase):
             return
 
         url = definition.api_resource_endpoint.format(pk=task_data.input.object_id)
-        resource = AsyncResource(self.client, url)
+        resource = AsyncResource(client, url)
 
         return await resource.get()
 

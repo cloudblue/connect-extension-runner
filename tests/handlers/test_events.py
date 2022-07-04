@@ -28,7 +28,7 @@ def test_get_method(mocker, settings_payload, extension_cls):
     )
     handler = ExtensionHandler(config)
 
-    method = handler.get_method('TQ-000', 'test_method')
+    method = handler.get_method('event_type', 'TQ-000', 'test_method')
     assert method.__name__ == 'test_method'
     assert method.__self__.__class__ == ext_class
 
@@ -107,10 +107,12 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
     handler = ExtensionHandler(config)
 
     method = handler.get_method(
+        'event_type',
         'TQ-000',
         'test_method',
         installation={'installation': 'data'},
         api_key='installation_key',
+        connect_correlation_id='correlation_id',
     )
     assert method.__name__ == 'test_method'
     assert method.__self__.__class__ == ext_class

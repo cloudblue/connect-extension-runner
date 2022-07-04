@@ -98,6 +98,7 @@ def task_payload():
     def _task_payload(
         task_category, event_type, object_id,
         runtime=0.0, api_key=None, installation_id=None,
+        connect_correlation_id=None,
     ):
         return {
             'options': {
@@ -106,6 +107,7 @@ def task_payload():
                 'runtime': runtime,
                 'api_key': api_key,
                 'installation_id': installation_id,
+                'connect_correlation_id': connect_correlation_id,
             },
             'input': {
                 'event_type': event_type,
