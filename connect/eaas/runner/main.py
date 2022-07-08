@@ -11,12 +11,14 @@ import signal
 import threading
 from multiprocessing import Process
 
+import requests
 import uvloop
 
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.anvilapp import AnvilApp
 from connect.eaas.runner.handlers.events import ExtensionHandler
 from connect.eaas.runner.handlers.webapp import WebApp
+from connect.eaas.runner.helpers import get_environment, get_version
 from connect.eaas.runner.workers.anvilapp import AnvilWorker
 from connect.eaas.runner.workers.webapp import WebWorker
 from connect.eaas.runner.workers.events import Worker
@@ -58,6 +60,29 @@ def configure_logger(debug):
             },
         },
     )
+
+
+def check_runner_version():
+    url = f'https://{get_environment()["api_address"]}/public/v1'
+    connect_response = requests.get(url)
+    if connect_response.status_code >= 500:
+        return
+
+    connect_version = connect_response.headers['Connect-Version']
+    runner_version = get_version()
+
+    if (
+            runner_version.split('.')[0] == connect_version.split('.')[0]
+            and runner_version.split('.')[1] == connect_version.split('.')[1]
+    ):
+        return True
+
+    logger.warning(
+        'Version of runner does not match version of Connect. Please, update. '
+        f'Runner version: {runner_version}, Connect version: {connect_version}.',
+    )
+
+    return False
 
 
 def start_event_worker_process(config, handler, runner_type):
@@ -156,6 +181,8 @@ def start(data):
     logger.info('Starting Connect EaaS runtime....')
     if data.unsecure:
         logger.warning('Websocket connections will be established using unsecure protocol (ws).')
+
+    check_runner_version()
 
     stop_event = threading.Event()
     start_event_worker(data)

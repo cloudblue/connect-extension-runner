@@ -8,6 +8,7 @@ import sys
 from collections import namedtuple
 
 from connect.eaas.runner.main import (
+    check_runner_version,
     main,
     start,
     start_anvilapp_worker,
@@ -25,7 +26,17 @@ from connect.eaas.runner.workers.webapp import WebWorker
 from connect.eaas.runner.workers.events import Worker
 
 
-def test_start(mocker):
+def test_start(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.main.get_environment',
+        return_value={'api_address': 'localhost'},
+    )
+    responses.add(
+        'GET',
+        'https://localhost/public/v1',
+        status=500,
+    )
+
     mocked_event = mocker.MagicMock()
     mocker.patch('connect.eaas.runner.main.threading.Event', return_value=mocked_event)
 
@@ -294,3 +305,47 @@ def test_start_anvilapp_worker_process(mocker):
     start_anvilapp_worker_process(mocked_config, mocked_handler)
 
     start_mock.assert_awaited_once()
+
+
+def test_check_runner_version_ok(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.main.get_environment',
+        return_value={'api_address': 'localhost'},
+    )
+    mocker.patch(
+        'connect.eaas.runner.main.get_version',
+        return_value='26.0.12',
+    )
+
+    responses.add(
+        'GET',
+        'https://localhost/public/v1',
+        json={'error_code': 'AUTH_001', 'errors': ['API request is unauthorized.']},
+        status=401,
+        headers={'Connect-Version': '26.0.12-gjg2312'},
+    )
+
+    result = check_runner_version()
+    assert result
+
+
+def test_check_runner_version_not_matching(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.main.get_environment',
+        return_value={'api_address': 'localhost'},
+    )
+    mocker.patch(
+        'connect.eaas.runner.main.get_version',
+        return_value='25.7.34',
+    )
+
+    responses.add(
+        'GET',
+        'https://localhost/public/v1',
+        json={'error_code': 'AUTH_001', 'errors': ['API request is unauthorized.']},
+        status=401,
+        headers={'Connect-Version': '26.0.12-gjg2312'},
+    )
+
+    result = check_runner_version()
+    assert not result
