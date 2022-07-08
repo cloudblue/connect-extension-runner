@@ -6,6 +6,7 @@
 import os
 import subprocess
 
+import pytest
 from pkg_resources import (
     DistributionNotFound,
 )
@@ -16,8 +17,10 @@ from connect.eaas.runner.constants import (
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
 from connect.eaas.runner.helpers import (
+    get_connect_version,
     get_container_id,
     get_environment,
+    get_pypi_runner_minor_version,
     get_version,
 )
 
@@ -194,3 +197,106 @@ def test_get_version_exception(mocker):
         side_effect=DistributionNotFound(),
     )
     assert get_version() == '0.0.0'
+
+
+def test_get_connect_version(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={'api_address': 'localhost', 'api_key': 'ApiKey test:key'},
+    )
+    responses.add(
+        'GET',
+        'https://localhost/public/v1/accounts',
+        json=[{}],
+        status=200,
+        headers={'Connect-Version': '26.0.12-gjg2312'},
+    )
+
+    version = get_connect_version()
+
+    assert version == '26.0.12-gjg2312'
+
+
+def test_get_connect_version_server_error(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={'api_address': 'localhost', 'api_key': 'ApiKey test:key'},
+    )
+    responses.add(
+        'GET',
+        'https://localhost/public/v1/accounts',
+        status=500,
+    )
+
+    with pytest.raises(SystemExit) as cv:
+        get_connect_version()
+
+    assert cv.value.code == 1
+
+
+def test_get_connect_version_api_key_error(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={'api_address': 'localhost', 'api_key': 'ApiKey test:key'},
+    )
+    responses.add(
+        'GET',
+        'https://localhost/public/v1/accounts',
+        json={"error_code": "AUTH_001", "errors": ["API request is unauthorized."]},
+        status=401,
+    )
+
+    with pytest.raises(SystemExit) as cv:
+        get_connect_version()
+
+    assert cv.value.code == 2
+
+
+def test_get_pypi_runner_minor_version(responses):
+    responses.add(
+        'GET',
+        'https://pypi.org/pypi/connect-extension-runner/json',
+        json={
+            'releases': {
+                '26.0': 'v1',
+                '26.12': 'v2',
+                '25.1': '-v3',
+                '26.13': 'v4',
+            },
+            'info': {'version': '26.13'},
+        },
+        status=200,
+    )
+
+    minor_version = get_pypi_runner_minor_version('26')
+
+    assert minor_version == '13'
+
+
+def test_get_pypi_runner_minor_version_no_releases(responses):
+    responses.add(
+        'GET',
+        'https://pypi.org/pypi/connect-extension-runner/json',
+        json={
+            'releases': {},
+            'info': {'version': '26.13'},
+        },
+        status=200,
+    )
+
+    minor_version = get_pypi_runner_minor_version('26')
+
+    assert minor_version == '13'
+
+
+def test_get_pypi_runner_minor_version_request_error(responses):
+    responses.add(
+        'GET',
+        'https://pypi.org/pypi/connect-extension-runner/json',
+        status=400,
+    )
+
+    with pytest.raises(SystemExit) as cv:
+        get_pypi_runner_minor_version('26')
+
+    assert cv.value.code == 1
