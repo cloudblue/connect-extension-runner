@@ -113,3 +113,5 @@ ORDINAL_SUFFIX = {
     12: 'th',
     13: 'th',
 }
+
+PYPI_EXTENSION_RUNNER_URL = 'https://pypi.org/pypi/connect-extension-runner/json'

@@ -8,6 +8,7 @@ import asyncio
 import logging
 import logging.config
 import signal
+import sys
 import threading
 from multiprocessing import Process
 
@@ -17,6 +18,11 @@ from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.anvilapp import AnvilApp
 from connect.eaas.runner.handlers.events import ExtensionHandler
 from connect.eaas.runner.handlers.webapp import WebApp
+from connect.eaas.runner.helpers import (
+    get_connect_version,
+    get_pypi_runner_minor_version,
+    get_version,
+)
 from connect.eaas.runner.workers.anvilapp import AnvilWorker
 from connect.eaas.runner.workers.webapp import WebWorker
 from connect.eaas.runner.workers.events import Worker
@@ -58,6 +64,29 @@ def configure_logger(debug):
             },
         },
     )
+
+
+def check_runner_version(skip_check):
+    if skip_check:
+        return
+
+    connect_full_version = get_connect_version()
+    connect_version = connect_full_version.split('.')[0]
+    runner_version = get_version()
+    latest_minor_version = get_pypi_runner_minor_version(connect_version)
+
+    if (
+            connect_version == runner_version.split('.')[0]
+            and runner_version.split('.')[1] == latest_minor_version
+    ):
+        return
+
+    logger.error(
+        'Runner is outdated, please, update. '
+        f'Required version {connect_version}.{latest_minor_version}, '
+        f'current version: {runner_version}.',
+    )
+    sys.exit(3)
 
 
 def start_event_worker_process(config, handler, runner_type):
@@ -177,8 +206,10 @@ def main():
     parser.add_argument('-u', '--unsecure', action='store_true')
     parser.add_argument('-s', '--split', action='store_true', default=False)
     parser.add_argument('-d', '--debug', action='store_true', default=False)
+    parser.add_argument('-n', '--no-version-check', action='store_true', default=False)
     data = parser.parse_args()
     configure_logger(data.debug)
+    check_runner_version(data.no_version_check)
     start(data)
 
 
