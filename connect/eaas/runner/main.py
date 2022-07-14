@@ -75,23 +75,18 @@ def check_runner_version(skip_check):
     runner_version = get_version()
     latest_minor_version = get_pypi_runner_minor_version(connect_version)
 
-    if connect_version != runner_version.split('.')[0]:
-        logger.error(
-            'Connect and runner versions are not matching. '
-            f'Connect version: {connect_full_version}, runner version: {runner_version}. '
-            f'Please, update up to version {connect_version}.{latest_minor_version}.',
-        )
-        sys.exit(3)
-
-    if runner_version.split('.')[1] == latest_minor_version:
+    if (
+            connect_version == runner_version.split('.')[0]
+            and runner_version.split('.')[1] == latest_minor_version
+    ):
         return
 
     logger.error(
-        'Runner is outdated, please, update up to latest version: '
-        f'{connect_version}.{latest_minor_version}. '
-        f'Current version: {runner_version}.',
+        'Runner is outdated, please, update. '
+        f'Required version {connect_version}.{latest_minor_version}, '
+        f'current version: {runner_version}.',
     )
-    sys.exit(4)
+    sys.exit(3)
 
 
 def start_event_worker_process(config, handler, runner_type):

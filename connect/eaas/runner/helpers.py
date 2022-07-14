@@ -108,7 +108,7 @@ def get_connect_version():
             logger.error(f'API Key is not valid: {ce}')
             sys.exit(2)
 
-        logger.error(f'Unexpected error getting Connect version: {ce}')
+        logger.error(f'Cannot check the current EaaS Runner version: {ce}')
         sys.exit(1)
 
     return connect_client.response.headers['Connect-Version']
@@ -118,10 +118,10 @@ def get_pypi_runner_minor_version(major_version):
     res = requests.get(PYPI_EXTENSION_RUNNER_URL)
     if res.status_code != 200:
         logger.error(
-            'Can not retrieve connect-extension-runner versions '
-            f'from {PYPI_EXTENSION_RUNNER_URL}.',
+            f'Cannot check the current EaaS Runner version: {res.text}.',
         )
         sys.exit(1)
+
     content = res.json()
     tags = [
         int(version.split('.')[1])

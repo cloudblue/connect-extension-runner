@@ -366,4 +366,4 @@ def test_check_runner_version_outdated(mocker):
 
     with pytest.raises(SystemExit) as cv:
         check_runner_version(False)
-    assert cv.value.code == 4
+    assert cv.value.code == 3
