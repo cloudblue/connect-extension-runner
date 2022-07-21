@@ -19,7 +19,7 @@ class WebApp:
         self._config = config
         self._webapp_class = self.get_webapp_class()
         self._logging_handler = None
-        self._app = self.get_asgi_application()
+        self._app = None
 
     @property
     def should_start(self):
@@ -43,6 +43,8 @@ class WebApp:
 
     @property
     def app(self):
+        if not self._app:
+            self._app = self.get_asgi_application()
         return self._app
 
     def get_asgi_application(self):
