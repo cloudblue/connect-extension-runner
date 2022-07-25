@@ -7,6 +7,7 @@ import contextlib
 import socket
 
 import pytest
+import responses as sentry_responses
 import websockets
 
 from connect.eaas.extension import Extension, ProcessingResponse
@@ -86,3 +87,9 @@ def task_payload():
             'runtime': runtime,
         }
     return _task_payload
+
+
+@pytest.fixture
+def responses():
+    with sentry_responses.RequestsMock() as rsps:
+        yield rsps

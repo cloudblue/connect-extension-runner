@@ -4,9 +4,13 @@
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
 import inspect
+import logging
 import os
 import subprocess
+from datetime import datetime
 from uuid import uuid4
+
+from connect.client import ClientError, ConnectClient
 
 from pkg_resources import (
     DistributionNotFound,
@@ -22,6 +26,9 @@ from connect.eaas.constants import (
     TASK_TYPE_EXT_METHOD_MAP,
 )
 from connect.eaas.exceptions import EaaSError
+
+
+logger = logging.getLogger('connect.eaas')
 
 
 def get_container_id():
@@ -113,3 +120,49 @@ def to_ordinal(val):
     if val > 14:
         return f"{val}{ORDINAL_SUFFIX.get(int(str(val)[-1]), 'th')}"
     return f"{val}{ORDINAL_SUFFIX.get(val, 'th')}"
+
+
+def get_client():
+    env = get_environment()
+    api_key = env['api_key']
+    api_address = env['api_address']
+    return ConnectClient(
+        api_key,
+        endpoint=f'https://{api_address}/public/v1',
+        use_specs=False,
+        max_retries=3,
+    )
+
+
+def get_current_environment():
+    env = get_environment()
+    environment_id = env['environment_id']
+    if environment_id.startswith('ENV-'):
+        service_id = f'SRVC-{environment_id[4:-3]}'
+        client = get_client()
+        try:
+            return (
+                client('devops').services[service_id].environments[environment_id].get()
+            )
+        except ClientError as ce:
+            logger.warning(f'Cannot retrieve environment information: {ce}')
+
+
+def notify_process_restarted(process_type):
+    current_environment = get_current_environment()
+    if current_environment and current_environment['runtime'] == 'cloud':
+        environment_id = current_environment['id']
+        service_id = f'SRVC-{environment_id[4:-3]}'
+        client = get_client()
+        try:
+            client('devops').services[service_id].environments[environment_id].update(
+                {
+                    'runtime': 'cloud',
+                    'error_output': (
+                        f'Process {process_type} worker has been '
+                        f'restarted at {datetime.now().isoformat()}'
+                    ),
+                },
+            )
+        except ClientError as ce:
+            logger.warning(f'Cannot notify {process_type} process restart: {ce}')
