@@ -9,14 +9,18 @@ import logging
 import logging.config
 import signal
 import threading
+import time
 from multiprocessing import Process
 
 import uvloop
 
+from connect.eaas.helpers import notify_process_restarted
 from connect.eaas.worker import Worker
 
 
-logger = logging.getLogger('eaas')
+logger = logging.getLogger('connect.eaas')
+
+PROCESS_CHECK_INTERVAL_SECS = 5
 
 
 def configure_logger(debug):
@@ -75,24 +79,36 @@ def start(data):
 
     if not data.split:
         start_worker_process(data.unsecure, None)
-    else:  # pragma: no cover
-        workers = []
+    else:
+        workers = {}
         stop_event = threading.Event()
+
         for runner_type in ('interactive', 'background'):
             p = Process(daemon=True, target=start_worker_process, args=(data.unsecure, runner_type))
-            workers.append(p)
+            workers[runner_type] = p
             p.start()
             logger.info(f'{runner_type} tasks worker pid: {p.pid}')
 
-        def _terminate(*args, **kwargs):
-            for p in workers:
+        def _terminate(*args, **kwargs):  # pragma: no cover
+            for p in workers.values():
                 p.join()
             stop_event.set()
 
         signal.signal(signal.SIGINT, _terminate)
         signal.signal(signal.SIGTERM, _terminate)
-
-        stop_event.wait()
+        while not stop_event.is_set():
+            for runner_type, p in workers.items():
+                if not p.is_alive() and p.exitcode != 0:
+                    notify_process_restarted(runner_type)
+                    logger.info(f'Process of type {runner_type} is dead, restart it')
+                    p = Process(
+                        daemon=True,
+                        target=start_worker_process,
+                        args=(data.unsecure, runner_type),
+                    )
+                    workers[runner_type] = p
+                    p.start()
+            time.sleep(PROCESS_CHECK_INTERVAL_SECS)
 
 
 def main():
