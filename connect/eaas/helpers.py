@@ -159,7 +159,6 @@ def notify_process_restarted(process_type):
         try:
             client('devops').services[service_id].environments[environment_id].update(
                 {
-                    'runtime': 'cloud',
                     'error_output': (
                         f'Process {process_type} worker of instance '
                         f'{instance_id} has been '

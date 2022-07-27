@@ -412,7 +412,6 @@ def test_notify_process_restarted(mocker, responses):
         match=[
             matchers.json_params_matcher(
                 {
-                    'runtime': 'cloud',
                     'error_output': (
                         'Process background worker of instance instance_id has been '
                         'restarted at 2022-01-01T12:00:00'
