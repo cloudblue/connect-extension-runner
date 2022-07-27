@@ -392,6 +392,7 @@ def test_notify_process_restarted(mocker, responses):
         return_value={
             'api_key': 'ApiKey XXXX:YYYY',
             'api_address': 'api.example.com',
+            'instance_id': 'instance_id',
         },
     )
     mocker.patch(
@@ -413,7 +414,7 @@ def test_notify_process_restarted(mocker, responses):
                 {
                     'runtime': 'cloud',
                     'error_output': (
-                        'Process background worker has been '
+                        'Process background worker of instance instance_id has been '
                         'restarted at 2022-01-01T12:00:00'
                     ),
                 },
@@ -432,6 +433,7 @@ def test_notify_process_restarted_client_error(mocker, responses, caplog):
         return_value={
             'api_key': 'ApiKey XXXX:YYYY',
             'api_address': 'api.example.com',
+            'instance_id': 'instance_id',
         },
     )
     mocker.patch(

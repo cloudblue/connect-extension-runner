@@ -3,6 +3,7 @@
 #
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
+import logging
 import signal
 import sys
 import threading
@@ -116,3 +117,33 @@ def test_start_split_process_die(mocker):
         daemon=True, target=start_worker_process, args=(True, 'background'),
     )
     mocked_notify.assert_called_once_with('background')
+
+
+def test_start_split_processes_exited(mocker, caplog):
+    mocker.patch('connect.eaas.main.PROCESS_CHECK_INTERVAL_SECS', 0.01)
+    stop_event = mocker.MagicMock()
+    stop_event.is_set.return_value = False
+    mocker.patch('connect.eaas.main.threading.Event', return_value=stop_event)
+    mocker.patch('connect.eaas.main.signal.signal')
+    mocker.patch(
+        'connect.eaas.main.notify_process_restarted',
+    )
+    mocked_process = mocker.MagicMock()
+    mocked_process.is_alive.return_value = True
+    mocker.patch(
+        'connect.eaas.main.Process',
+        side_effect=[mocked_process, mocked_process],
+    )
+
+    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir', 'split'))
+    with caplog.at_level(logging.INFO):
+        t = threading.Thread(
+            target=start,
+            args=(parsed_args(True, extension_dir='/extension', split=True),),
+        )
+        t.start()
+        time.sleep(.1)
+        mocked_process.is_alive.return_value = False
+        mocked_process.exitcode = 0
+        time.sleep(.1)
+    assert 'Connect EaaS runtime terminated.' in caplog.text

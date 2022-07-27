@@ -71,7 +71,7 @@ def start_worker_process(unsecure, runner_type):
     loop.run_until_complete(worker.start())
 
 
-def start(data):
+def start(data):  # noqa: CCR001
     uvloop.install()
     logger.info('Starting Connect EaaS runtime....')
     if data.unsecure:
@@ -81,11 +81,13 @@ def start(data):
         start_worker_process(data.unsecure, None)
     else:
         workers = {}
+        exited_workers = {}
         stop_event = threading.Event()
 
         for runner_type in ('interactive', 'background'):
             p = Process(daemon=True, target=start_worker_process, args=(data.unsecure, runner_type))
             workers[runner_type] = p
+            exited_workers[runner_type] = False
             p.start()
             logger.info(f'{runner_type} tasks worker pid: {p.pid}')
 
@@ -96,19 +98,27 @@ def start(data):
 
         signal.signal(signal.SIGINT, _terminate)
         signal.signal(signal.SIGTERM, _terminate)
-        while not stop_event.is_set():
+
+        while not (stop_event.is_set() or all(exited_workers.values())):
             for runner_type, p in workers.items():
-                if not p.is_alive() and p.exitcode != 0:
-                    notify_process_restarted(runner_type)
-                    logger.info(f'Process of type {runner_type} is dead, restart it')
-                    p = Process(
-                        daemon=True,
-                        target=start_worker_process,
-                        args=(data.unsecure, runner_type),
-                    )
-                    workers[runner_type] = p
-                    p.start()
+                if not p.is_alive():
+                    if p.exitcode != 0:
+                        notify_process_restarted(runner_type)
+                        logger.info(f'Process of type {runner_type} is dead, restart it')
+                        p = Process(
+                            daemon=True,
+                            target=start_worker_process,
+                            args=(data.unsecure, runner_type),
+                        )
+                        workers[runner_type] = p
+                        p.start()
+                    else:
+                        logger.info(f'worker {runner_type} exited')
+                        exited_workers[runner_type] = True
+
             time.sleep(PROCESS_CHECK_INTERVAL_SECS)
+
+        logger.info('Connect EaaS runtime terminated.')
 
 
 def main():

@@ -149,8 +149,10 @@ def get_current_environment():
 
 
 def notify_process_restarted(process_type):
+    env = get_environment()
     current_environment = get_current_environment()
     if current_environment and current_environment['runtime'] == 'cloud':
+        instance_id = env['instance_id']
         environment_id = current_environment['id']
         service_id = f'SRVC-{environment_id[4:-3]}'
         client = get_client()
@@ -159,7 +161,8 @@ def notify_process_restarted(process_type):
                 {
                     'runtime': 'cloud',
                     'error_output': (
-                        f'Process {process_type} worker has been '
+                        f'Process {process_type} worker of instance '
+                        f'{instance_id} has been '
                         f'restarted at {datetime.now().isoformat()}'
                     ),
                 },
