@@ -98,9 +98,9 @@ def start(data):
 
         signal.signal(signal.SIGINT, _terminate)
         signal.signal(signal.SIGTERM, _terminate)
-        while not stop_event.is_set() or all(exited_workers.values()):
+        while not (stop_event.is_set() or all(exited_workers.values())):
             for runner_type, p in workers.items():
-                if not p.is_alive(): 
+                if not p.is_alive():
                     if p.exitcode != 0:
                         notify_process_restarted(runner_type)
                         logger.info(f'Process of type {runner_type} is dead, restart it')
@@ -112,8 +112,10 @@ def start(data):
                         workers[runner_type] = p
                         p.start()
                     else:
+                        logger.info(f'worker {runner_type} exited')
                         exited_workers[runner_type] = True
             time.sleep(PROCESS_CHECK_INTERVAL_SECS)
+        logger.info('Connect EaaS runtime terminated.')
 
 
 def main():
