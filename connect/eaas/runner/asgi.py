@@ -54,6 +54,10 @@ class RequestResponseCycle:
                     self.config.get_user_agent()['User-Agent'].encode('utf-8'),
                 ),
                 (
+                    'X-Connect-Extension-Id'.lower().encode('utf-8'),
+                    self.config.service_id.encode('utf-8'),
+                ),
+                (
                     'X-Connect-Installation-Api-Key'.lower().encode('utf-8'),
                     self.task.options.api_key.encode('utf-8'),
                 ),

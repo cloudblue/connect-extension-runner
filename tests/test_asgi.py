@@ -38,11 +38,13 @@ def test_build_scope(mocker, logging_api_key, metadata):
     config.logging_level = 'INFO'
     config.logging_api_key = logging_api_key
     config.metadata = metadata
+    config.service_id = 'extension_id'
 
     expected_headers = [
         (b'x-my-header', b'my-value'),
         (b'x-connect-api-gateway-url', b'https://api.example.com'),
         (b'x-connect-user-agent', b'myuseragent'),
+        (b'x-connect-extension-id', b'extension_id'),
         (b'x-connect-installation-api-key', b'api_key'),
         (b'x-connect-installation-id', b'installation_id'),
         (b'x-connect-logging-level', b'INFO'),
