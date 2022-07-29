@@ -4,6 +4,7 @@
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
 import asyncio
+import signal
 
 from connect.eaas.core.proto import (
     Message,
@@ -17,14 +18,11 @@ from connect.eaas.runner.helpers import get_version
 
 class WebWorker(WorkerBase):
     """
-    The Worker is responsible to handle the websocket connection
+    The EventsWorker is responsible to handle the websocket connection
     with the server. It will send the extension capabilities to
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, config, handler):
-        super().__init__(config)
-        self.handler = handler
 
     def get_url(self):
         return self.config.get_webapp_ws_url()
@@ -67,3 +65,17 @@ class WebWorker(WorkerBase):
             self.send,
         )
         asyncio.create_task(cycle())
+
+
+def start_webapp_worker_process(handler):
+    worker = WebWorker(handler)
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(
+        signal.SIGINT,
+        worker.handle_signal,
+    )
+    loop.add_signal_handler(
+        signal.SIGTERM,
+        worker.handle_signal,
+    )
+    loop.run_until_complete(worker.start())

@@ -14,8 +14,8 @@ from connect.eaas.core.proto import (
     WebTaskOptions,
 )
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.workers.webapp import WebWorker
-from connect.eaas.runner.handlers.webapp import WebApp
+from connect.eaas.runner.workers.web import start_webapp_worker_process, WebWorker
+from connect.eaas.runner.handlers.web import WebApp
 
 from tests.utils import WSHandler
 
@@ -59,7 +59,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         return_value=MyExtension,
     )
 
-    mocker.patch('connect.eaas.runner.workers.webapp.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
 
     data_to_send = Message(
         version=2,
@@ -78,7 +78,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     ext_handler = WebApp(config)
 
     async with ws_server(handler):
-        worker = WebWorker(config, ext_handler)
+        worker = WebWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -151,12 +151,12 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
         return_value=MyExtension,
     )
 
-    mocker.patch('connect.eaas.runner.workers.webapp.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
 
     mocked_cycle = mocker.AsyncMock()
 
     mocked_cycle_cls = mocker.patch(
-        'connect.eaas.runner.workers.webapp.RequestResponseCycle',
+        'connect.eaas.runner.workers.web.RequestResponseCycle',
         return_value=mocked_cycle,
     )
 
@@ -198,7 +198,7 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
 
     worker = None
     async with ws_server(handler):
-        worker = WebWorker(config, ext_handler)
+        worker = WebWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -288,7 +288,21 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     ext_handler = WebApp(config)
 
     async with ws_server(handler):
-        worker = WebWorker(config, ext_handler)
+        worker = WebWorker(ext_handler)
         asyncio.create_task(worker.start())
         await asyncio.sleep(1)
         assert worker.run_event.is_set() is False
+
+
+def test_start_webapp_worker_process(mocker):
+    start_mock = mocker.AsyncMock()
+
+    mocker.patch.object(
+        WebApp,
+        'get_webapp_class',
+    )
+    mocker.patch.object(WebWorker, 'start', start_mock)
+
+    start_webapp_worker_process(mocker.MagicMock())
+
+    start_mock.assert_awaited_once()

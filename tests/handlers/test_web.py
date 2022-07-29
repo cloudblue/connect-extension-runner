@@ -3,7 +3,7 @@ from pkg_resources import EntryPoint
 
 from connect.eaas.core.decorators import router
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.webapp import WebApp
+from connect.eaas.runner.handlers.web import WebApp
 
 
 def test_get_webapp_class(mocker, settings_payload):
@@ -21,7 +21,7 @@ def test_get_webapp_class(mocker, settings_payload):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.web.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
@@ -73,7 +73,7 @@ def test_properties(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.web.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
@@ -113,19 +113,19 @@ def test_get_asgi_application(mocker, static_root):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.webapp.iter_entry_points',
+        'connect.eaas.runner.handlers.web.iter_entry_points',
         return_value=iter([
             EntryPoint('webapp', 'connect.eaas.ext'),
         ]),
     )
 
     mocked_fastapi = mocker.MagicMock()
-    mocker.patch('connect.eaas.runner.handlers.webapp.FastAPI', return_value=mocked_fastapi)
+    mocker.patch('connect.eaas.runner.handlers.web.FastAPI', return_value=mocked_fastapi)
 
     mocked_static = mocker.MagicMock()
 
     mocked_static_files = mocker.patch(
-        'connect.eaas.runner.handlers.webapp.StaticFiles',
+        'connect.eaas.runner.handlers.web.StaticFiles',
         return_value=mocked_static,
     )
 

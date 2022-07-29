@@ -15,7 +15,7 @@ from connect.eaas.core.proto import (
     TaskOutput,
 )
 from connect.eaas.core.responses import ScheduledExecutionResponse
-from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.handlers.events import EventsApp
 from connect.eaas.runner.managers import ScheduledTasksManager
 
 
@@ -29,11 +29,11 @@ async def test_sync(mocker, extension_cls, settings_payload):
         result=ScheduledExecutionResponse.done(),
     )
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.scheduled.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = ScheduledTasksManager(config, handler, result_queue)
@@ -72,11 +72,11 @@ async def test_async(mocker, extension_cls, settings_payload):
         async_impl=True,
     )
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.scheduled.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = ScheduledTasksManager(config, handler, result_queue)

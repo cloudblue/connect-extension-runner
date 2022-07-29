@@ -2,7 +2,7 @@ from pkg_resources import EntryPoint
 
 from connect.eaas.core.proto import Logging, LogMeta, SetupResponse
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.handlers.events import EventsApp
 
 
 def test_get_method(mocker, settings_payload, extension_cls):
@@ -18,7 +18,7 @@ def test_get_method(mocker, settings_payload, extension_cls):
     ext_class = extension_cls('test_method')
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=ext_class,
     )
@@ -26,7 +26,7 @@ def test_get_method(mocker, settings_payload, extension_cls):
         'connect.eaas.runner.handlers.events.ExtensionLogHandler',
         autospec=True,
     )
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     method = handler.get_method('event_type', 'TQ-000', 'test_method')
     assert method.__name__ == 'test_method'
@@ -78,7 +78,7 @@ def test_get_extension_class(mocker, settings_payload):
         ]),
     )
 
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     assert handler._extension_class == MyExtension
 
@@ -96,7 +96,7 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
     ext_class = extension_cls('test_method')
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=ext_class,
     )
@@ -104,7 +104,7 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
         'connect.eaas.runner.handlers.events.ExtensionLogHandler',
         autospec=True,
     )
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     method = handler.get_method(
         'event_type',

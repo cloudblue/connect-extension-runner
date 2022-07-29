@@ -3,6 +3,9 @@
 #
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
+import asyncio
+import signal
+
 from connect.eaas.core.proto import (
     Message,
     MessageType,
@@ -14,14 +17,11 @@ from connect.eaas.runner.helpers import get_version
 
 class AnvilWorker(WorkerBase):
     """
-    The Worker is responsible to handle the websocket connection
+    The EventsWorker is responsible to handle the websocket connection
     with the server. It will send the extension capabilities to
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, config, handler):
-        super().__init__(config)
-        self.handler = handler
 
     def get_url(self):
         return self.config.get_anvilapp_ws_url()
@@ -54,3 +54,17 @@ class AnvilWorker(WorkerBase):
     async def shutdown(self):
         self.handler.stop()
         await super().shutdown()
+
+
+def start_anvilapp_worker_process(handler):
+    worker = AnvilWorker(handler)
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(
+        signal.SIGINT,
+        worker.handle_signal,
+    )
+    loop.add_signal_handler(
+        signal.SIGTERM,
+        worker.handle_signal,
+    )
+    loop.run_until_complete(worker.start())

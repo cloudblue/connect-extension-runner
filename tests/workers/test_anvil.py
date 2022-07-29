@@ -11,8 +11,8 @@ from connect.eaas.core.proto import (
     SetupResponse,
 )
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.anvilapp import AnvilApp
-from connect.eaas.runner.workers.anvilapp import AnvilWorker
+from connect.eaas.runner.handlers.anvil import AnvilApp
+from connect.eaas.runner.workers.anvil import AnvilWorker, start_anvilapp_worker_process
 
 from tests.utils import WSHandler
 
@@ -50,7 +50,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     )
     mocker.patch.object(AnvilApp, 'start')
     mocker.patch.object(AnvilApp, 'stop')
-    mocker.patch('connect.eaas.runner.workers.anvilapp.get_version', return_value='24.1')
+    mocker.patch('connect.eaas.runner.workers.anvil.get_version', return_value='24.1')
 
     data_to_send = Message(
         version=2,
@@ -69,7 +69,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     ext_handler = AnvilApp(config)
 
     async with ws_server(handler):
-        worker = AnvilWorker(config, ext_handler)
+        worker = AnvilWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -153,7 +153,21 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     ext_handler = AnvilApp(config)
 
     async with ws_server(handler):
-        worker = AnvilWorker(config, ext_handler)
+        worker = AnvilWorker(ext_handler)
         asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         assert worker.run_event.is_set() is False
+
+
+def test_start_anvilapp_worker_process(mocker):
+    start_mock = mocker.AsyncMock()
+
+    mocker.patch.object(
+        AnvilApp,
+        'get_anvilapp_class',
+    )
+    mocker.patch.object(AnvilWorker, 'start', start_mock)
+
+    start_anvilapp_worker_process(mocker.MagicMock())
+
+    start_mock.assert_awaited_once()

@@ -12,7 +12,7 @@ from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
 logger = logging.getLogger(__name__)
 
 
-class ExtensionHandler:
+class EventsApp:
     """
     Handle the lifecycle of an extension.
     """
@@ -25,6 +25,10 @@ class ExtensionHandler:
             self._schedulables = self.get_schedulables()
             self._variables = self.get_variables()
         self._logging_handler = None
+
+    @property
+    def config(self):
+        return self._config
 
     @property
     def should_start(self):

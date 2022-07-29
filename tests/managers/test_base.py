@@ -7,7 +7,7 @@ from connect.client import ClientError
 from connect.eaas.core.proto import SetupResponse, Task, TaskOutput
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.managers.base import TasksManagerBase
-from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.handlers.events import EventsApp
 
 
 @pytest.mark.asyncio
@@ -25,13 +25,13 @@ async def test_submit(mocker, extension_cls, task_payload):
     mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
     mocked_get_argument.return_value = {'test': 'data'}
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
-    mocked_get_method = mocker.patch.object(ExtensionHandler, 'get_method')
+    mocked_get_method = mocker.patch.object(EventsApp, 'get_method')
 
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     extension_instance = cls(None, None, None)
 
@@ -73,7 +73,7 @@ async def test_submit_multi_account(mocker, extension_cls, task_payload):
     mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
     mocked_get_argument.return_value = {'test': 'data'}
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
-    mocked_get_method = mocker.patch.object(ExtensionHandler, 'get_method')
+    mocked_get_method = mocker.patch.object(EventsApp, 'get_method')
     mocked_get_installation = mocker.patch.object(
         TaskManager,
         'get_installation',
@@ -83,8 +83,8 @@ async def test_submit_multi_account(mocker, extension_cls, task_payload):
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     extension_instance = cls(None, None, None)
 
@@ -139,13 +139,13 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
 
     mocked_put = mocker.AsyncMock()
 
-    mocked_get_method = mocker.patch.object(ExtensionHandler, 'get_method')
+    mocked_get_method = mocker.patch.object(EventsApp, 'get_method')
 
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     manager = TaskManager(config, handler, mocked_put)
 
@@ -181,8 +181,8 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     mocked_put = mocker.AsyncMock()
 
@@ -212,10 +212,10 @@ async def test_submit_no_argument(mocker, extension_cls, task_payload):
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
 
     config = ConfigHelper()
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 
@@ -241,11 +241,11 @@ async def test_submit_no_method(mocker, extension_cls, task_payload):
 
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    mocker.patch.object(ExtensionHandler, 'get_method', return_value=None)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'get_method', return_value=None)
 
     config = ConfigHelper()
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 
@@ -274,8 +274,8 @@ async def test_log_exception(mocker, extension_cls, settings_payload, task_paylo
     config.update_dynamic_config(dyn)
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 
@@ -327,8 +327,8 @@ async def test_get_installation(
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
     config.update_dynamic_config(SetupResponse(**settings_payload))
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 

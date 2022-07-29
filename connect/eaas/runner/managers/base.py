@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from connect.client import AsyncConnectClient, ClientError
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.handlers.events import EventsApp
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class TasksManagerBase(ABC):
     """
     Base class for Tasks managers.
     """
-    def __init__(self, config: ConfigHelper, handler: ExtensionHandler, enqueue):
+    def __init__(self, config: ConfigHelper, handler: EventsApp, enqueue):
         self.config = config
         self.handler = handler
         self.enqueue = enqueue

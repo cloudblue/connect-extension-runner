@@ -23,8 +23,12 @@ from connect.eaas.runner.exceptions import (
     MaintenanceError,
     StopBackoffError,
 )
-from connect.eaas.runner.handlers.events import ExtensionHandler
-from connect.eaas.runner.workers.events import Worker
+from connect.eaas.runner.handlers.events import EventsApp
+from connect.eaas.runner.workers.events import (
+    EventsWorker,
+    start_background_worker_process,
+    start_interactive_worker_process,
+)
 
 from tests.utils import WSHandler
 
@@ -62,7 +66,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -82,10 +86,10 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     worker = None
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -174,7 +178,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
             return ProcessingResponse.done()
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -212,10 +216,10 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -312,7 +316,7 @@ async def test_pr_task_decorated(mocker, ws_server, unused_port, httpx_mock, set
             return ProcessingResponse.done()
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -350,10 +354,10 @@ async def test_pr_task_decorated(mocker, ws_server, unused_port, httpx_mock, set
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -458,7 +462,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
             return ProcessingResponse.done()
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -495,10 +499,10 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -603,7 +607,7 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
             return ScheduledExecutionResponse.done()
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -641,10 +645,10 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -745,7 +749,7 @@ async def test_scheduled_task_decorated(
             return ScheduledExecutionResponse.done()
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -783,10 +787,10 @@ async def test_scheduled_task_decorated(
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -871,7 +875,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -892,10 +896,10 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         assert worker.run_event.is_set() is False
@@ -907,7 +911,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch(
@@ -930,10 +934,10 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=ConnectionClosedError(1006, 'disconnected'))
         with caplog.at_level(logging.INFO):
@@ -943,7 +947,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
             await task
 
     assert (
-        f'Disconnected from: ws://127.0.0.1:{unused_port}'
+        f'disconnected from: ws://127.0.0.1:{unused_port}'
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002'
         '?running_tasks=0&running_scheduled_tasks=0'
     ) in caplog.text
@@ -953,7 +957,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
 async def test_connection_websocket_exception(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch(
@@ -976,10 +980,10 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=WebSocketException('test error'))
         with caplog.at_level(logging.INFO):
@@ -988,7 +992,7 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
             worker.stop()
             await task
 
-    assert 'Unexpected exception test error, try to reconnect in 0.1s' in caplog.text
+    assert 'unexpected exception test error, try to reconnect in 0.1s' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -997,7 +1001,7 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch(
@@ -1020,10 +1024,10 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=InvalidStatusCode(502, None))
         with caplog.at_level(logging.INFO):
@@ -1032,7 +1036,7 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
             worker.stop()
             await task
 
-    assert 'Maintenance in progress, try to reconnect in 0.1s' in caplog.text
+    assert 'maintenance in progress, try to reconnect in 0.1s' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1041,7 +1045,7 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch(
@@ -1064,10 +1068,10 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=InvalidStatusCode(500, None))
         with caplog.at_level(logging.INFO):
@@ -1076,7 +1080,7 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
             worker.stop()
             await task
 
-    assert 'Received an unexpected status from server: 500' in caplog.text
+    assert 'received an unexpected status from server: 500' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1112,7 +1116,7 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -1124,17 +1128,17 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(.5)
-            assert 'Control worker started' in caplog.text
+            assert f'{worker} started' in caplog.text
             worker.stop()
             await task
-            assert 'Control worker stopped' in caplog.text
+            assert f'{worker} stopped' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1175,7 +1179,7 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -1201,10 +1205,10 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1259,7 +1263,7 @@ async def test_extension_settings_with_vars_decorated(mocker, ws_server, unused_
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -1285,10 +1289,10 @@ async def test_extension_settings_with_vars_decorated(mocker, ws_server, unused_
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1343,7 +1347,7 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -1369,10 +1373,10 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1399,15 +1403,15 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
 @pytest.mark.asyncio
 async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     with caplog.at_level(logging.WARNING):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         worker.get_extension_message = mocker.MagicMock(return_value={})
         worker.config.update_dynamic_config(SetupResponse(**settings_payload))
         worker.run = mocker.AsyncMock()
@@ -1431,15 +1435,15 @@ async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
 @pytest.mark.asyncio
 async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payload, caplog):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     with caplog.at_level(logging.WARNING):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         worker.get_extension_message = mocker.MagicMock(return_value={})
         worker.config.update_dynamic_config(SetupResponse(**settings_payload))
         worker.run = mocker.AsyncMock()
@@ -1476,7 +1480,7 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
 )
 def test_backoff_log(mocker, caplog, tries, ordinal):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     details = {'tries': tries, 'elapsed': 2.2, 'wait': 1.1}
@@ -1487,9 +1491,9 @@ def test_backoff_log(mocker, caplog, tries, ordinal):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
-    w = Worker(config, ext_handler)
+    w = EventsWorker(ext_handler)
     with caplog.at_level(logging.INFO):
         w._backoff_log(details)
     assert expected in caplog.records[0].message
@@ -1498,7 +1502,7 @@ def test_backoff_log(mocker, caplog, tries, ordinal):
 @pytest.mark.asyncio
 async def test_ensure_connection_maintenance(mocker, caplog):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
@@ -1510,9 +1514,9 @@ async def test_ensure_connection_maintenance(mocker, caplog):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
-    worker = Worker(config, ext_handler)
+    worker = EventsWorker(ext_handler)
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1527,7 +1531,7 @@ async def test_ensure_connection_maintenance(mocker, caplog):
 @pytest.mark.parametrize('status', (400, 401, 403, 500, 501))
 async def test_ensure_connection_other_statuses(mocker, caplog, status):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
@@ -1539,9 +1543,9 @@ async def test_ensure_connection_other_statuses(mocker, caplog, status):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
-    worker = Worker(config, ext_handler)
+    worker = EventsWorker(ext_handler)
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1555,7 +1559,7 @@ async def test_ensure_connection_other_statuses(mocker, caplog, status):
 @pytest.mark.asyncio
 async def test_ensure_connection_generic_exception(mocker, caplog):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
@@ -1567,9 +1571,9 @@ async def test_ensure_connection_generic_exception(mocker, caplog):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
-    worker = Worker(config, ext_handler)
+    worker = EventsWorker(ext_handler)
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1583,7 +1587,7 @@ async def test_ensure_connection_generic_exception(mocker, caplog):
 @pytest.mark.asyncio
 async def test_ensure_connection_exit_backoff(mocker, caplog):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 600)
@@ -1594,9 +1598,9 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
-    worker = Worker(config, ext_handler)
+    worker = EventsWorker(ext_handler)
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1606,13 +1610,13 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
             worker.run_event.clear()
             await task
 
-    assert 'Worker exiting, stop backoff loop' in caplog.text
+    assert 'EventsWorker exiting, stop backoff loop' in caplog.text
 
 
 @pytest.mark.asyncio
 async def test_ensure_connection_exit_max_attemps(mocker, caplog):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 10)
@@ -1623,9 +1627,9 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
-    worker = Worker(config, ext_handler)
+    worker = EventsWorker(ext_handler)
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1633,7 +1637,7 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
         task = asyncio.create_task(worker.run())
         await task
 
-    assert 'Max connection attemps reached, exit!' in caplog.text
+    assert 'max connection attemps reached, exit!' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1670,7 +1674,7 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -1703,10 +1707,10 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         for _ in range(100):
             await worker.results_queue.put(task_result)
         asyncio.create_task(worker.start())
@@ -1747,7 +1751,7 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
             }
 
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
         return_value=MyExtension,
     )
@@ -1776,10 +1780,10 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = Worker(config, ext_handler)
+        worker = EventsWorker(ext_handler)
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1791,14 +1795,14 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
 @pytest.mark.asyncio
 async def test_handle_signal(mocker, settings_payload):
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'get_extension_class',
     )
 
     config = ConfigHelper(secure=False)
-    ext_handler = ExtensionHandler(config)
+    ext_handler = EventsApp(config)
 
-    worker = Worker(config, ext_handler)
+    worker = EventsWorker(ext_handler)
     worker.config.update_dynamic_config(SetupResponse(**settings_payload))
     worker.run = mocker.AsyncMock()
     worker.send = mocker.AsyncMock()
@@ -1808,3 +1812,31 @@ async def test_handle_signal(mocker, settings_payload):
     worker.handle_signal()
     await task
     worker.send.assert_awaited_once_with({'data': None, 'message_type': 'shutdown', 'version': 2})
+
+
+def test_start_interactive_worker_process(mocker):
+    start_mock = mocker.AsyncMock()
+
+    mocker.patch.object(
+        EventsApp,
+        'get_extension_class',
+    )
+    mocker.patch.object(EventsWorker, 'start', start_mock)
+
+    start_interactive_worker_process(mocker.MagicMock())
+
+    start_mock.assert_awaited_once()
+
+
+def test_start_background_worker_process(mocker):
+    start_mock = mocker.AsyncMock()
+
+    mocker.patch.object(
+        EventsApp,
+        'get_extension_class',
+    )
+    mocker.patch.object(EventsWorker, 'start', start_mock)
+
+    start_background_worker_process(mocker.MagicMock())
+
+    start_mock.assert_awaited_once()

@@ -2,7 +2,7 @@ import pytest
 from pkg_resources import EntryPoint
 
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.anvilapp import AnvilApp
+from connect.eaas.runner.handlers.anvil import AnvilApp
 
 
 def test_get_anvilapp_class(mocker, settings_payload):
@@ -18,7 +18,7 @@ def test_get_anvilapp_class(mocker, settings_payload):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
+        'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
             EntryPoint('anvilapp', 'connect.eaas.ext'),
         ]),
@@ -60,7 +60,7 @@ def test_properties(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
+        'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
             EntryPoint('anvilapp', 'connect.eaas.ext'),
         ]),
@@ -118,14 +118,14 @@ def test_start(mocker, logging_key):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
+        'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
             EntryPoint('anvilapp', 'connect.eaas.ext'),
         ]),
     )
 
     mocked_anvil_connect = mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.anvil.server.connect',
+        'connect.eaas.runner.handlers.anvil.anvil.server.connect',
     )
 
     handler = AnvilApp(config)
@@ -177,14 +177,14 @@ def test_start_no_api_key(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
+        'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
             EntryPoint('anvilapp', 'connect.eaas.ext'),
         ]),
     )
 
     mocked_anvil_connect = mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.anvil.server.connect',
+        'connect.eaas.runner.handlers.anvil.anvil.server.connect',
     )
 
     handler = AnvilApp(config)
@@ -207,14 +207,14 @@ def test_stop(mocker):
         return_value=MyExtension,
     )
     mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.iter_entry_points',
+        'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
             EntryPoint('anvilapp', 'connect.eaas.ext'),
         ]),
     )
 
     mocked_anvil_disconnect = mocker.patch(
-        'connect.eaas.runner.handlers.anvilapp.anvil.server.disconnect',
+        'connect.eaas.runner.handlers.anvil.anvil.server.disconnect',
     )
 
     handler = AnvilApp(config)

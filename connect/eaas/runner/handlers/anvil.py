@@ -29,6 +29,10 @@ class AnvilApp:
         self._logging_handler = None
 
     @property
+    def config(self):
+        return self._config
+
+    @property
     def should_start(self):
         return self._anvilapp_class is not None
 

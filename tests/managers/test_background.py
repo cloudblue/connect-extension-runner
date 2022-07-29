@@ -15,7 +15,7 @@ from connect.eaas.runner.constants import (
     BACKGROUND_EVENT_TYPES,
     EVENT_TYPE_EXT_METHOD_MAP,
 )
-from connect.eaas.runner.handlers.events import ExtensionHandler
+from connect.eaas.runner.handlers.events import EventsApp
 from connect.eaas.runner.managers import BackgroundTasksManager
 
 
@@ -30,7 +30,7 @@ async def test_sync(mocker, extension_cls, event_type, settings_payload):
     config.update_dynamic_config(SetupResponse(**settings_payload))
     method = EVENT_TYPE_EXT_METHOD_MAP[event_type]
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'events',
         new_callable=mocker.PropertyMock(return_value={
             event_type: {
@@ -42,11 +42,11 @@ async def test_sync(mocker, extension_cls, event_type, settings_payload):
 
     cls = extension_cls(method)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = BackgroundTasksManager(config, handler, result_queue)
@@ -83,7 +83,7 @@ async def test_async(mocker, extension_cls, event_type, settings_payload):
     config.update_dynamic_config(SetupResponse(**settings_payload))
     method = EVENT_TYPE_EXT_METHOD_MAP[event_type]
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'events',
         new_callable=mocker.PropertyMock(return_value={
             event_type: {
@@ -95,11 +95,11 @@ async def test_async(mocker, extension_cls, event_type, settings_payload):
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
-    handler = ExtensionHandler(config)
+    handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = BackgroundTasksManager(config, handler, result_queue)
@@ -154,7 +154,7 @@ async def test_get_argument(
     config.update_dynamic_config(SetupResponse(**settings_payload))
     method = EVENT_TYPE_EXT_METHOD_MAP[event_type]
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'events',
         new_callable=mocker.PropertyMock(return_value={
             event_type: {
@@ -166,8 +166,8 @@ async def test_get_argument(
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = BackgroundTasksManager(config, handler, result_queue)
@@ -221,7 +221,7 @@ async def test_get_argument_multi_account(
     config.update_dynamic_config(SetupResponse(**settings_payload))
     method = EVENT_TYPE_EXT_METHOD_MAP[event_type]
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'events',
         new_callable=mocker.PropertyMock(return_value={
             event_type: {
@@ -233,8 +233,8 @@ async def test_get_argument_multi_account(
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     manager = BackgroundTasksManager(config, handler, result_queue)
@@ -297,7 +297,7 @@ async def test_get_argument_status_changed(
     config.update_dynamic_config(SetupResponse(**settings_payload))
     method = EVENT_TYPE_EXT_METHOD_MAP[event_type]
     mocker.patch.object(
-        ExtensionHandler,
+        EventsApp,
         'events',
         new_callable=mocker.PropertyMock(return_value={
             event_type: {
@@ -309,8 +309,8 @@ async def test_get_argument_status_changed(
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(ExtensionHandler, 'get_extension_class', return_value=cls)
-    handler = ExtensionHandler(config)
+    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
     mocked_skip = mocker.patch.object(BackgroundTasksManager, 'send_skip_response')

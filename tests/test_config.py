@@ -21,7 +21,8 @@ def test_get_user_agent(mocker):
     assert config.get_user_agent() == {'User-Agent': expected_ua}
 
 
-def test_update_dynamic_config():
+def test_update_dynamic_config(mocker):
+    mocker.patch('connect.eaas.runner.config.logging.getLogger')
     config = ConfigHelper()
     payload = SetupResponse(
         variables={'var': 'value'},
