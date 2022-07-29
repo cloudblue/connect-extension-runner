@@ -3,13 +3,19 @@
 #
 # Copyright (c) 2021 Ingram Micro. All Rights Reserved.
 #
+import logging
 import os
 import subprocess
 
 import pytest
+
+from connect.client import ConnectClient
+
+from freezegun import freeze_time
 from pkg_resources import (
     DistributionNotFound,
 )
+from responses import matchers
 
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
@@ -17,11 +23,14 @@ from connect.eaas.runner.constants import (
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
 from connect.eaas.runner.helpers import (
+    get_client,
     get_connect_version,
     get_container_id,
+    get_current_environment,
     get_environment,
     get_pypi_runner_minor_version,
     get_version,
+    notify_process_restarted,
 )
 
 
@@ -139,12 +148,13 @@ def test_get_container_id_ko(mocker):
 
 
 def test_get_environment_with_defaults(mocker):
-    os.environ['API_KEY'] = 'SU-000:XXXX'
-    os.environ['ENVIRONMENT_ID'] = 'ENV-0000-0000-01'
-    if 'SERVER_ADDRESS' in os.environ:
-        del os.environ['SERVER_ADDRESS']
-    if 'INSTANCE_ID' in os.environ:
-        del os.environ['INSTANCE_ID']
+    mocker.patch.dict(
+        os.environ,
+        {
+            'API_KEY': 'SU-000:XXXX',
+            'ENVIRONMENT_ID': 'ENV-0000-0000-01',
+        },
+    )
     mocker.patch(
         'connect.eaas.runner.helpers.get_container_id',
         return_value='container_id',
@@ -161,14 +171,23 @@ def test_get_environment_with_defaults(mocker):
 
 
 def test_get_environment(mocker):
-    os.environ['API_KEY'] = 'SU-000:XXXX'
-    os.environ['ENVIRONMENT_ID'] = 'ENV-0000-0000-01'
-    os.environ['INSTANCE_ID'] = 'SIN-0000-0000-01'
-    os.environ['SERVER_ADDRESS'] = 'api.example.com'
-    os.environ['API_ADDRESS'] = 'api.example.com'
-    os.environ['BACKGROUND_TASK_MAX_EXECUTION_TIME'] = '1'
-    os.environ['INTERACTIVE_TASK_MAX_EXECUTION_TIME'] = '2'
-    os.environ['SCHEDULED_TASK_MAX_EXECUTION_TIME'] = '3'
+    mocker.patch.dict(
+        os.environ,
+        {
+            'API_KEY': 'SU-000:XXXX',
+            'ENVIRONMENT_ID': 'ENV-0000-0000-01',
+            'INSTANCE_ID': 'SIN-0000-0000-01',
+            'SERVER_ADDRESS': 'api.example.com',
+            'API_ADDRESS': 'api.example.com',
+            'BACKGROUND_TASK_MAX_EXECUTION_TIME': '1',
+            'INTERACTIVE_TASK_MAX_EXECUTION_TIME': '2',
+            'SCHEDULED_TASK_MAX_EXECUTION_TIME': '3',
+        },
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_container_id',
+        return_value='container_id',
+    )
 
     env = get_environment()
     assert env['api_key'] == 'SU-000:XXXX'
@@ -300,3 +319,151 @@ def test_get_pypi_runner_minor_version_request_error(responses):
         get_pypi_runner_minor_version('26')
 
     assert cv.value.code == 1
+
+
+def test_get_client(mocker):
+    env = {
+        'api_key': 'ApiKey XXXX:YYYY',
+        'api_address': 'api.example.com',
+    }
+    mocker.patch('connect.eaas.runner.helpers.get_environment', return_value=env)
+
+    client = get_client()
+
+    assert isinstance(client, ConnectClient)
+    assert client.api_key == 'ApiKey XXXX:YYYY'
+    assert client.endpoint == 'https://api.example.com/public/v1'
+
+
+def test_get_current_environment(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey XXXX:YYYY',
+            'api_address': 'api.example.com',
+            'environment_id': 'ENV-0000-1111-01',
+        },
+    )
+
+    responses.add(
+        'GET',
+        (
+            'https://api.example.com/public/v1/devops/services'
+            '/SRVC-0000-1111/environments/ENV-0000-1111-01'
+        ),
+        json={
+            'id': 'ENV-0000-1111-01',
+        },
+        status=200,
+    )
+
+    assert get_current_environment() == {'id': 'ENV-0000-1111-01'}
+
+
+def test_get_current_environment_client_error(mocker, responses, caplog):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey XXXX:YYYY',
+            'api_address': 'api.example.com',
+            'environment_id': 'ENV-0000-1111-01',
+        },
+    )
+
+    responses.add(
+        'GET',
+        (
+            'https://api.example.com/public/v1/devops/services'
+            '/SRVC-0000-1111/environments/ENV-0000-1111-01'
+        ),
+        status=400,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        assert get_current_environment() is None
+
+    assert 'Cannot retrieve environment information' in caplog.text
+
+
+def test_get_current_environment_using_uuid(mocker):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey XXXX:YYYY',
+            'api_address': 'api.example.com',
+            'environment_id': 'fake_uuid',
+        },
+    )
+
+    assert get_current_environment() is None
+
+
+def test_notify_process_restarted(mocker, responses):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey XXXX:YYYY',
+            'api_address': 'api.example.com',
+            'instance_id': 'instance_id',
+        },
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_current_environment',
+        return_value={
+            'id': 'ENV-0000-1111-01',
+            'runtime': 'cloud',
+        },
+    )
+
+    responses.add(
+        'PUT',
+        (
+            'https://api.example.com/public/v1/devops/services'
+            '/SRVC-0000-1111/environments/ENV-0000-1111-01'
+        ),
+        match=[
+            matchers.json_params_matcher(
+                {
+                    'error_output': (
+                        'Process background worker of instance instance_id has been '
+                        'restarted at 2022-01-01T12:00:00'
+                    ),
+                },
+            ),
+        ],
+        json={},
+        status=200,
+    )
+    with freeze_time('2022-01-01 12:00:00'):
+        notify_process_restarted('background')
+
+
+def test_notify_process_restarted_client_error(mocker, responses, caplog):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey XXXX:YYYY',
+            'api_address': 'api.example.com',
+            'instance_id': 'instance_id',
+        },
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_current_environment',
+        return_value={
+            'id': 'ENV-0000-1111-01',
+            'runtime': 'cloud',
+        },
+    )
+
+    responses.add(
+        'PUT',
+        (
+            'https://api.example.com/public/v1/devops/services'
+            '/SRVC-0000-1111/environments/ENV-0000-1111-01'
+        ),
+        status=400,
+    )
+    with caplog.at_level(logging.WARNING):
+        notify_process_restarted('background')
+
+    assert 'Cannot notify background process restart' in caplog.text

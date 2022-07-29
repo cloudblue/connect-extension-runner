@@ -5,6 +5,7 @@
 #
 import asyncio
 import logging
+import signal
 
 
 from connect.eaas.core.proto import (
@@ -29,17 +30,16 @@ from connect.eaas.runner.managers import (
 logger = logging.getLogger(__name__)
 
 
-class Worker(WorkerBase):
+class EventsWorker(WorkerBase):
     """
-    The Worker is responsible to handle the websocket connection
+    The EventsWorker is responsible to handle the websocket connection
     with the server. It will send the extension capabilities to
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, config, handler, runner_type=None):
-        super().__init__(config)
+    def __init__(self, handler, runner_type=None):
+        super().__init__(handler)
         self.runner_type = runner_type
-        self.handler = handler
         self.results_queue = asyncio.Queue()
         self.background_manager = BackgroundTasksManager(
             self.config,
@@ -125,7 +125,7 @@ class Worker(WorkerBase):
         while True:
             if self.results_queue.empty():
                 if not self.run_event.is_set() and self.running_tasks == 0:
-                    logger.info('Worker exiting and no more running tasks: exit!')
+                    logger.info(f'{self} exiting and no more running tasks: exit!')
                     return
                 await asyncio.sleep(.5)
                 continue
@@ -189,3 +189,30 @@ class Worker(WorkerBase):
         """
         self.results_task = asyncio.create_task(self.result_sender())
         await super().start()
+
+    def __repr__(self):
+        if self.runner_type:
+            return f'{self.runner_type.capitalize()}{self.__class__.__name__}'
+        return super().__repr__()
+
+
+def _start_event_worker_process(handler, runner_type):
+    worker = EventsWorker(handler, runner_type=runner_type)
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(
+        signal.SIGINT,
+        worker.handle_signal,
+    )
+    loop.add_signal_handler(
+        signal.SIGTERM,
+        worker.handle_signal,
+    )
+    loop.run_until_complete(worker.start())
+
+
+def start_interactive_worker_process(handler):
+    _start_event_worker_process(handler, 'interactive')
+
+
+def start_background_worker_process(handler):
+    _start_event_worker_process(handler, 'background')

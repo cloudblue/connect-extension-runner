@@ -53,13 +53,14 @@ def _get_max_retry_delay_time():
 
 class WorkerBase(ABC):
     """
-    The Worker is responsible to handle the websocket connection
+    The EventsWorker is responsible to handle the websocket connection
     with the server. It will send the extension capabilities to
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, handler):
+        self.handler = handler
+        self.config = handler.config
         self.lock = asyncio.Lock()
         self.run_event = asyncio.Event()
         self.stop_event = asyncio.Event()
@@ -101,23 +102,24 @@ class WorkerBase(ABC):
                         )
                         await (await self.ws.ping())
                         await self.do_handshake()
-                        logger.info(f'Connected to {url}')
+                        logger.info(f'{self} connected to {url}')
                     except InvalidStatusCode as ic:
                         if ic.status_code == 502:
-                            logger.warning('Maintenance in progress...')
+                            logger.warning(f'{self}: maintenance in progress...')
                             raise MaintenanceError()
                         else:
                             logger.warning(
-                                f'Received an unexpected status from server: {ic.status_code}...',
+                                f'{self}: received an unexpected status '
+                                f'from server: {ic.status_code}...',
                             )
                             raise CommunicationError()
                     except ConnectionClosedError:
                         logger.warning(
-                            'Connection closed by the host...',
+                            f'{self} connection closed by the host...',
                         )
                         raise CommunicationError()
                     except Exception as e:
-                        logger.exception(f'Received an unexpected exception: {e}...')
+                        logger.exception(f'{self}: received an unexpected exception: {e}...')
                         raise CommunicationError()
 
         await _connect()
@@ -166,35 +168,35 @@ class WorkerBase(ABC):
                 self.run_event.clear()
                 continue
             except (CommunicationError, MaintenanceError):
-                logger.error('Max connection attemps reached, exit!')
+                logger.error(f'{self}: max connection attemps reached, exit!')
                 self.run_event.clear()
                 continue
             except ConnectionClosedError:
                 logger.warning(
-                    f'Disconnected from: {self.get_url()}'
+                    f'{self}: disconnected from: {self.get_url()}'
                     f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
                 )
                 await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
             except InvalidStatusCode as ic:
                 if ic.status_code == 502:
                     logger.warning(
-                        'Maintenance in progress'
-                        f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
+                        f'{self}: maintenance in progress, '
+                        f'try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
                     )
                     await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
                 else:
                     logger.warning(
-                        f'Received an unexpected status from server: {ic.status_code}'
-                        f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
+                        f'{self}: received an unexpected status from server: {ic.status_code}, '
+                        f'try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
                     )
                     await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
             except Exception as e:
                 logger.exception(
-                    f'Unexpected exception {e}'
-                    f', try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
+                    f'{self}: unexpected exception {e}, '
+                    f'try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
                 )
                 await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
-        logger.info('Consumer loop exited!')
+        logger.info(f'{self} main loop exited!')
 
     def process_setup_response(self, data):
         """
@@ -209,29 +211,29 @@ class WorkerBase(ABC):
         """
         Shutdown the extension runner.
         """
-        logger.info('Shutdown extension runner.')
+        logger.info(f'{self}: shutting down...')
         self.stop()
 
     async def start(self):
         """
         Start the runner.
         """
-        logger.info('Starting control worker...')
+        logger.info(f'Starting {self}...')
         self.main_task = asyncio.create_task(self.run())
         self.run_event.set()
-        logger.info('Control worker started')
+        logger.info(f'{self} started')
         await self.stop_event.wait()
         await self.stopping()
         await self.main_task
         if self.ws:
             await self.ws.close()
-        logger.info('Control worker stopped')
+        logger.info(f'{self} stopped')
 
     def stop(self):
         """
         Stop the runner.
         """
-        logger.info('Stopping control worker...')
+        logger.info(f'Stopping {self}...')
         self.run_event.clear()
         self.stop_event.set()
 
@@ -242,7 +244,7 @@ class WorkerBase(ABC):
         except ConnectionClosedError:
             pass
         except Exception:
-            logger.exception('Cannot send shutdown message')
+            logger.exception(f'{self}: cannot send shutdown message')
 
     def handle_signal(self):
         asyncio.create_task(self.send_shutdown())
@@ -267,13 +269,16 @@ class WorkerBase(ABC):
 
     def _backoff_shutdown(self, _):
         if not self.run_event.is_set():
-            logger.info('Worker exiting, stop backoff loop')
+            logger.info(f'{self} exiting, stop backoff loop')
             raise StopBackoffError()
 
     def _backoff_log(self, details):
         logger.info(
-            f'{to_ordinal(details["tries"])} communication attempt failed, backing off waiting '
-            f'{details["wait"]:.2f} seconds after next retry. '
+            f'{self} {to_ordinal(details["tries"])} communication attempt failed, '
+            f'backing off waiting {details["wait"]:.2f} seconds after next retry. '
             f'Elapsed time: {details["elapsed"]:.2f}'
             ' seconds.',
         )
+
+    def __repr__(self):
+        return self.__class__.__name__

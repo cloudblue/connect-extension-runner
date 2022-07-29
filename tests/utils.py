@@ -41,7 +41,6 @@ class WSHandler:
         data = await ws.recv()
         if data:
             self.received.append(json.loads(data))
-        logger.info(f'received: {self.received}')
 
     def assert_received(self, data):
         assert data in self.received

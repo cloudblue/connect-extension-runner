@@ -22,6 +22,10 @@ class WebApp:
         self._app = None
 
     @property
+    def config(self):
+        return self._config
+
+    @property
     def should_start(self):
         return self._webapp_class is not None
 
