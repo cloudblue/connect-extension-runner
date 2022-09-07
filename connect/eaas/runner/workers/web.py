@@ -38,6 +38,7 @@ class WebWorker(WorkerBase):
                     'readme_url': self.handler.readme,
                     'changelog_url': self.handler.changelog,
                 },
+                icon=self.handler.icon,
                 runner_version=get_version(),
             ),
         ).dict()

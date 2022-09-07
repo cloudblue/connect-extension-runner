@@ -48,6 +48,10 @@ class AnvilApp:
     def changelog(self):
         return self._anvilapp_class.get_descriptor()['changelog_url']
 
+    @property
+    def icon(self):
+        return self._anvilapp_class.get_descriptor().get('icon')
+
     def start(self):
         logger.info('Create anvil connection...')
         var_name = self._anvilapp_class.get_anvil_key_variable()
