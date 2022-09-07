@@ -81,6 +81,7 @@ class EventsWorker(WorkerBase):
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
+                app_type='events',
                 event_subscriptions={
                     event_type: event['statuses'] or []
                     for event_type, event in self.handler.events.items()
@@ -91,7 +92,6 @@ class EventsWorker(WorkerBase):
                     'readme_url': self.handler.readme,
                     'changelog_url': self.handler.changelog,
                 },
-                icon=self.handler.icon,
                 runner_version=get_version(),
             ),
         ).dict()

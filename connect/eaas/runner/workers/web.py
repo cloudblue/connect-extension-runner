@@ -32,7 +32,9 @@ class WebWorker(WorkerBase):
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
+                app_type='web',
                 ui_modules=self.handler.ui_modules,
+                openapi_specs=self.handler.openapi_specs,
                 variables=self.handler.variables,
                 repository={
                     'readme_url': self.handler.readme,

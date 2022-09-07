@@ -55,6 +55,10 @@ class WebApp:
             self._app = self.get_asgi_application()
         return self._app
 
+    @property
+    def openapi_specs(self):
+        return self.app.openapi_schema
+
     def get_asgi_application(self):
         app = FastAPI()
         app.include_router(router)
