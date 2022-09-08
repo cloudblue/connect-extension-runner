@@ -79,7 +79,6 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         version=2,
         message_type=MessageType.SETUP_REQUEST,
         data=SetupRequest(
-            app_type='anvil',
             event_subscriptions=None,
             variables=[
                 {'name': 'MY_ANVIL_API_KEY', 'initial_value': 'changeme!', 'secure': True},

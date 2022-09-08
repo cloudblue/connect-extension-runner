@@ -88,7 +88,6 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         version=2,
         message_type=MessageType.SETUP_REQUEST,
         data=SetupRequest(
-            app_type='web',
             event_subscriptions=None,
             ui_modules=ui_modules,
             variables=[],
@@ -210,7 +209,6 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
-                app_type='web',
                 event_subscriptions=None,
                 ui_modules=ui_modules,
                 variables=[],

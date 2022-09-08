@@ -31,7 +31,6 @@ class AnvilWorker(WorkerBase):
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
-                app_type='anvil',
                 variables=self.handler.variables,
                 repository={
                     'readme_url': self.handler.readme,

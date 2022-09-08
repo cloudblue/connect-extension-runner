@@ -81,7 +81,6 @@ class EventsWorker(WorkerBase):
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
-                app_type='events',
                 event_subscriptions={
                     event_type: event['statuses'] or []
                     for event_type, event in self.handler.events.items()
