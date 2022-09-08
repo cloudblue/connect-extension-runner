@@ -56,7 +56,7 @@ class WebApp:
         return self._app
 
     def get_asgi_application(self):
-        app = FastAPI()
+        app = FastAPI(openapi_url='/openapi/spec.json')
         app.include_router(router)
         static_root = self._webapp_class.get_static_root()
         if static_root:

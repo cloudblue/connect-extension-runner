@@ -31,7 +31,7 @@ connect-openapi-client = ">=25.4"
 logzio-python-handler = "^3.0.0"
 backoff = "^1.11.1"
 uvloop = "^0.16.0"
-connect-eaas-core = ">=3.3.0,<4"
+connect-eaas-core = ">=3.5.0,<4"
 httpx = "^0.23.0"
 
 [tool.poetry.dev-dependencies]

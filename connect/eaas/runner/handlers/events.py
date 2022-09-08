@@ -54,10 +54,6 @@ class EventsApp:
     def changelog(self):
         return self._descriptor['changelog_url']
 
-    @property
-    def icon(self):
-        return self._descriptor.get('icon')
-
     def get_method(
         self,
         event_type,
