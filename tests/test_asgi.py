@@ -45,9 +45,9 @@ def test_build_scope(mocker, logging_api_key, metadata):
         (b'x-connect-api-gateway-url', b'https://api.example.com'),
         (b'x-connect-user-agent', b'myuseragent'),
         (b'x-connect-extension-id', b'extension_id'),
+        (b'x-connect-logging-level', b'INFO'),
         (b'x-connect-installation-api-key', b'api_key'),
         (b'x-connect-installation-id', b'installation_id'),
-        (b'x-connect-logging-level', b'INFO'),
     ]
 
     if logging_api_key:
@@ -57,6 +57,48 @@ def test_build_scope(mocker, logging_api_key, metadata):
                 (b'x-connect-logging-metadata', b'{"meta": "data"}'),
             ],
         )
+
+    cycle = RequestResponseCycle(config, mocker.MagicMock(), web_task, mocker.MagicMock())
+    scope = cycle.build_scope()
+
+    assert scope == {
+        'type': 'http',
+        'http_version': '1.1',
+        'method': 'GET',
+        'path': '/test/url',
+        'query_string': b'',
+        'headers': expected_headers,
+    }
+
+
+def test_build_scope_for_openapi_spec(mocker):
+    web_task = WebTask(
+        options=WebTaskOptions(
+            correlation_id='correlation_id',
+            reply_to='reply_to',
+        ),
+        request=HttpRequest(
+            method='GET',
+            url='/test/url',
+            headers={'X-My-Header': 'my-value'},
+        ),
+    )
+
+    config = mocker.MagicMock()
+    config.get_api_url.return_value = 'https://api.example.com'
+    config.get_user_agent.return_value = {'User-Agent': 'myuseragent'}
+    config.logging_level = 'INFO'
+    config.service_id = 'extension_id'
+    config.logging_api_key = None
+    config.metadata = None
+
+    expected_headers = [
+        (b'x-my-header', b'my-value'),
+        (b'x-connect-api-gateway-url', b'https://api.example.com'),
+        (b'x-connect-user-agent', b'myuseragent'),
+        (b'x-connect-extension-id', b'extension_id'),
+        (b'x-connect-logging-level', b'INFO'),
+    ]
 
     cycle = RequestResponseCycle(config, mocker.MagicMock(), web_task, mocker.MagicMock())
     scope = cycle.build_scope()
