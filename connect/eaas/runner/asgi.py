@@ -58,20 +58,26 @@ class RequestResponseCycle:
                     self.config.service_id.encode('utf-8'),
                 ),
                 (
-                    'X-Connect-Installation-Api-Key'.lower().encode('utf-8'),
-                    self.task.options.api_key.encode('utf-8'),
-                ),
-                (
-                    'X-Connect-Installation-Id'.lower().encode('utf-8'),
-                    self.task.options.installation_id.encode('utf-8'),
-                ),
-                (
                     'X-Connect-Logging-Level'.lower().encode('utf-8'),
                     self.config.logging_level.encode('utf-8')
                     if self.config.logging_level else b'DEBUG',
                 ),
             ],
         )
+        if self.task.options.api_key:
+            headers.append(
+                (
+                    'X-Connect-Installation-Api-Key'.lower().encode('utf-8'),
+                    self.task.options.api_key.encode('utf-8'),
+                ),
+            )
+        if self.task.options.installation_id:
+            headers.append(
+                (
+                    'X-Connect-Installation-Id'.lower().encode('utf-8'),
+                    self.task.options.installation_id.encode('utf-8'),
+                ),
+            )
         if self.config.logging_api_key is not None:
             headers.extend(
                 [
