@@ -1,7 +1,9 @@
+import functools
 import logging
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.utils import get_openapi
 from pkg_resources import iter_entry_points
 
 from connect.eaas.core.decorators import router
@@ -30,6 +32,18 @@ class WebApp:
         return self._webapp_class is not None
 
     @property
+    def name(self):
+        return self._webapp_class.get_descriptor().get('name', 'Unnamed API')
+
+    @property
+    def description(self):
+        return self._webapp_class.get_descriptor().get('description', '')
+
+    @property
+    def version(self):
+        return self._webapp_class.get_descriptor().get('version', '0.0.0')
+
+    @property
     def ui_modules(self):
         return self._webapp_class.get_descriptor().get('ui', {})
 
@@ -56,7 +70,10 @@ class WebApp:
         return self._app
 
     def get_asgi_application(self):
-        app = FastAPI(openapi_url='/openapi/spec.json')
+        app = FastAPI(
+            openapi_url='/openapi/spec.json',
+        )
+        app.openapi = functools.partial(self.get_api_schema, app)
         app.include_router(router)
         static_root = self._webapp_class.get_static_root()
         if static_root:
@@ -67,3 +84,29 @@ class WebApp:
     def get_webapp_class(self):
         ext_class = next(iter_entry_points('connect.eaas.ext', 'webapp'), None)
         return ext_class.load() if ext_class else None
+
+    def get_api_schema(self, app):
+        if app.openapi_schema:
+            return app.openapi_schema
+
+        openapi_schema = get_openapi(
+            title=self.name,
+            description=self.description,
+            version=self.version,
+            routes=app.routes,
+        )
+
+        paths = openapi_schema.get('paths')
+
+        if paths:
+            for path in paths.values():
+                for operation in path.values():
+                    params = []
+                    for param in operation.get('parameters', []):
+                        if param['in'] == 'header' and param['name'].startswith('x-connect-'):
+                            continue
+                        params.append(param)
+                    operation['parameters'] = params
+
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
