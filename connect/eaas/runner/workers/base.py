@@ -125,7 +125,9 @@ class WorkerBase(ABC):
         await _connect()
 
     async def do_handshake(self):
-        await self.send(self.get_setup_request())
+        setup_request = self.get_setup_request()
+        logger.debug(f'{setup_request=}')
+        await self.send(setup_request)
         message = await asyncio.wait_for(self.ws.recv(), timeout=5)
         await self.process_message(json.loads(message))
 
