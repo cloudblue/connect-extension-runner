@@ -8,7 +8,7 @@ from connect.client import ConnectClient
 from connect.eaas.core.decorators import router, web_app
 from connect.eaas.core.inject.synchronous import get_installation, get_installation_client
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.web import WebApp
+from connect.eaas.runner.handlers.web import _OpenApiCORSMiddleware, WebApp
 
 
 def test_get_webapp_class(mocker, settings_payload):
@@ -138,6 +138,10 @@ def test_get_asgi_application(mocker, static_root):
 
     assert handler.app == mocked_fastapi
     mocked_fastapi.include_router.assert_called_once_with(router)
+    mocked_fastapi.add_middleware.assert_called_once_with(
+        _OpenApiCORSMiddleware,
+        allow_origins=['https://editor.swagger.io'],
+    )
     if static_root:
         mocked_static_files.assert_called_once_with(directory=static_root)
         mocked_fastapi.mount.assert_called_once_with(

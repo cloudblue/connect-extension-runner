@@ -2,6 +2,7 @@ import functools
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from pkg_resources import iter_entry_points
@@ -11,6 +12,15 @@ from connect.eaas.runner.config import ConfigHelper
 
 
 logger = logging.getLogger(__name__)
+
+
+class _OpenApiCORSMiddleware(CORSMiddleware):
+    async def __call__(self, scope, receive, send):
+        if scope['type'] != 'http' or scope['path'] != '/openapi/spec.json':  # pragma: no cover
+            await self.app(scope, receive, send)
+            return
+
+        await super().__call__(scope, receive, send)  # pragma: no cover
 
 
 class WebApp:
@@ -72,6 +82,10 @@ class WebApp:
     def get_asgi_application(self):
         app = FastAPI(
             openapi_url='/openapi/spec.json',
+        )
+        app.add_middleware(
+            _OpenApiCORSMiddleware,
+            allow_origins=['https://editor.swagger.io'],
         )
         app.openapi = functools.partial(self.get_api_schema, app)
         app.include_router(router)
