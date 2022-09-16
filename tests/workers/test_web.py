@@ -2,10 +2,13 @@ import asyncio
 import copy
 
 import pytest
+from fastapi_utils.inferring_router import InferringRouter
 
+from connect.eaas.core.decorators import web_app
 from connect.eaas.core.extension import WebAppExtension
 from connect.eaas.core.proto import (
     HttpRequest,
+    HttpResponse,
     Message,
     MessageType,
     SetupRequest,
@@ -48,6 +51,9 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         @classmethod
         def get_descriptor(cls):
             return {
+                'name': 'name',
+                'description': 'description',
+                'version': '0.1.2',
                 'ui': ui_modules,
                 'readme_url': 'https://read.me',
                 'changelog_url': 'https://change.log',
@@ -111,7 +117,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
 
 @pytest.mark.asyncio
-async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_payload):
+async def test_http_call(mocker, ws_server, unused_port, settings_payload):
     setup_response = copy.deepcopy(settings_payload)
     setup_response['logging']['logging_api_key'] = 'logging_api_key'
     mocker.patch(
@@ -136,6 +142,9 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
         },
     }
 
+    router = InferringRouter()
+
+    @web_app(router)
     class MyExtension(WebAppExtension):
         @classmethod
         def get_descriptor(cls):
@@ -145,6 +154,16 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
                 'changelog_url': 'https://change.log',
             }
 
+        @classmethod
+        def get_static_root(cls):
+            return None
+
+        @router.get('/test/url')
+        def test_url(self):
+            return {'test': 'ok'}
+
+    mocker.patch('connect.eaas.runner.handlers.web.router', router)
+
     mocker.patch.object(
         WebApp,
         'get_webapp_class',
@@ -152,13 +171,6 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
     )
 
     mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
-
-    mocked_cycle = mocker.AsyncMock()
-
-    mocked_cycle_cls = mocker.patch(
-        'connect.eaas.runner.workers.web.RequestResponseCycle',
-        return_value=mocked_cycle,
-    )
 
     web_task = WebTask(
         options=WebTaskOptions(
@@ -170,7 +182,7 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
         request=HttpRequest(
             method='GET',
             url='/test/url',
-            headers={'X-My-Header': 'my-value'},
+            headers={},
         ),
     )
 
@@ -190,7 +202,7 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
         data_to_send,
-        ['receive', 'send', 'send'],
+        ['receive', 'send', 'send', 'receive'],
     )
 
     config = ConfigHelper(secure=False)
@@ -221,12 +233,30 @@ async def test_http_call(mocker, ws_server, unused_port, httpx_mock, settings_pa
             ),
         ),
     )
-    assert mocked_cycle_cls.call_count == 1
-    assert mocked_cycle_cls.mock_calls[0].args[0] == config
-    assert mocked_cycle_cls.mock_calls[0].args[1] == ext_handler.app
-    assert mocked_cycle_cls.mock_calls[0].args[2].dict() == web_task.dict()
-    assert mocked_cycle_cls.mock_calls[0].args[3] == worker.send
-    mocked_cycle.assert_awaited_once()
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.WEB_TASK,
+            data=WebTask(
+                options=WebTaskOptions(
+                    correlation_id='correlation_id',
+                    reply_to='reply_to',
+                    api_key='api_key',
+                    installation_id='installation_id',
+                ),
+                request=HttpRequest(
+                    method='GET',
+                    url='/test/url',
+                    headers={},
+                ),
+                response=HttpResponse(
+                    status=200,
+                    headers={'content-length': '13', 'content-type': 'application/json'},
+                    content='eyJ0ZXN0Ijoib2sifQ==\n',
+                ),
+            ),
+        ),
+    )
 
 
 @pytest.mark.asyncio
