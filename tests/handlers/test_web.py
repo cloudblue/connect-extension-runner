@@ -2,10 +2,12 @@ import os
 
 import pytest
 from fastapi import Depends, Header
+from fastapi_utils.inferring_router import InferringRouter
 from pkg_resources import EntryPoint
 
 from connect.client import ConnectClient
-from connect.eaas.core.decorators import router, web_app
+from connect.eaas.core.decorators import guest, router, web_app
+from connect.eaas.core.extension import WebAppExtension
 from connect.eaas.core.inject.synchronous import get_installation, get_installation_client
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.web import _OpenApiCORSMiddleware, WebApp
@@ -133,11 +135,19 @@ def test_get_asgi_application(mocker, static_root):
         'connect.eaas.runner.handlers.web.StaticFiles',
         return_value=mocked_static,
     )
+    auth_router = mocker.MagicMock()
+    no_auth_router = mocker.MagicMock()
+    mocker.patch.object(WebApp, 'get_routers', return_value=(auth_router, no_auth_router))
 
     handler = WebApp(config)
 
     assert handler.app == mocked_fastapi
-    mocked_fastapi.include_router.assert_called_once_with(router, prefix='/api')
+
+    assert mocked_fastapi.include_router.mock_calls[0].args[0] == auth_router
+    assert mocked_fastapi.include_router.mock_calls[0].kwargs['prefix'] == '/api'
+    assert mocked_fastapi.include_router.mock_calls[1].args[0] == no_auth_router
+    assert mocked_fastapi.include_router.mock_calls[1].kwargs['prefix'] == '/guest'
+
     mocked_fastapi.add_middleware.assert_called_once_with(
         _OpenApiCORSMiddleware,
         allow_origins=['https://editor.swagger.io'],
@@ -212,3 +222,44 @@ def test_openapi_schema_generation(mocker):
 
     assert handler.get_api_schema(handler.app) == schema
     mocked_get_openapi.assert_not_called()
+
+
+def test_get_routers(mocker):
+    config = ConfigHelper()
+
+    router = InferringRouter()
+
+    @web_app(router)
+    class MyExtension(WebAppExtension):
+
+        @router.get('/authenticated')
+        def test_url(self):
+            pass
+
+        @guest()
+        @router.get('/unauthenticated')
+        def test_guest(self):
+            pass
+
+    mocker.patch('connect.eaas.runner.handlers.web.router', router)
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.web.iter_entry_points',
+        return_value=iter([
+            EntryPoint('webapp', 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = WebApp(config)
+
+    auth_router, no_auth_router = handler.get_routers()
+
+    assert len(auth_router.routes) == 1
+    assert len(no_auth_router.routes) == 1
+    assert auth_router.routes[0].path == '/authenticated'
+    assert no_auth_router.routes[0].path == '/unauthenticated'

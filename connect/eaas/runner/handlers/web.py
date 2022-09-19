@@ -1,12 +1,13 @@
 import functools
 import logging
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from pkg_resources import iter_entry_points
 
+from connect.eaas.core.constants import GUEST_ENDPOINT_ATTR_NAME
 from connect.eaas.core.decorators import router
 from connect.eaas.runner.config import ConfigHelper
 
@@ -87,8 +88,10 @@ class WebApp:
             _OpenApiCORSMiddleware,
             allow_origins=['https://editor.swagger.io'],
         )
+        auth, no_auth = self.get_routers()
+        app.include_router(auth, prefix='/api')
+        app.include_router(no_auth, prefix='/guest')
         app.openapi = functools.partial(self.get_api_schema, app)
-        app.include_router(router, prefix='/api')
         static_root = self._webapp_class.get_static_root()
         if static_root:
             app.mount('/static', StaticFiles(directory=static_root), name='static')
@@ -124,3 +127,13 @@ class WebApp:
 
         app.openapi_schema = openapi_schema
         return app.openapi_schema
+
+    def get_routers(self):
+        auth = APIRouter()
+        no_auth = APIRouter()
+        for route in router.routes:
+            if getattr(route.endpoint, GUEST_ENDPOINT_ATTR_NAME, False):
+                no_auth.routes.append(route)
+            else:
+                auth.routes.append(route)
+        return auth, no_auth
