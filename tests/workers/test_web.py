@@ -181,7 +181,7 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload):
         ),
         request=HttpRequest(
             method='GET',
-            url='/test/url',
+            url='/api/test/url',
             headers={},
         ),
     )
@@ -246,7 +246,7 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload):
                 ),
                 request=HttpRequest(
                     method='GET',
-                    url='/test/url',
+                    url='/api/test/url',
                     headers={},
                 ),
                 response=HttpResponse(
