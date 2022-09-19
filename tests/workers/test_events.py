@@ -17,7 +17,6 @@ from connect.eaas.core.proto import (
 )
 from connect.eaas.core.responses import ProcessingResponse, ScheduledExecutionResponse
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.constants import RESULT_SENDER_MAX_RETRIES
 from connect.eaas.runner.exceptions import (
     CommunicationError,
     MaintenanceError,
@@ -1434,6 +1433,8 @@ async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
 
 @pytest.mark.asyncio
 async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payload, caplog):
+    mocker.patch('connect.eaas.runner.workers.events.RESULT_SENDER_MAX_RETRIES', 3)
+    mocker.patch('connect.eaas.runner.workers.events.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.001)
     mocker.patch.object(
         EventsApp,
         'get_extension_class',
@@ -1448,7 +1449,7 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
         worker.config.update_dynamic_config(SetupResponse(**settings_payload))
         worker.run = mocker.AsyncMock()
         worker.send = mocker.AsyncMock(
-            side_effect=[Exception('retry') for _ in range(RESULT_SENDER_MAX_RETRIES)],
+            side_effect=[Exception('retry') for _ in range(3)],
         )
         worker.ws = mocker.AsyncMock(closed=False)
         await worker.results_queue.put(
@@ -1462,7 +1463,7 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
 
     assert (
         (
-            f'Max retries exceeded ({RESULT_SENDER_MAX_RETRIES})'
+            'Max retries exceeded (3)'
             ' for sending results of task TQ-000'
         )
         in [r.message for r in caplog.records]

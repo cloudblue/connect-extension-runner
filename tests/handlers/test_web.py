@@ -137,7 +137,7 @@ def test_get_asgi_application(mocker, static_root):
     handler = WebApp(config)
 
     assert handler.app == mocked_fastapi
-    mocked_fastapi.include_router.assert_called_once_with(router)
+    mocked_fastapi.include_router.assert_called_once_with(router, prefix='/api')
     mocked_fastapi.add_middleware.assert_called_once_with(
         _OpenApiCORSMiddleware,
         allow_origins=['https://editor.swagger.io'],

@@ -88,7 +88,7 @@ class WebApp:
             allow_origins=['https://editor.swagger.io'],
         )
         app.openapi = functools.partial(self.get_api_schema, app)
-        app.include_router(router)
+        app.include_router(router, prefix='/api')
         static_root = self._webapp_class.get_static_root()
         if static_root:
             app.mount('/static', StaticFiles(directory=static_root), name='static')
