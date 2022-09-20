@@ -150,7 +150,7 @@ def test_get_asgi_application(mocker, static_root):
 
     mocked_fastapi.add_middleware.assert_called_once_with(
         _OpenApiCORSMiddleware,
-        allow_origins=['https://editor.swagger.io'],
+        allow_origins=['*'],
     )
     if static_root:
         mocked_static_files.assert_called_once_with(directory=static_root)

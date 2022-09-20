@@ -86,7 +86,7 @@ class WebApp:
         )
         app.add_middleware(
             _OpenApiCORSMiddleware,
-            allow_origins=['https://editor.swagger.io'],
+            allow_origins=['*'],
         )
         auth, no_auth = self.get_routers()
         app.include_router(auth, prefix='/api')
