@@ -2,9 +2,8 @@ import asyncio
 import copy
 
 import pytest
-from fastapi_utils.inferring_router import InferringRouter
 
-from connect.eaas.core.decorators import web_app
+from connect.eaas.core.decorators import router, web_app
 from connect.eaas.core.extension import WebAppExtension
 from connect.eaas.core.proto import (
     HttpRequest,
@@ -142,8 +141,6 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload):
         },
     }
 
-    router = InferringRouter()
-
     @web_app(router)
     class MyExtension(WebAppExtension):
         @classmethod
@@ -161,8 +158,6 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload):
         @router.get('/test/url')
         def test_url(self):
             return {'test': 'ok'}
-
-    mocker.patch('connect.eaas.runner.handlers.web.router', router)
 
     mocker.patch.object(
         WebApp,
