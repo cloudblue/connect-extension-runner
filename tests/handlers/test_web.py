@@ -1,8 +1,8 @@
 import os
+from importlib.metadata import EntryPoint
 
 import pytest
 from fastapi import Depends, Header
-from pkg_resources import EntryPoint
 
 from connect.client import ConnectClient
 from connect.eaas.core.decorators import router, web_app
@@ -29,7 +29,7 @@ def test_get_webapp_class(mocker, settings_payload):
     mocker.patch(
         'connect.eaas.runner.handlers.web.iter_entry_points',
         return_value=iter([
-            EntryPoint('webapp', 'connect.eaas.ext'),
+            EntryPoint('webapp', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -81,7 +81,7 @@ def test_properties(mocker):
     mocker.patch(
         'connect.eaas.runner.handlers.web.iter_entry_points',
         return_value=iter([
-            EntryPoint('webapp', 'connect.eaas.ext'),
+            EntryPoint('webapp', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -128,7 +128,7 @@ def test_get_asgi_application(mocker, static_root):
     mocker.patch(
         'connect.eaas.runner.handlers.web.iter_entry_points',
         return_value=iter([
-            EntryPoint('webapp', 'connect.eaas.ext'),
+            EntryPoint('webapp', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -197,7 +197,7 @@ def test_openapi_schema_generation(mocker):
     mocker.patch(
         'connect.eaas.runner.handlers.web.iter_entry_points',
         return_value=iter([
-            EntryPoint('webapp', 'connect.eaas.ext'),
+            EntryPoint('webapp', None, 'connect.eaas.ext'),
         ]),
     )
 

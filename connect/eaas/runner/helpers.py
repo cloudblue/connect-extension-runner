@@ -8,15 +8,13 @@ import logging
 import subprocess
 import sys
 from datetime import datetime
+from importlib.metadata import entry_points, version
 from uuid import uuid4
 
 from connect.client import ClientError, ConnectClient
 
 import requests
-from pkg_resources import (
-    DistributionNotFound,
-    get_distribution,
-)
+
 
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
@@ -86,8 +84,8 @@ def get_environment():
 
 def get_version():
     try:
-        return get_distribution('connect-extension-runner').version
-    except DistributionNotFound:
+        return version('connect-extension-runner')
+    except Exception:
         return '0.0.0'
 
 
@@ -179,3 +177,15 @@ def notify_process_restarted(process_type):
             )
         except ClientError as ce:
             logger.warning(f'Cannot notify {process_type} process restart: {ce}')
+
+
+def iter_entry_points(group, name=None):
+    group_entrypoints = entry_points().get(group)
+    if not group_entrypoints:
+        return
+    for ep in group_entrypoints:
+        if name:
+            if ep.name == name:
+                yield ep
+        else:
+            yield ep

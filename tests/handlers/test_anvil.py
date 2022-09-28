@@ -1,5 +1,6 @@
+from importlib.metadata import EntryPoint
+
 import pytest
-from pkg_resources import EntryPoint
 
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.anvil import AnvilApp
@@ -20,7 +21,7 @@ def test_get_anvilapp_class(mocker, settings_payload):
     mocker.patch(
         'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
+            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -62,7 +63,7 @@ def test_properties(mocker):
     mocker.patch(
         'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
+            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -120,7 +121,7 @@ def test_start(mocker, logging_key):
     mocker.patch(
         'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
+            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -179,7 +180,7 @@ def test_start_no_api_key(mocker):
     mocker.patch(
         'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
+            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -209,7 +210,7 @@ def test_stop(mocker):
     mocker.patch(
         'connect.eaas.runner.handlers.anvil.iter_entry_points',
         return_value=iter([
-            EntryPoint('anvilapp', 'connect.eaas.ext'),
+            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
         ]),
     )
 
