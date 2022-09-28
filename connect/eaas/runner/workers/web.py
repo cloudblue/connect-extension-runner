@@ -93,6 +93,7 @@ class WebWorker(WorkerBase):
                 task, response.status_code, response.headers, response.content,
             )
         except Exception as e:
+            logger.exception('Cannot invoke API endpoint')
             message = self.build_response(
                 task, 500, {}, str(e).encode('utf-8'),
             )

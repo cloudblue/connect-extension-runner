@@ -96,7 +96,7 @@ class AnvilApp:
         This logger will be used by the extension to send logging records
         to the Logz.io service.
         """
-        logger = logging.getLogger('eaas.extension')
+        logger = logging.getLogger('eaas.anvilapp')
         if self._logging_handler is None and self._config.logging_api_key is not None:
             self._logging_handler = ExtensionLogHandler(
                 self._config.logging_api_key,

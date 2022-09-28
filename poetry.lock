@@ -129,7 +129,7 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
 name = "connect-eaas-core"
-version = "3.10.1"
+version = "4.0.0"
 description = "Connect Eaas Core"
 category = "main"
 optional = false
@@ -610,7 +610,7 @@ testing = ["pytest-asyncio (>=0.17.0,<0.18.0)", "pytest-cov (>=3.0.0,<4.0.0)"]
 
 [[package]]
 name = "pytest-mock"
-version = "3.8.2"
+version = "3.9.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 category = "dev"
 optional = false
@@ -841,7 +841,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "bbcc9a8fc87a6e86e21d5cfe03d54fdb83d8b14e671b5002dca6358a01c1e877"
+content-hash = "9a820afbfa533993fac10027b1427b97d8aabff54f35d6c2382e4c807248d92c"
 
 [metadata.files]
 anvil-uplink = [
@@ -891,8 +891,8 @@ commonmark = [
     {file = "commonmark-0.9.1.tar.gz", hash = "sha256:452f9dc859be7f06631ddcb328b6919c67984aca654e5fefb3914d54691aed60"},
 ]
 connect-eaas-core = [
-    {file = "connect-eaas-core-3.10.1.tar.gz", hash = "sha256:a01f471d2f47dda7f60bda44f0d6f229f81425cf3424d222562b1ab81e3fbb23"},
-    {file = "connect_eaas_core-3.10.1-py3-none-any.whl", hash = "sha256:e1521ec8b92875c2c39e0db49b596731b840ed55abcc1ec5d49ef8ea8983bf7c"},
+    {file = "connect-eaas-core-4.0.0.tar.gz", hash = "sha256:7c20d118c038ca81a0b292354872f8da2ff52a80149cb394d64de4fa733b3977"},
+    {file = "connect_eaas_core-4.0.0-py3-none-any.whl", hash = "sha256:a7819cafe97b94876a891d11e2384eacf76b32cd9b8824ce4e7b3249c5372fd4"},
 ]
 connect-markdown-renderer = [
     {file = "connect-markdown-renderer-2.0.1.tar.gz", hash = "sha256:fbaefff195a6c347a7f89e75a09e78f6be35c903d72a2766c8f263ca75758757"},
@@ -1178,8 +1178,8 @@ pytest-httpx = [
     {file = "pytest_httpx-0.21.0.tar.gz", hash = "sha256:00a007bd9c0928b30259a046a0ba21316ab5f444842a5bfc4f277c47f88b452f"},
 ]
 pytest-mock = [
-    {file = "pytest-mock-3.8.2.tar.gz", hash = "sha256:77f03f4554392558700295e05aed0b1096a20d4a60a4f3ddcde58b0c31c8fca2"},
-    {file = "pytest_mock-3.8.2-py3-none-any.whl", hash = "sha256:8a9e226d6c0ef09fcf20c94eb3405c388af438a90f3e39687f84166da82d5948"},
+    {file = "pytest-mock-3.9.0.tar.gz", hash = "sha256:c899a0dcc8a5f22930acd020b500abd5f956911f326864a3b979e4866e14da82"},
+    {file = "pytest_mock-3.9.0-py3-none-any.whl", hash = "sha256:1a1b9264224d026932d6685a0f9cef3b61d91563c3e74af9fe5afb2767e13812"},
 ]
 python-dateutil = [
     {file = "python-dateutil-2.8.2.tar.gz", hash = "sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86"},

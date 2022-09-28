@@ -54,7 +54,7 @@ class WebApp:
 
     @property
     def ui_modules(self):
-        return self._webapp_class.get_descriptor().get('ui', {})
+        return self._webapp_class.get_ui_modules()
 
     @property
     def variables(self):

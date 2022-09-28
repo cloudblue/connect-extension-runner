@@ -3,7 +3,9 @@ import copy
 
 import pytest
 
-from connect.eaas.core.decorators import router, web_app
+from connect.eaas.core.decorators import (
+    account_settings_page, router, web_app,
+)
 from connect.eaas.core.extension import WebAppExtension
 from connect.eaas.core.proto import (
     HttpRequest,
@@ -46,6 +48,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         },
     }
 
+    @account_settings_page('Settings', '/static/settings.html')
     class MyExtension(WebAppExtension):
         @classmethod
         def get_descriptor(cls):
@@ -53,7 +56,6 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
                 'name': 'name',
                 'description': 'description',
                 'version': '0.1.2',
-                'ui': ui_modules,
                 'readme_url': 'https://read.me',
                 'changelog_url': 'https://change.log',
             }
@@ -164,12 +166,12 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
         },
     }
 
+    @account_settings_page('Settings', '/static/settings.html')
     @web_app(router)
     class MyExtension(WebAppExtension):
         @classmethod
         def get_descriptor(cls):
             return {
-                'ui': ui_modules,
                 'readme_url': 'https://read.me',
                 'changelog_url': 'https://change.log',
             }
@@ -293,12 +295,12 @@ async def test_http_call_exception(mocker, ws_server, unused_port, settings_payl
         },
     }
 
+    @account_settings_page('Settings', '/static/settings.html')
     @web_app(router)
     class MyExtension(WebAppExtension):
         @classmethod
         def get_descriptor(cls):
             return {
-                'ui': ui_modules,
                 'readme_url': 'https://read.me',
                 'changelog_url': 'https://change.log',
             }

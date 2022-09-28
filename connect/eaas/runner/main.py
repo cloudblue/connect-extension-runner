@@ -46,7 +46,7 @@ def configure_logger(debug):
                     'handlers': ['console'],
                     'level': 'DEBUG' if debug else 'INFO',
                 },
-                'eaas.extension': {
+                'eaas': {
                     'handlers': ['console'],
                     'level': 'DEBUG' if debug else 'INFO',
                 },
