@@ -8,11 +8,9 @@ import logging
 import anvil.server
 
 from connect.client import ConnectClient
-
-from pkg_resources import iter_entry_points
-
 from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
 from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.helpers import iter_entry_points
 
 
 logger = logging.getLogger(__name__)

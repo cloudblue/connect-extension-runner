@@ -12,9 +12,6 @@ import pytest
 from connect.client import ConnectClient
 
 from freezegun import freeze_time
-from pkg_resources import (
-    DistributionNotFound,
-)
 from responses import matchers
 
 from connect.eaas.runner.constants import (
@@ -30,6 +27,7 @@ from connect.eaas.runner.helpers import (
     get_environment,
     get_pypi_runner_minor_version,
     get_version,
+    iter_entry_points,
     notify_process_restarted,
 )
 
@@ -201,19 +199,17 @@ def test_get_environment(mocker):
 
 
 def test_get_version(mocker):
-    mocked = mocker.MagicMock()
-    mocked.version = '22.0'
     mocker.patch(
-        'connect.eaas.runner.helpers.get_distribution',
-        return_value=mocked,
+        'connect.eaas.runner.helpers.version',
+        return_value='22.0',
     )
     assert get_version() == '22.0'
 
 
 def test_get_version_exception(mocker):
     mocker.patch(
-        'connect.eaas.runner.helpers.get_distribution',
-        side_effect=DistributionNotFound(),
+        'connect.eaas.runner.helpers.version',
+        side_effect=Exception('error'),
     )
     assert get_version() == '0.0.0'
 
@@ -467,3 +463,18 @@ def test_notify_process_restarted_client_error(mocker, responses, caplog):
         notify_process_restarted('background')
 
     assert 'Cannot notify background process restart' in caplog.text
+
+
+def test_iter_entry_points(mocker):
+    ep1 = mocker.MagicMock()
+    ep1.name = 'ep1'
+    ep2 = mocker.MagicMock()
+    ep2.name = 'ep2'
+    mocker.patch(
+        'connect.eaas.runner.helpers.entry_points',
+        return_value={'ep.group': [ep1, ep2]},
+    )
+
+    assert list(iter_entry_points('ep.group', name='ep1')) == [ep1]
+    assert list(iter_entry_points('ep.group')) == [ep1, ep2]
+    assert list(iter_entry_points('ep.other_group')) == []

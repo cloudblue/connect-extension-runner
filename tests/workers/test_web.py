@@ -115,8 +115,31 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     assert worker.config.service_id == settings_payload['logging']['meta']['service_id']
 
 
+@pytest.mark.parametrize(
+    'task_options',
+    (
+        WebTaskOptions(
+            correlation_id='correlation_id',
+            reply_to='reply_to',
+            api_key='api_key',
+            installation_id='installation_id',
+        ),
+        WebTaskOptions(
+            correlation_id='correlation_id',
+            reply_to='reply_to',
+            api_key='api_key',
+            installation_id='installation_id',
+            connect_correlation_id='connect_correlation_id',
+            user_id='user_id',
+            account_id='account_id',
+            account_role='account_role',
+            call_type='user',
+            call_source='ui',
+        ),
+    ),
+)
 @pytest.mark.asyncio
-async def test_http_call(mocker, ws_server, unused_port, settings_payload):
+async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_options):
     setup_response = copy.deepcopy(settings_payload)
     setup_response['logging']['logging_api_key'] = 'logging_api_key'
     mocker.patch(
@@ -166,6 +189,141 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload):
     )
 
     mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
+
+    web_task = WebTask(
+        options=task_options,
+        request=HttpRequest(
+            method='GET',
+            url='/api/test/url',
+            headers={},
+        ),
+    )
+
+    data_to_send = [
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**setup_response),
+        ).dict(),
+        Message(
+            version=2,
+            message_type=MessageType.WEB_TASK,
+            data=web_task,
+        ).dict(),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
+        data_to_send,
+        ['receive', 'send', 'send', 'receive'],
+    )
+
+    config = ConfigHelper(secure=False)
+    ext_handler = WebApp(config)
+
+    worker = None
+    async with ws_server(handler):
+        worker = WebWorker(ext_handler)
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_REQUEST,
+            data=SetupRequest(
+                event_subscriptions=None,
+                ui_modules=ui_modules,
+                variables=[],
+                schedulables=None,
+                repository={
+                    'readme_url': 'https://read.me',
+                    'changelog_url': 'https://change.log',
+                },
+                runner_version='24.1',
+            ),
+        ),
+    )
+    handler.assert_received(
+        Message(
+            version=2,
+            message_type=MessageType.WEB_TASK,
+            data=WebTask(
+                options=task_options,
+                request=HttpRequest(
+                    method='GET',
+                    url='/api/test/url',
+                    headers={},
+                ),
+                response=HttpResponse(
+                    status=200,
+                    headers={'content-length': '13', 'content-type': 'application/json'},
+                    content='eyJ0ZXN0Ijoib2sifQ==\n',
+                ),
+            ),
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_http_call_exception(mocker, ws_server, unused_port, settings_payload):
+    setup_response = copy.deepcopy(settings_payload)
+    setup_response['logging']['logging_api_key'] = 'logging_api_key'
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+
+    ui_modules = {
+        'settings': {
+            'label': 'Settings',
+            'url': '/static/settings.html',
+        },
+    }
+
+    @web_app(router)
+    class MyExtension(WebAppExtension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'ui': ui_modules,
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+        @classmethod
+        def get_static_root(cls):
+            return None
+
+        @router.get('/test/url')
+        def test_url(self):
+            return {'test': 'ok'}
+
+    mocker.patch.object(
+        WebApp,
+        'get_webapp_class',
+        return_value=MyExtension,
+    )
+
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
+    client_mock = mocker.AsyncMock()
+    client_mock.__aenter__.side_effect = Exception('test exception')
+    mocker.patch(
+        'connect.eaas.runner.workers.web.httpx.AsyncClient',
+        return_value=client_mock,
+    )
 
     web_task = WebTask(
         options=WebTaskOptions(
@@ -245,9 +403,9 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload):
                     headers={},
                 ),
                 response=HttpResponse(
-                    status=200,
-                    headers={'content-length': '13', 'content-type': 'application/json'},
-                    content='eyJ0ZXN0Ijoib2sifQ==\n',
+                    status=500,
+                    headers={},
+                    content='dGVzdCBleGNlcHRpb24=\n',
                 ),
             ),
         ),

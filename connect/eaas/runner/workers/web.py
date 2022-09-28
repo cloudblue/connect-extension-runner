@@ -72,6 +72,34 @@ class WebWorker(WorkerBase):
     async def process_task(self, task):
         logger.info(f'new webtask received: {task.request.method} {task.request.url}')
         headers = copy.copy(task.request.headers)
+        headers.update(self.get_internal_headers(task))
+        message = None
+        try:
+            async with httpx.AsyncClient(
+                app=self.handler.app, base_url='http://localhost',
+            ) as client:
+                body = (
+                    base64.decodebytes(task.request.content.encode('utf-8'))
+                    if task.request.content else b''
+                )
+                response = await client.request(
+                    task.request.method,
+                    task.request.url,
+                    headers=headers,
+                    content=body,
+                )
+
+            message = self.build_response(
+                task, response.status_code, response.headers, response.content,
+            )
+        except Exception as e:
+            message = self.build_response(
+                task, 500, {}, str(e).encode('utf-8'),
+            )
+        await self.send(message)
+
+    def get_internal_headers(self, task):
+        headers = {}
         headers['X-Connect-Api-Gateway-Url'] = self.config.get_api_url()
         headers['X-Connect-User-Agent'] = self.config.get_user_agent()['User-Agent']
         headers['X-Connect-Extension-Id'] = self.config.service_id
@@ -83,26 +111,29 @@ class WebWorker(WorkerBase):
         if task.options.installation_id:
             headers['X-Connect-Installation-Id'] = task.options.installation_id
 
+        if task.options.connect_correlation_id:
+            headers['X-Connect-Correlation-Id'] = task.options.connect_correlation_id
+
+        if task.options.user_id:
+            headers['X-Connect-User-Id'] = task.options.user_id
+
+        if task.options.account_id:
+            headers['X-Connect-Account-Id'] = task.options.account_id
+
+        if task.options.account_role:
+            headers['X-Connect-Account-Role'] = task.options.account_role
+
+        if task.options.call_type:
+            headers['X-Connect-Call-Type'] = task.options.call_type
+
+        if task.options.call_source:
+            headers['X-Connect-Call-Source'] = task.options.call_source
+
         if self.config.logging_api_key is not None:
             headers['X-Connect-Logging-Api-Key'] = self.config.logging_api_key
             headers['X-Connect-Logging-Metadata'] = json.dumps(self.config.metadata)
 
-        async with httpx.AsyncClient(app=self.handler.app, base_url='http://localhost') as client:
-            body = (
-                base64.decodebytes(task.request.content.encode('utf-8'))
-                if task.request.content else b''
-            )
-            response = await client.request(
-                task.request.method,
-                task.request.url,
-                headers=headers,
-                content=body,
-            )
-
-        message = self.build_response(
-            task, response.status_code, response.headers, response.content,
-        )
-        await self.send(message)
+        return headers
 
     def build_response(self, task, status, headers, body):
         log = logger.info if status < 500 else logger.error

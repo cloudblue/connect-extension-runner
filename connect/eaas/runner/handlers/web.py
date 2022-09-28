@@ -5,9 +5,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
-from pkg_resources import iter_entry_points
 
 from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.helpers import iter_entry_points
 
 
 logger = logging.getLogger(__name__)
