@@ -41,12 +41,6 @@ def test_get_webapp_class(mocker, settings_payload):
 def test_properties(mocker):
 
     descriptor = {
-        'ui': {
-            'settings': {
-                'label': 'Test label',
-                'url': '/static/settings.html',
-            },
-        },
         'readme_url': 'https://readme.com',
         'changelog_url': 'https://changelog.org',
     }
@@ -73,6 +67,15 @@ def test_properties(mocker):
         def get_static_root(cls):
             return ''
 
+        @classmethod
+        def get_ui_modules(cls):
+            return {
+                'settings': {
+                    'label': 'Test label',
+                    'url': '/static/settings.html',
+                },
+            }
+
     mocker.patch.object(
         EntryPoint,
         'load',
@@ -88,7 +91,12 @@ def test_properties(mocker):
     handler = WebApp(config)
 
     assert handler._webapp_class == MyExtension
-    assert handler.ui_modules == descriptor['ui']
+    assert handler.ui_modules == {
+        'settings': {
+            'label': 'Test label',
+            'url': '/static/settings.html',
+        },
+    }
     assert handler.variables == variables
     assert handler.readme == descriptor['readme_url']
     assert handler.changelog == descriptor['changelog_url']
