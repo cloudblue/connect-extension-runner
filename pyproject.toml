@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "connect-extension-runner"
-version = "0.0.0"
+version = "26.23"
 description = "CloudBlue Connect EaaS Extension Runner"
 authors = ["CloudBlue LLC"]
 license = "Apache-2.0"
@@ -17,6 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Topic :: Utilities",
     "Topic :: Software Development :: Libraries",
 ]
@@ -27,17 +28,20 @@ cextrun = 'connect.eaas.runner.main:main'
 [tool.poetry.dependencies]
 python = "^3.8"
 websockets = "10.*"
-connect-openapi-client = ">=25.4"
+connect-openapi-client = ">=25.11"
 logzio-python-handler = "^3.0.0"
 backoff = "^1.11.1"
 uvloop = "^0.16.0"
-connect-eaas-core = ">=4.0.0,<5"
+connect-eaas-core = ">=4.1.0,<5"
 httpx = "^0.23.0"
+rich = "^12.5.1"
+pyfiglet = "^0.8.post1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"
 pytest-cov = "^2.10.1"
 pytest-mock = "^3.3.1"
+pytest-randomly = "^3.12.0"
 coverage = {extras = ["toml"], version = "^5.3"}
 flake8 = "~3.8"
 flake8-bugbear = "~20"

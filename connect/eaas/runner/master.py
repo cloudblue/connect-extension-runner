@@ -54,6 +54,19 @@ class Master:
         self.exited_workers = {}
         self.stop_event = threading.Event()
 
+    def get_available_features(self):
+        have_features = False
+        features = {}
+        for handler in self.handlers.values():
+            have_features = have_features or handler.should_start
+            worker_info = {
+                'available': handler.should_start,
+            }
+            if handler.should_start:
+                worker_info['features'] = handler.features
+            features[handler.__class__.__name__] = worker_info
+        return have_features, features
+
     def start_worker_process(self, worker_type, handler):
         p = Process(
             target=self.PROCESS_TARGETS[worker_type],

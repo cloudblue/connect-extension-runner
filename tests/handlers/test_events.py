@@ -1,4 +1,4 @@
-from pkg_resources import EntryPoint
+from importlib.metadata import EntryPoint
 
 from connect.eaas.core.proto import Logging, LogMeta, SetupResponse
 from connect.eaas.runner.config import ConfigHelper
@@ -74,7 +74,7 @@ def test_get_extension_class(mocker, settings_payload):
     mocker.patch(
         'connect.eaas.runner.handlers.events.iter_entry_points',
         return_value=iter([
-            EntryPoint('extension', 'connect.eaas.ext'),
+            EntryPoint('extension', None, 'connect.eaas.ext'),
         ]),
     )
 
@@ -124,3 +124,277 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
         config.logging_api_key,
         default_extra_fields=config.metadata,
     )
+
+
+def test_properties(mocker):
+
+    descriptor = {
+        'readme_url': 'https://readme.com',
+        'changelog_url': 'https://changelog.org',
+    }
+
+    variables = [
+        {
+            'name': 'var1',
+            'initial_value': 'val1',
+        },
+    ]
+
+    config = ConfigHelper()
+
+    class MyExtension:
+        @classmethod
+        def get_descriptor(cls):
+            return descriptor
+
+        @classmethod
+        def get_events(cls):
+            return [
+                {
+                    'event_type': 'test_event',
+                    'statuses': ['pending', 'accepted'],
+                    'method': 'my_method',
+                },
+            ]
+
+        @classmethod
+        def get_schedulables(cls):
+            return [
+                {
+                    'method': 'my_schedulable_method',
+                    'name': 'My schedulable',
+                    'description': 'description',
+                },
+            ]
+
+        @classmethod
+        def get_variables(cls):
+            return variables
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.events.iter_entry_points',
+        return_value=iter([
+            EntryPoint('extension', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = EventsApp(config)
+
+    assert handler._extension_class == MyExtension
+    assert handler.events == {
+        'test_event': {
+            'event_type': 'test_event',
+            'statuses': ['pending', 'accepted'],
+            'method': 'my_method',
+        },
+    }
+    assert handler.variables == variables
+    assert handler.config == config
+    assert handler.schedulables == MyExtension.get_schedulables()
+    assert handler.readme == descriptor['readme_url']
+    assert handler.changelog == descriptor['changelog_url']
+    assert handler.should_start is True
+
+
+def test_properties_legacy_extension(mocker):
+
+    descriptor = {
+        'readme_url': 'https://readme.com',
+        'changelog_url': 'https://changelog.org',
+        'capabilities': {
+            'asset_purchase_request_processing': ['pending', 'accepted'],
+        },
+        'schedulables': [
+            {
+                'method': 'my_schedulable_method',
+                'name': 'My schedulable',
+                'description': 'description',
+            },
+        ],
+        'variables': [
+            {
+                'name': 'var1',
+                'initial_value': 'val1',
+            },
+        ],
+    }
+
+    config = ConfigHelper()
+
+    class MyExtension:
+        @classmethod
+        def get_descriptor(cls):
+            return descriptor
+
+        @classmethod
+        def get_events(cls):
+            return []
+
+        @classmethod
+        def get_schedulables(cls):
+            return []
+
+        @classmethod
+        def get_variables(cls):
+            return []
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.events.iter_entry_points',
+        return_value=iter([
+            EntryPoint('extension', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = EventsApp(config)
+
+    assert handler._extension_class == MyExtension
+    assert handler.events == {
+        'asset_purchase_request_processing': {
+            'event_type': 'asset_purchase_request_processing',
+            'statuses': ['pending', 'accepted'],
+            'method': 'process_asset_purchase_request',
+        },
+    }
+    assert handler.variables == descriptor['variables']
+    assert handler.config == config
+    assert handler.schedulables == descriptor['schedulables']
+    assert handler.readme == descriptor['readme_url']
+    assert handler.changelog == descriptor['changelog_url']
+    assert handler.should_start is True
+
+
+def test_get_features(mocker):
+
+    config = ConfigHelper()
+
+    class MyExtension:
+        @classmethod
+        def get_descriptor(cls):
+            return {}
+
+        @classmethod
+        def get_events(cls):
+            return [
+                {
+                    'event_type': 'test_event',
+                    'statuses': ['pending', 'accepted'],
+                    'method': 'my_method',
+                },
+            ]
+
+        @classmethod
+        def get_schedulables(cls):
+            return [
+                {
+                    'method': 'my_schedulable_method',
+                    'name': 'My schedulable',
+                    'description': 'description',
+                },
+            ]
+
+        @classmethod
+        def get_variables(cls):
+            return []
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.events.iter_entry_points',
+        return_value=iter([
+            EntryPoint('extension', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = EventsApp(config)
+
+    assert handler.features == {
+        'events': {
+            'test_event': {
+                'event_type': 'test_event',
+                'statuses': ['pending', 'accepted'],
+                'method': 'my_method',
+            },
+        },
+        'schedulables': MyExtension.get_schedulables(),
+    }
+
+
+def test_get_features_legacy_extension(mocker):
+
+    descriptor = {
+        'readme_url': 'https://readme.com',
+        'changelog_url': 'https://changelog.org',
+        'capabilities': {
+            'asset_purchase_request_processing': ['pending', 'accepted'],
+        },
+        'schedulables': [
+            {
+                'method': 'my_schedulable_method',
+                'name': 'My schedulable',
+                'description': 'description',
+            },
+        ],
+    }
+
+    config = ConfigHelper()
+
+    class MyExtension:
+        @classmethod
+        def get_descriptor(cls):
+            return descriptor
+
+        @classmethod
+        def get_events(cls):
+            return []
+
+        @classmethod
+        def get_schedulables(cls):
+            return
+
+        @classmethod
+        def get_variables(cls):
+            return []
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.events.iter_entry_points',
+        return_value=iter([
+            EntryPoint('extension', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = EventsApp(config)
+
+    assert handler.features == {
+        'events': {
+            'asset_purchase_request_processing': {
+                'event_type': 'asset_purchase_request_processing',
+                'statuses': ['pending', 'accepted'],
+                'method': 'process_asset_purchase_request',
+            },
+        },
+        'schedulables': [
+            {
+                'method': 'my_schedulable_method',
+                'name': 'My schedulable',
+                'description': 'description',
+            },
+        ],
+    }

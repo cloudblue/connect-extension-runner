@@ -2,6 +2,8 @@ from importlib.metadata import EntryPoint
 
 import pytest
 
+from connect.eaas.core.decorators import anvil_callable
+from connect.eaas.core.extension import AnvilExtension
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.anvil import AnvilApp
 
@@ -70,6 +72,7 @@ def test_properties(mocker):
     handler = AnvilApp(config)
 
     assert handler._anvilapp_class == MyExtension
+    assert handler.config == config
     assert handler.variables == variables
     assert handler.readme == descriptor['readme_url']
     assert handler.changelog == descriptor['changelog_url']
@@ -221,3 +224,37 @@ def test_stop(mocker):
     handler = AnvilApp(config)
     handler.stop()
     mocked_anvil_disconnect.assert_called_once()
+
+
+def test_features(mocker):
+    config = ConfigHelper()
+
+    class MyExtension(AnvilExtension):
+        @anvil_callable()
+        def my_callable(self):
+            pass
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.anvil.iter_entry_points',
+        return_value=iter([
+            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    mocker.patch(
+        'connect.eaas.runner.handlers.anvil.anvil.server.disconnect',
+    )
+
+    handler = AnvilApp(config)
+
+    assert handler.features == {'callables': [
+        {
+            'summary': 'My Callable',
+            'signature': 'my_callable(self)',
+        },
+    ]}

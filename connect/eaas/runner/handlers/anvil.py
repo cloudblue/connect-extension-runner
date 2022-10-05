@@ -3,11 +3,13 @@
 #
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
+import inspect
 import logging
 
 import anvil.server
 
 from connect.client import ConnectClient
+from connect.eaas.core.constants import ANVIL_CALLABLE_ATTR_NAME
 from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.helpers import iter_entry_points
@@ -46,6 +48,12 @@ class AnvilApp:
     def changelog(self):
         return self._anvilapp_class.get_descriptor()['changelog_url']
 
+    @property
+    def features(self):
+        return {
+            'callables': self.get_callables(),
+        }
+
     def start(self):
         logger.info('Create anvil connection...')
         var_name = self._anvilapp_class.get_anvil_key_variable()
@@ -77,6 +85,18 @@ class AnvilApp:
                 self._config.variables,
             )
             self._anvilapp_instance.setup_anvil_callables()
+
+    def get_callables(self):
+        callables = []
+        members = inspect.getmembers(self._anvilapp_class)
+        for _, value in members:
+            if getattr(value, ANVIL_CALLABLE_ATTR_NAME, False):
+                signature = inspect.signature(value)
+                callables.append({
+                    'summary': value.__name__.replace('_', ' ').title(),
+                    'signature': f'{value.__name__}({", ".join(signature.parameters)})',
+                })
+        return callables
 
     def get_client(self):
         return ConnectClient(

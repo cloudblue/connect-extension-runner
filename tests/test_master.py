@@ -142,3 +142,61 @@ def test_run_process_exited(mocker):
     mocked_notify.assert_not_called()
     mocked_start_process.assert_not_called()
     assert master.exited_workers['webapp'] is True
+
+
+def test_get_available_features(mocker):
+    mocker.patch.object(
+        AnvilApp,
+        'should_start',
+        new_callable=mocker.PropertyMock(return_value=True),
+    )
+    mocker.patch.object(
+        AnvilApp,
+        'features',
+        new_callable=mocker.PropertyMock(return_value={'callables': []}),
+    )
+
+    mocker.patch.object(
+        EventsApp,
+        'should_start',
+        new_callable=mocker.PropertyMock(return_value=True),
+    )
+    mocker.patch.object(
+        EventsApp,
+        'features',
+        new_callable=mocker.PropertyMock(return_value={
+            'events': {},
+            'schedulables': [],
+        }),
+    )
+
+    mocker.patch.object(
+        WebApp,
+        'should_start',
+        new_callable=mocker.PropertyMock(return_value=True),
+    )
+    mocker.patch.object(
+        WebApp,
+        'features',
+        new_callable=mocker.PropertyMock(return_value={'endpoints': {}}),
+    )
+
+    master = Master()
+
+    assert master.get_available_features() == (
+        True,
+        {
+            'AnvilApp': {
+                'available': True,
+                'features': {'callables': []},
+            },
+            'EventsApp': {
+                'available': True,
+                'features': {'events': {}, 'schedulables': []},
+            },
+            'WebApp': {
+                'available': True,
+                'features': {'endpoints': {}},
+            },
+        },
+    )

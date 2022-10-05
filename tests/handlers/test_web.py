@@ -3,9 +3,10 @@ from importlib.metadata import EntryPoint
 
 import pytest
 from fastapi import Depends, Header
+from fastapi.routing import APIRouter
 
 from connect.client import ConnectClient
-from connect.eaas.core.decorators import router, web_app
+from connect.eaas.core.decorators import guest, web_app
 from connect.eaas.core.extension import WebAppExtension
 from connect.eaas.core.inject.synchronous import get_installation, get_installation_client
 from connect.eaas.runner.config import ConfigHelper
@@ -43,6 +44,7 @@ def test_properties(mocker):
     descriptor = {
         'readme_url': 'https://readme.com',
         'changelog_url': 'https://changelog.org',
+        'icon': 'my-icon',
     }
 
     variables = [
@@ -98,8 +100,10 @@ def test_properties(mocker):
         },
     }
     assert handler.variables == variables
+    assert handler.config == config
     assert handler.readme == descriptor['readme_url']
     assert handler.changelog == descriptor['changelog_url']
+    assert handler.icon == descriptor['icon']
     assert handler.should_start is True
 
 
@@ -174,6 +178,9 @@ def test_get_asgi_application(mocker, static_root):
 def test_openapi_schema_generation(mocker):
     config = ConfigHelper()
 
+    router = APIRouter()
+    mocker.patch('connect.eaas.core.extension.router', router)
+
     @web_app(router)
     class MyExtension(WebAppExtension):
         @classmethod
@@ -232,3 +239,66 @@ def test_openapi_schema_generation(mocker):
 
     assert handler.get_api_schema(handler.app) == schema
     mocked_get_openapi.assert_not_called()
+
+
+def test_get_features(mocker):
+    config = ConfigHelper()
+
+    router = APIRouter()
+    mocker.patch('connect.eaas.core.extension.router', router)
+
+    @web_app(router)
+    class MyExtension(WebAppExtension):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'name': 'My Api Name',
+                'description': 'My Api Description',
+                'version': 'my api version',
+            }
+
+        @classmethod
+        def get_static_root(cls):
+            return os.getcwd()
+
+        @router.get('/auth')
+        def example_auth(self):
+            return
+
+        @router.get('/no_auth')
+        @guest()
+        def example_no_auth(self):
+            return
+
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=MyExtension,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.web.iter_entry_points',
+        return_value=iter([
+            EntryPoint('webapp', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = WebApp(config)
+
+    assert handler.features == {
+        'endpoints': {
+            'auth': [
+                {
+                    'method': 'GET',
+                    'path': '/auth',
+                    'summary': 'Example Auth',
+                },
+            ],
+            'no_auth': [
+                {
+                    'method': 'GET',
+                    'path': '/no_auth',
+                    'summary': 'Example No Auth',
+                },
+            ],
+        },
+    }
