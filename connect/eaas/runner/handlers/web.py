@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.openapi.utils import get_openapi
+from fastapi.openapi.utils import generate_operation_summary, get_openapi
 
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.helpers import iter_entry_points
@@ -77,6 +77,28 @@ class WebApp:
         if not self._app:
             self._app = self.get_asgi_application()
         return self._app
+
+    @property
+    def features(self):
+        return {
+            'endpoints': self.get_endpoints(),
+        }
+
+    def get_endpoints(self):
+        auth, no_auth = self._webapp_class.get_routers()
+        endpoints = {
+            'auth': [],
+            'no_auth': [],
+        }
+        for router, group in ((auth, 'auth'), (no_auth, 'no_auth')):
+            for route in router.routes:
+                for method in route.methods:
+                    endpoints[group].append({
+                        'summary': generate_operation_summary(route=route, method=method),
+                        'method': method,
+                        'path': route.path,
+                    })
+        return endpoints
 
     def get_asgi_application(self):
         app = FastAPI(

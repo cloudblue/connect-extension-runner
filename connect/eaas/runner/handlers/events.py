@@ -53,6 +53,13 @@ class EventsApp:
     def changelog(self):
         return self._descriptor['changelog_url']
 
+    @property
+    def features(self):
+        return {
+            'events': self.get_events(),
+            'schedulables': self.get_schedulables(),
+        }
+
     def get_method(
         self,
         event_type,

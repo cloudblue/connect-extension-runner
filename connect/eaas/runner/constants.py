@@ -128,4 +128,16 @@ WORKER_TYPES = (
     ANVILAPP_WORKER,
 )
 
+HANDLER_CLASS_TITLE = {
+    'EventsApp': 'Events Processing Application',
+    'AnvilApp': 'Anvil Application',
+    'WebApp': 'Web Application',
+}
+
 PROCESS_CHECK_INTERVAL_SECS = 5
+
+LEVEL_TO_FONT_COLOR = {
+    'INFO': ('ansi_regular', 'BLUE'),
+    'WARNING': ('bloody', 'YELLOW'),
+    'ERROR': ('bloody', 'RED'),
+}

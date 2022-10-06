@@ -105,6 +105,7 @@ class WebWorker(WorkerBase):
         headers['X-Connect-User-Agent'] = self.config.get_user_agent()['User-Agent']
         headers['X-Connect-Extension-Id'] = self.config.service_id
         headers['X-Connect-Logging-Level'] = self.config.logging_level or 'DEBUG'
+        headers['X-Connect-Config'] = json.dumps(self.config.variables)
 
         if task.options.api_key:
             headers['X-Connect-Installation-Api-Key'] = task.options.api_key

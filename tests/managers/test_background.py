@@ -68,7 +68,7 @@ async def test_sync(mocker, extension_cls, event_type, settings_payload):
     )
 
     await manager.submit(task)
-    await asyncio.sleep(.01)
+    await asyncio.sleep(.05)
     result_queue.assert_awaited_once_with(task)
 
 

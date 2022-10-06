@@ -13,22 +13,31 @@ from connect.client import ConnectClient
 
 from freezegun import freeze_time
 from responses import matchers
+from rich.table import Table
 
+from connect.eaas.core.validation.models import ValidationItem, ValidationResult
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
 from connect.eaas.runner.helpers import (
+    check_runner_version,
+    get_anvilapp_detail_table,
     get_client,
     get_connect_version,
     get_container_id,
     get_current_environment,
     get_environment,
+    get_eventsapp_detail_table,
+    get_features_table,
+    get_no_features_table,
     get_pypi_runner_minor_version,
     get_version,
+    get_webapp_detail_table,
     iter_entry_points,
     notify_process_restarted,
+    validate_extension,
 )
 
 
@@ -243,10 +252,12 @@ def test_get_connect_version_server_error(mocker, responses):
         status=500,
     )
 
-    with pytest.raises(SystemExit) as cv:
+    with pytest.raises(Exception) as cv:
         get_connect_version()
 
-    assert cv.value.code == 1
+    assert str(cv.value) == (
+        'Cannot check the current EaaS Runner version: 500 Internal Server Error.'
+    )
 
 
 def test_get_connect_version_api_key_error(mocker, responses):
@@ -261,10 +272,13 @@ def test_get_connect_version_api_key_error(mocker, responses):
         status=401,
     )
 
-    with pytest.raises(SystemExit) as cv:
+    with pytest.raises(Exception) as cv:
         get_connect_version()
 
-    assert cv.value.code == 2
+    assert (
+        'Cannot check the current EaaS Runner version: '
+        'API key is not valid'
+    ) in str(cv.value)
 
 
 def test_get_pypi_runner_minor_version(responses):
@@ -308,13 +322,14 @@ def test_get_pypi_runner_minor_version_request_error(responses):
     responses.add(
         'GET',
         'https://pypi.org/pypi/connect-extension-runner/json',
+        body='error',
         status=400,
     )
 
-    with pytest.raises(SystemExit) as cv:
+    with pytest.raises(Exception) as cv:
         get_pypi_runner_minor_version('26')
 
-    assert cv.value.code == 1
+    assert str(cv.value) == 'Cannot check the current EaaS Runner version: error.'
 
 
 def test_get_client(mocker):
@@ -478,3 +493,262 @@ def test_iter_entry_points(mocker):
     assert list(iter_entry_points('ep.group', name='ep1')) == [ep1]
     assert list(iter_entry_points('ep.group')) == [ep1, ep2]
     assert list(iter_entry_points('ep.other_group')) == []
+
+
+def test_check_runner_version(mocker):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_connect_version',
+        return_value='26.0.0',
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_version',
+        return_value='26.13',
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_pypi_runner_minor_version',
+        return_value='13',
+    )
+
+    result = check_runner_version({})
+    assert isinstance(result, ValidationResult)
+    assert len(result.items) == 0
+    assert result.must_exit is False
+
+
+def test_check_runner_version_outdated(mocker):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_connect_version',
+        return_value='26.0.0',
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_version',
+        return_value='26.13',
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_pypi_runner_minor_version',
+        return_value='12',
+    )
+
+    result = check_runner_version({})
+    assert isinstance(result, ValidationResult)
+    assert len(result.items) == 1
+    assert result.must_exit is True
+    assert isinstance(result.items[0], ValidationItem)
+    assert result.items[0].level == 'ERROR'
+    assert 'Runner is outdated, please, update.' in result.items[0].message
+
+
+def test_check_runner_version_exception(mocker):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_connect_version',
+        side_effect=Exception('hello'),
+    )
+
+    result = check_runner_version({})
+    assert isinstance(result, ValidationResult)
+    assert len(result.items) == 1
+    assert result.must_exit is True
+    assert isinstance(result.items[0], ValidationItem)
+    assert result.items[0].level == 'ERROR'
+    assert 'hello' in result.items[0].message
+
+
+def test_validate_extension(mocker, client_mocker_factory):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey',
+            'api_address': 'localhost',
+        },
+    )
+    client_mock = client_mocker_factory(base_url='https://localhost/public/v1')
+    client_mock('devops').event_definitions.all().mock(return_value=[])
+    mocker.patch(
+        'connect.eaas.runner.helpers.check_runner_version',
+        return_value=ValidationResult(),
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_validators',
+        return_value=[],
+    )
+    higest_message_level, tables = validate_extension()
+
+    assert higest_message_level == 'INFO'
+    assert tables == []
+
+
+def test_validate_extension_warning(mocker, client_mocker_factory):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey',
+            'api_address': 'localhost',
+        },
+    )
+    client_mock = client_mocker_factory(base_url='https://localhost/public/v1')
+    client_mock('devops').event_definitions.all().mock(return_value=[])
+    mocker.patch(
+        'connect.eaas.runner.helpers.check_runner_version',
+        return_value=ValidationResult(
+            items=[
+                ValidationItem(level='WARNING', message='A warning'),
+            ],
+            context={'updated': 'context'},
+        ),
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_validators',
+        return_value=[],
+    )
+    higest_message_level, tables = validate_extension()
+
+    assert higest_message_level == 'WARNING'
+    assert len(tables) > 0
+
+
+def test_validate_extension_error(mocker, client_mocker_factory):
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_environment',
+        return_value={
+            'api_key': 'ApiKey',
+            'api_address': 'localhost',
+        },
+    )
+    client_mock = client_mocker_factory(base_url='https://localhost/public/v1')
+    client_mock('devops').event_definitions.all().mock(return_value=[])
+    mocker.patch(
+        'connect.eaas.runner.helpers.check_runner_version',
+        return_value=ValidationResult(
+            items=[
+                ValidationItem(level='ERROR', message='An error'),
+            ],
+            context={},
+            must_exit=True,
+        ),
+    )
+    mocker.patch(
+        'connect.eaas.runner.helpers.get_validators',
+        return_value=[],
+    )
+    higest_message_level, tables = validate_extension()
+
+    assert higest_message_level == 'ERROR'
+    assert len(tables) > 0
+
+
+def test_get_no_features_table():
+    assert isinstance(get_no_features_table(), Table)
+
+
+def test_anvilapp_detail_table():
+    features = {
+        'callables': [
+            {
+                'summary': 'Summary',
+                'signature': 'summary(self, param)',
+            },
+        ],
+    }
+    assert isinstance(get_anvilapp_detail_table({'features': features}), Table)
+
+
+def test_eventsapp_detail_table():
+    features = {
+        'events': {
+            'test_event': {
+                'event_type': 'test_event',
+                'statuses': ['pending', 'accepted'],
+                'method': 'my_method',
+            },
+        },
+        'schedulables': [
+            {
+                'method': 'my_schedulable_method',
+                'name': 'My schedulable',
+                'description': 'description',
+            },
+        ],
+    }
+
+    assert isinstance(get_eventsapp_detail_table({'features': features}), Table)
+
+
+def test_websapp_detail_table():
+    features = {
+        'endpoints': {
+            'auth': [
+                {
+                    'method': 'GET',
+                    'path': '/auth',
+                    'summary': 'Example Auth',
+                },
+            ],
+            'no_auth': [
+                {
+                    'method': 'GET',
+                    'path': '/no_auth',
+                    'summary': 'Example No Auth',
+                },
+            ],
+        },
+    }
+
+    assert isinstance(get_webapp_detail_table({'features': features}), Table)
+
+
+def test_get_features_table():
+    features = {
+        'AnvilApp': {
+            'available': True,
+            'features': {
+                'callables': [
+                    {
+                        'summary': 'Summary',
+                        'signature': 'summary(self, param)',
+                    },
+                ],
+            },
+        },
+        'EventsApp': {
+            'available': True,
+            'features': {
+                'events': {
+                    'test_event': {
+                        'event_type': 'test_event',
+                        'statuses': ['pending', 'accepted'],
+                        'method': 'my_method',
+                    },
+                },
+                'schedulables': [
+                    {
+                        'method': 'my_schedulable_method',
+                        'name': 'My schedulable',
+                        'description': 'description',
+                    },
+                ],
+            },
+        },
+        'WebApp': {
+            'available': True,
+            'features': {
+                'endpoints': {
+                    'auth': [
+                        {
+                            'method': 'GET',
+                            'path': '/auth',
+                            'summary': 'Example Auth',
+                        },
+                    ],
+                    'no_auth': [
+                        {
+                            'method': 'GET',
+                            'path': '/no_auth',
+                            'summary': 'Example No Auth',
+                        },
+                    ],
+                },
+            },
+        },
+    }
+
+    assert isinstance(get_features_table(features), Table)
