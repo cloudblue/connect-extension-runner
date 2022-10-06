@@ -166,8 +166,10 @@ class WorkerBase(ABC):
                         continue
                     logger.debug('New message received via WS')
                     await self.process_message(message)
-            except (ConnectionClosedOK, StopBackoffError):
+            except (ConnectionClosedOK, StopBackoffError) as exc:
                 self.run_event.clear()
+                if isinstance(exc, ConnectionClosedOK):
+                    logger.warning(f'The WS connection has been closed, reason: {exc.reason}')
                 continue
             except (CommunicationError, MaintenanceError):
                 logger.error(f'{self}: max connection attemps reached, exit!')
