@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from connect.eaas.core.decorators import anvil_key_variable
-from connect.eaas.core.extension import AnvilExtension
+from connect.eaas.core.extension import AnvilApplicationBase
 from connect.eaas.core.proto import (
     Message,
     MessageType,
@@ -35,7 +35,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     )
 
     @anvil_key_variable('MY_ANVIL_API_KEY')
-    class MyExtension(AnvilExtension):
+    class MyExtension(AnvilApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {
@@ -84,6 +84,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
                 {'name': 'MY_ANVIL_API_KEY', 'initial_value': 'changeme!', 'secure': True},
             ],
             schedulables=None,
+            anvil_callables=MyExtension.get_anvil_callables(),
             repository={
                 'readme_url': 'https://read.me',
                 'changelog_url': 'https://change.log',
@@ -120,7 +121,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     )
 
     @anvil_key_variable('MY_ANVIL_API_KEY')
-    class MyExtension(AnvilExtension):
+    class MyExtension(AnvilApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {

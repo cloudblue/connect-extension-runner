@@ -3,7 +3,7 @@ from importlib.metadata import EntryPoint
 import pytest
 
 from connect.eaas.core.decorators import anvil_callable
-from connect.eaas.core.extension import AnvilExtension
+from connect.eaas.core.extension import AnvilApplicationBase
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.anvil import AnvilApp
 
@@ -229,7 +229,7 @@ def test_stop(mocker):
 def test_features(mocker):
     config = ConfigHelper()
 
-    class MyExtension(AnvilExtension):
+    class MyExtension(AnvilApplicationBase):
         @anvil_callable()
         def my_callable(self):
             pass
@@ -254,7 +254,8 @@ def test_features(mocker):
 
     assert handler.features == {'callables': [
         {
+            'method': 'my_callable',
             'summary': 'My Callable',
-            'signature': 'my_callable(self)',
+            'description': '',
         },
     ]}

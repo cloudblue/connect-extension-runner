@@ -6,7 +6,7 @@ import pytest
 from connect.eaas.core.decorators import (
     account_settings_page, router, web_app,
 )
-from connect.eaas.core.extension import WebAppExtension
+from connect.eaas.core.extension import WebApplicationBase
 from connect.eaas.core.proto import (
     HttpRequest,
     HttpResponse,
@@ -49,7 +49,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     }
 
     @account_settings_page('Settings', '/static/settings.html')
-    class MyExtension(WebAppExtension):
+    class MyExtension(WebApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {
@@ -168,7 +168,7 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
 
     @account_settings_page('Settings', '/static/settings.html')
     @web_app(router)
-    class MyExtension(WebAppExtension):
+    class MyExtension(WebApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {
@@ -297,7 +297,7 @@ async def test_http_call_exception(mocker, ws_server, unused_port, settings_payl
 
     @account_settings_page('Settings', '/static/settings.html')
     @web_app(router)
-    class MyExtension(WebAppExtension):
+    class MyExtension(WebApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {
@@ -439,7 +439,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
         },
     }
 
-    class MyExtension(WebAppExtension):
+    class MyExtension(WebApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {

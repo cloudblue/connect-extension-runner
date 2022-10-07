@@ -32,6 +32,7 @@ class AnvilWorker(WorkerBase):
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
                 variables=self.handler.variables,
+                anvil_callables=self.handler.callables,
                 repository={
                     'readme_url': self.handler.readme,
                     'changelog_url': self.handler.changelog,
