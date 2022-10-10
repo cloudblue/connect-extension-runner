@@ -7,7 +7,7 @@ from fastapi.routing import APIRouter
 
 from connect.client import ConnectClient
 from connect.eaas.core.decorators import guest, web_app
-from connect.eaas.core.extension import WebAppExtension
+from connect.eaas.core.extension import WebApplicationBase
 from connect.eaas.core.inject.synchronous import get_installation, get_installation_client
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.web import _OpenApiCORSMiddleware, WebApp
@@ -182,7 +182,7 @@ def test_openapi_schema_generation(mocker):
     mocker.patch('connect.eaas.core.extension.router', router)
 
     @web_app(router)
-    class MyExtension(WebAppExtension):
+    class MyExtension(WebApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {
@@ -248,7 +248,7 @@ def test_get_features(mocker):
     mocker.patch('connect.eaas.core.extension.router', router)
 
     @web_app(router)
-    class MyExtension(WebAppExtension):
+    class MyExtension(WebApplicationBase):
         @classmethod
         def get_descriptor(cls):
             return {
