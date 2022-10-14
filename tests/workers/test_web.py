@@ -144,6 +144,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_options):
     setup_response = copy.deepcopy(settings_payload)
     setup_response['logging']['logging_api_key'] = 'logging_api_key'
+    setup_response['logging']['log_level'] = None
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
         return_value={

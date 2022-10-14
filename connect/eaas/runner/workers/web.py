@@ -99,12 +99,18 @@ class WebWorker(WorkerBase):
             )
         await self.send(message)
 
+    def get_logging_level(self):
+        if self.config.logging_level:
+            return self.config.logging_level
+        current_level = logging.getLogger('eaas').getEffectiveLevel()
+        return logging.getLevelName(current_level)
+
     def get_internal_headers(self, task):
         headers = {}
         headers['X-Connect-Api-Gateway-Url'] = self.config.get_api_url()
         headers['X-Connect-User-Agent'] = self.config.get_user_agent()['User-Agent']
         headers['X-Connect-Extension-Id'] = self.config.service_id
-        headers['X-Connect-Logging-Level'] = self.config.logging_level or 'DEBUG'
+        headers['X-Connect-Logging-Level'] = self.get_logging_level()
         headers['X-Connect-Config'] = json.dumps(self.config.variables)
 
         if task.options.api_key:

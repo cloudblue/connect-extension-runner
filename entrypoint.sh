@@ -35,6 +35,10 @@ if [[ "$@" == *"cextrun"* ]]; then
 
     if [ -d "$DIST_DIR" ]; then rm -Rf $DIST_DIR; fi
 
+    if [ -f "package.json" ]; then
+        npm run build
+    fi
+
     poetry build
 
     pip install -U pip && pip install -U --force-reinstall $DIST_DIR/*.whl
