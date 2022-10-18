@@ -28,14 +28,15 @@ cextrun = 'connect.eaas.runner.main:main'
 [tool.poetry.dependencies]
 python = "^3.8"
 websockets = "10.*"
-connect-openapi-client = ">=25.12"
+connect-openapi-client = ">=25.13"
 logzio-python-handler = "^3.0.0"
 backoff = "^1.11.1"
 uvloop = "^0.16.0"
-connect-eaas-core = ">=26.1,<27"
+connect-eaas-core = ">=26.4,<27"
 httpx = "^0.23.0"
 rich = "^12.5.1"
 pyfiglet = "^0.8.post1"
+devtools = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"

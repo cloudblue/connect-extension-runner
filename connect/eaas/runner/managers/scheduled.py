@@ -49,7 +49,7 @@ class ScheduledTasksManager(TasksManagerBase):
             result_message.output.message = result.output
             result_message.output.runtime = time.monotonic() - begin_ts
             logger.info(
-                f'interactive task {task_data.options.task_id} result: {result.status}, took:'
+                f'scheduled task {task_data.options.task_id} result: {result.status}, took:'
                 f' {result_message.output.runtime}',
             )
         except Exception as e:

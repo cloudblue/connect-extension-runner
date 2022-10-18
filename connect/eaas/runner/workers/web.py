@@ -11,6 +11,7 @@ import logging
 import signal
 
 import httpx
+from devtools import pformat
 
 from connect.eaas.core.proto import (
     HttpRequest,
@@ -39,7 +40,7 @@ class WebWorker(WorkerBase):
         return self.config.get_webapp_ws_url()
 
     def get_setup_request(self):
-        return Message(
+        msg = Message(
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
@@ -52,13 +53,16 @@ class WebWorker(WorkerBase):
                 icon=self.handler.icon,
                 runner_version=get_version(),
             ),
-        ).dict()
+        )
+        logger.debug(f'Sending setup request: {pformat(msg)}')
+        return msg.dict()
 
     async def stopping(self):
         pass
 
     async def process_message(self, data):
         message = Message.deserialize(data)
+        logger.debug(f'Received message: {pformat(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
             self.process_setup_response(message.data)
         elif message.message_type == MessageType.WEB_TASK:
@@ -166,6 +170,7 @@ class WebWorker(WorkerBase):
             message_type=MessageType.WEB_TASK,
             data=task_response,
         )
+        logger.debug(f'Sending message: {pformat(message)}')
         return message.serialize()
 
 

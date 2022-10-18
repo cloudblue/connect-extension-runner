@@ -59,7 +59,6 @@ class AnvilApp:
     def start(self):
         logger.info('Create anvil connection...')
         var_name = self._anvilapp_class.get_anvil_key_variable()
-        logger.info(f'Anvil key variable name: {var_name}')
         anvil_api_key = self._config.variables.get(var_name)
         if not anvil_api_key:
             logger.error(f'Cannot start Anvil application: variable {var_name} not found!')

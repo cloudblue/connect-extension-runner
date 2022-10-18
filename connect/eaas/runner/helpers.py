@@ -192,7 +192,7 @@ def iter_entry_points(group, name=None):
             yield ep
 
 
-def configure_logger(debug):
+def configure_logger(debug, no_rich):
     logging.config.dictConfig(
         {
             'version': 1,
@@ -201,6 +201,9 @@ def configure_logger(debug):
                 'verbose': {
                     'format': '%(asctime)s %(name)s %(levelname)s PID_%(process)d %(message)s',
                 },
+                'rich': {
+                    'format': '%(message)s',
+                },
             },
             'filters': {},
             'handlers': {
@@ -208,17 +211,21 @@ def configure_logger(debug):
                     'class': 'logging.StreamHandler',
                     'formatter': 'verbose',
                 },
-                'null': {
-                    'class': 'logging.NullHandler',
+                'rich': {
+                    'class': 'rich.logging.RichHandler',
+                    'formatter': 'rich',
+                    'log_time_format': lambda x: x.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
+                    'rich_tracebacks': True,
+
                 },
             },
             'loggers': {
                 'connect.eaas': {
-                    'handlers': ['console'],
+                    'handlers': ['console'] if no_rich else ['rich'],
                     'level': 'DEBUG' if debug else 'INFO',
                 },
                 'eaas': {
-                    'handlers': ['console'],
+                    'handlers': ['console'] if no_rich else ['rich'],
                     'level': 'DEBUG' if debug else 'INFO',
                 },
             },
@@ -414,10 +421,12 @@ def get_eventsapp_detail_table(details):
 def get_webapp_detail_table(details):
     auth_table = None
     no_auth_table = None
+    ui_modules_table = None
     grid = None
 
     auth_endpoints = details['features']['endpoints'].get('auth')
     no_auth_endpoints = details['features']['endpoints'].get('no_auth')
+    ui_modules = details['features'].get('ui_modules')
 
     if auth_endpoints:
         auth_table = Table(
@@ -457,13 +466,35 @@ def get_webapp_detail_table(details):
                 endpoint['path'],
             )
 
-    if auth_table and no_auth_table:
-        grid = Table.grid(expand=True)
-        grid.add_column()
-        grid.add_row(auth_table)
-        grid.add_row(no_auth_table)
+    if ui_modules:
+        ui_modules_table = Table(
+            box=box.MINIMAL_HEAVY_HEAD,
+            title='UI Components',
+            title_style='blue',
+            show_header=True,
+            expand=True,
+            row_styles=['', 'dim'],
+        )
+        ui_modules_table.add_column('Name')
+        ui_modules_table.add_column('Url')
+        ui_modules_table.add_column('Integration point')
+        for ui_module in ui_modules:
+            ui_modules_table.add_row(
+                ui_module['name'],
+                ui_module['url'],
+                ui_module['integration_point'],
+            )
 
-    return grid or auth_table or no_auth_table
+    grid = Table.grid(expand=True)
+    grid.add_column()
+    if auth_table:
+        grid.add_row(auth_table)
+    if no_auth_table:
+        grid.add_row(no_auth_table)
+    if ui_modules_table:
+        grid.add_row(ui_modules_table)
+
+    return grid
 
 
 def get_features_table(features):

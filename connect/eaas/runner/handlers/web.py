@@ -82,7 +82,39 @@ class WebApp:
     def features(self):
         return {
             'endpoints': self.get_endpoints(),
+            'ui_modules': self.get_ui_components(),
         }
+
+    def get_ui_components(self):
+        components = []
+
+        if 'settings' in self.ui_modules:
+            components.append({
+                'name': self.ui_modules['settings']['label'],
+                'url': self.ui_modules['settings']['url'],
+                'integration_point': 'Account Settings',
+            })
+
+        if 'modules' in self.ui_modules:
+            components.append({
+                'name': self.ui_modules['modules']['label'],
+                'url': self.ui_modules['modules']['url'],
+                'integration_point': 'Module Feature',
+            })
+            for child in self.ui_modules['modules'].get('children', []):
+                components.append({
+                    'name': child['label'],
+                    'url': child['url'],
+                    'integration_point': 'Module Feature',
+                })
+
+        for admin in self.ui_modules.get('admins', []):
+            components.append({
+                'name': admin['label'],
+                'url': admin['url'],
+                'integration_point': 'Installations Admin',
+            })
+        return components
 
     def get_endpoints(self):
         auth, no_auth = self._webapp_class.get_routers()

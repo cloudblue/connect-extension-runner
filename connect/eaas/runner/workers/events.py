@@ -7,6 +7,7 @@ import asyncio
 import logging
 import signal
 
+from devtools import pformat
 
 from connect.eaas.core.proto import (
     Message,
@@ -77,7 +78,7 @@ class EventsWorker(WorkerBase):
         return url
 
     def get_setup_request(self):
-        return Message(
+        msg = Message(
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
@@ -93,13 +94,16 @@ class EventsWorker(WorkerBase):
                 },
                 runner_version=get_version(),
             ),
-        ).dict()
+        )
+        logger.debug(f'Sending setup request: {pformat(msg)}')
+        return msg.dict()
 
     async def process_message(self, data):
         """
         Process a message received from the websocket server.
         """
         message = Message.deserialize(data)
+        logger.debug(f'Received message: {pformat(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
             self.process_setup_response(message.data)
         elif message.message_type == MessageType.TASK:
@@ -144,6 +148,7 @@ class EventsWorker(WorkerBase):
                         data=result,
                     )
                     await self.ensure_connection()
+                    logger.debug(f'Sending message: {pformat(message)}')
                     await self.send(message.serialize())
                     logger.info(f'Result for task {result.options.task_id} has been sent.')
                     break
