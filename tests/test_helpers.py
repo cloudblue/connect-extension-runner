@@ -747,6 +747,13 @@ def test_get_features_table():
                         },
                     ],
                 },
+                'ui_modules': [
+                    {
+                        'name': 'Name',
+                        'url': '/static/name.html',
+                        'integration_point': 'Account Settings',
+                    },
+                ],
             },
         },
     }

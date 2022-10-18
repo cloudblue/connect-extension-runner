@@ -178,7 +178,6 @@ class ConfigHelper:
                 data.logging.log_level or self.dyn_config.logging.log_level
             )
 
-        logger.debug(f'Runner dynamic config updated {data}')
         if data.logging.log_level:
             logger.info(f'Change extension logger level to {data.logging.log_level}')
             logging.getLogger('eaas.eventsapp').setLevel(

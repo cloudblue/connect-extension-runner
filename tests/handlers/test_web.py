@@ -6,7 +6,13 @@ from fastapi import Depends, Header
 from fastapi.routing import APIRouter
 
 from connect.client import ConnectClient
-from connect.eaas.core.decorators import guest, web_app
+from connect.eaas.core.decorators import (
+    account_settings_page,
+    admin_pages,
+    guest,
+    module_pages,
+    web_app,
+)
 from connect.eaas.core.extension import WebApplicationBase
 from connect.eaas.core.inject.synchronous import get_installation, get_installation_client
 from connect.eaas.runner.config import ConfigHelper
@@ -248,6 +254,15 @@ def test_get_features(mocker):
     mocker.patch('connect.eaas.core.extension.router', router)
 
     @web_app(router)
+    @account_settings_page('Settings', '/static/settings.html')
+    @admin_pages([{'label': 'Admin', 'url': '/static/admin.html'}])
+    @module_pages(
+        'Main',
+        '/static/index.html',
+        children=[
+            {'label': 'Child1', 'url': '/static/child1.html'},
+        ],
+    )
     class MyExtension(WebApplicationBase):
         @classmethod
         def get_descriptor(cls):
@@ -301,4 +316,26 @@ def test_get_features(mocker):
                 },
             ],
         },
+        'ui_modules': [
+            {
+                'integration_point': 'Account Settings',
+                'url': '/static/settings.html',
+                'name': 'Settings',
+            },
+            {
+                'integration_point': 'Module Feature',
+                'url': '/static/index.html',
+                'name': 'Main',
+            },
+            {
+                'integration_point': 'Module Feature',
+                'url': '/static/child1.html',
+                'name': 'Child1',
+            },
+            {
+                'integration_point': 'Installations Admin',
+                'url': '/static/admin.html',
+                'name': 'Admin',
+            },
+        ],
     }

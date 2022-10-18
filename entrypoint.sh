@@ -36,7 +36,7 @@ if [[ "$@" == *"cextrun"* ]]; then
     if [ -d "$DIST_DIR" ]; then rm -Rf $DIST_DIR; fi
 
     if [ -f "package.json" ]; then
-        npm run build
+        npm install && npm run build
     fi
 
     poetry build

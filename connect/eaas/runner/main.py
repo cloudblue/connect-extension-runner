@@ -72,8 +72,9 @@ def main():
     parser.add_argument('-s', '--split', action='store_true', default=False)
     parser.add_argument('-d', '--debug', action='store_true', default=False)
     parser.add_argument('-n', '--no-validate', action='store_true', default=False)
+    parser.add_argument('--no-rich-logging', action='store_true', default=False)
     data = parser.parse_args()
-    configure_logger(data.debug)
+    configure_logger(data.debug, data.no_rich_logging)
     if not data.no_validate:
         validate_extension()
     start(data)

@@ -4,7 +4,10 @@
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
 import asyncio
+import logging
 import signal
+
+from devtools import pformat
 
 from connect.eaas.core.proto import (
     Message,
@@ -13,6 +16,9 @@ from connect.eaas.core.proto import (
 )
 from connect.eaas.runner.workers.base import WorkerBase
 from connect.eaas.runner.helpers import get_version
+
+
+logger = logging.getLogger(__name__)
 
 
 class AnvilWorker(WorkerBase):
@@ -27,7 +33,7 @@ class AnvilWorker(WorkerBase):
         return self.config.get_anvilapp_ws_url()
 
     def get_setup_request(self):
-        return Message(
+        msg = Message(
             version=2,
             message_type=MessageType.SETUP_REQUEST,
             data=SetupRequest(
@@ -39,13 +45,16 @@ class AnvilWorker(WorkerBase):
                 },
                 runner_version=get_version(),
             ),
-        ).dict()
+        )
+        logger.debug(f'Sending setup request: {pformat(msg)}')
+        return msg.dict()
 
     async def stopping(self):
         pass
 
     async def process_message(self, data):
         message = Message.deserialize(data)
+        logger.debug(f'Received message: {pformat(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
             self.process_setup_response(message.data)
             self.handler.start()

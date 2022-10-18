@@ -12,6 +12,7 @@ from asyncio.exceptions import TimeoutError
 
 import backoff
 import websockets
+from devtools import pformat
 from websockets.exceptions import (
     ConnectionClosedError,
     ConnectionClosedOK,
@@ -126,7 +127,6 @@ class WorkerBase(ABC):
 
     async def do_handshake(self):
         setup_request = self.get_setup_request()
-        logger.debug(f'{setup_request=}')
         await self.send(setup_request)
         message = await asyncio.wait_for(self.ws.recv(), timeout=5)
         await self.process_message(json.loads(message))
@@ -144,7 +144,6 @@ class WorkerBase(ABC):
         """
         try:
             message = await asyncio.wait_for(self.ws.recv(), timeout=1)
-            print(message)
             return json.loads(message)
         except TimeoutError:  # pragma: no cover
             pass
@@ -164,7 +163,6 @@ class WorkerBase(ABC):
                     message = await self.receive()
                     if not message:
                         continue
-                    logger.debug('New message received via WS')
                     await self.process_message(message)
             except (ConnectionClosedOK, StopBackoffError):
                 self.run_event.clear()
@@ -242,6 +240,7 @@ class WorkerBase(ABC):
     async def send_shutdown(self):
         try:
             msg = Message(version=2, message_type=MessageType.SHUTDOWN)
+            logger.debug(f'Sending message: {pformat(msg)}')
             await self.send(msg.serialize())
         except ConnectionClosedError:
             pass
