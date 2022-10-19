@@ -20,7 +20,7 @@ from connect.eaas.runner.constants import (
     RESULT_SENDER_MAX_RETRIES,
     RESULT_SENDER_WAIT_GRACE_SECONDS,
 )
-from connect.eaas.runner.helpers import get_version
+from connect.eaas.runner.helpers import configure_logger, get_version
 from connect.eaas.runner.managers import (
     BackgroundTasksManager,
     InteractiveTasksManager,
@@ -201,7 +201,8 @@ class EventsWorker(WorkerBase):
         return super().__repr__()
 
 
-def _start_event_worker_process(handler, runner_type):
+def _start_event_worker_process(handler, runner_type, debug, no_rich):
+    configure_logger(debug, no_rich)
     worker = EventsWorker(handler, runner_type=runner_type)
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
@@ -215,9 +216,9 @@ def _start_event_worker_process(handler, runner_type):
     loop.run_until_complete(worker.start())
 
 
-def start_interactive_worker_process(handler):
-    _start_event_worker_process(handler, 'interactive')
+def start_interactive_worker_process(handler, debug, no_rich):
+    _start_event_worker_process(handler, 'interactive', debug, no_rich)
 
 
-def start_background_worker_process(handler):
-    _start_event_worker_process(handler, 'background')
+def start_background_worker_process(handler, debug, no_rich):
+    _start_event_worker_process(handler, 'background', debug, no_rich)

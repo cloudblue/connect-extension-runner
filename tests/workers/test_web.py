@@ -488,7 +488,9 @@ def test_start_webapp_worker_process(mocker):
         'get_webapp_class',
     )
     mocker.patch.object(WebWorker, 'start', start_mock)
+    mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.web.configure_logger')
 
-    start_webapp_worker_process(mocker.MagicMock())
+    start_webapp_worker_process(mocker.MagicMock(), True, False)
 
+    mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
