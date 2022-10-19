@@ -22,7 +22,7 @@ from connect.eaas.core.proto import (
     WebTask,
 )
 from connect.eaas.runner.workers.base import WorkerBase
-from connect.eaas.runner.helpers import get_version
+from connect.eaas.runner.helpers import configure_logger, get_version
 
 
 logger = logging.getLogger(__name__)
@@ -174,7 +174,8 @@ class WebWorker(WorkerBase):
         return message.serialize()
 
 
-def start_webapp_worker_process(handler):
+def start_webapp_worker_process(handler, debug, no_rich):
+    configure_logger(debug, no_rich)
     worker = WebWorker(handler)
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(

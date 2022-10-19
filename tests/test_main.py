@@ -14,6 +14,12 @@ from connect.eaas.runner.main import (
 )
 
 
+parsed_args = namedtuple(
+    '_Args',
+    ('unsecure', 'extension_dir', 'split', 'no_validate', 'no_rich_logging', 'reload', 'debug'),
+)
+
+
 @pytest.mark.parametrize('unsecure', (True, False))
 def test_start(mocker, unsecure):
     mocked_master = mocker.MagicMock()
@@ -22,10 +28,22 @@ def test_start(mocker, unsecure):
         'connect.eaas.runner.main.Master',
         return_value=mocked_master,
     )
-    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir', 'split', 'no_validate'))
-    start(parsed_args(unsecure, extension_dir='/extension', split=False, no_validate=True))
+    start(parsed_args(
+        unsecure,
+        extension_dir='/extension',
+        split=False,
+        no_validate=True,
+        no_rich_logging=False,
+        reload=False,
+        debug=False,
+    ))
     mocked_master.run.assert_called_once()
-    mocked_master_cls.assert_called_once_with(not unsecure)
+    mocked_master_cls.assert_called_once_with(
+        secure=not unsecure,
+        debug=False,
+        no_rich=False,
+        reload=False,
+    )
 
 
 def test_start_validate_ok(mocker):
@@ -37,10 +55,22 @@ def test_start_validate_ok(mocker):
     )
     mocker.patch('connect.eaas.runner.main.validate_extension', return_value=('INFO', []))
 
-    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir', 'split', 'no_validate'))
-    start(parsed_args(False, extension_dir='/extension', split=False, no_validate=False))
+    start(parsed_args(
+        False,
+        extension_dir='/extension',
+        split=False,
+        no_validate=False,
+        no_rich_logging=False,
+        reload=False,
+        debug=False,
+    ))
     mocked_master.run.assert_called_once()
-    mocked_master_cls.assert_called_once_with(True)
+    mocked_master_cls.assert_called_once_with(
+        secure=True,
+        debug=False,
+        no_rich=False,
+        reload=False,
+    )
 
 
 def test_start_validate_warning(mocker):
@@ -52,10 +82,22 @@ def test_start_validate_warning(mocker):
     )
     mocker.patch('connect.eaas.runner.main.validate_extension', return_value=('WARNING', ['']))
 
-    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir', 'split', 'no_validate'))
-    start(parsed_args(False, extension_dir='/extension', split=False, no_validate=False))
+    start(parsed_args(
+        False,
+        extension_dir='/extension',
+        split=False,
+        no_validate=False,
+        no_rich_logging=False,
+        reload=False,
+        debug=False,
+    ))
     mocked_master.run.assert_called_once()
-    mocked_master_cls.assert_called_once_with(True)
+    mocked_master_cls.assert_called_once_with(
+        secure=True,
+        debug=False,
+        no_rich=False,
+        reload=False,
+    )
 
 
 def test_start_validate_error(mocker):
@@ -67,9 +109,16 @@ def test_start_validate_error(mocker):
     )
     mocker.patch('connect.eaas.runner.main.validate_extension', return_value=('ERROR', ['']))
 
-    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir', 'split', 'no_validate'))
     with pytest.raises(SystemExit):
-        start(parsed_args(False, extension_dir='/extension', split=False, no_validate=False))
+        start(parsed_args(
+            False,
+            extension_dir='/extension',
+            split=False,
+            no_validate=False,
+            no_rich_logging=False,
+            reload=False,
+            debug=False,
+        ))
 
 
 def test_start_no_feature(mocker):
@@ -85,9 +134,16 @@ def test_start_no_feature(mocker):
     )
     mocker.patch('connect.eaas.runner.main.validate_extension', return_value=('INFO', []))
 
-    parsed_args = namedtuple('_Args', ('unsecure', 'extension_dir', 'split', 'no_validate'))
     with pytest.raises(SystemExit):
-        start(parsed_args(False, extension_dir='/extension', split=False, no_validate=False))
+        start(parsed_args(
+            False,
+            extension_dir='/extension',
+            split=False,
+            no_validate=False,
+            no_rich_logging=False,
+            reload=False,
+            debug=False,
+        ))
     mocked_no_feature.assert_called()
 
 

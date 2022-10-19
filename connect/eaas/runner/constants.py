@@ -134,7 +134,7 @@ HANDLER_CLASS_TITLE = {
     'WebApp': 'Web Application',
 }
 
-PROCESS_CHECK_INTERVAL_SECS = 5
+PROCESS_CHECK_INTERVAL_SECS = 1
 
 LEVEL_TO_FONT_COLOR = {
     'INFO': ('ansi_regular', 'BLUE'),

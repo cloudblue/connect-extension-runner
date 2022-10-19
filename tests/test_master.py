@@ -1,6 +1,8 @@
+import logging
 import signal
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -39,35 +41,73 @@ def test_handler_classes():
 @pytest.mark.parametrize('secure', (True, False))
 def test_init(mocker, secure):
     mocked_config = mocker.patch('connect.eaas.runner.master.ConfigHelper')
+    mocked_signal = mocker.patch('connect.eaas.runner.master.signal.signal')
 
-    master = Master(secure)
+    mocked_flt_instance = mocker.MagicMock()
+    mocked_pyfilter = mocker.patch(
+        'connect.eaas.runner.master.PythonFilter',
+        return_value=mocked_flt_instance,
+    )
+    mocked_watch = mocker.patch('connect.eaas.runner.master.watch')
+
+    master = Master(
+        secure=secure,
+        debug=True,
+        no_rich=False,
+        reload=True,
+    )
 
     mocked_config.assert_called_once_with(secure=secure)
     assert master.workers == {}
-    assert master.exited_workers == {}
+    assert master.debug is True
+    assert master.no_rich is False
+    assert master.reload is True
+
     assert isinstance(master.stop_event, threading.Event)
+    assert isinstance(master.monitor_event, threading.Event)
+    mocked_pyfilter.assert_called_once_with(ignore_paths=None)
+    assert master.watch_filter == mocked_flt_instance
+    mocked_watch.assert_called_once_with(
+        Path.cwd(),
+        watch_filter=mocked_flt_instance,
+        stop_event=master.stop_event,
+        yield_on_timeout=True,
+    )
+
     for worker_type in WORKER_TYPES:
         assert isinstance(master.handlers[worker_type], Master.HANDLER_CLASSES[worker_type])
+
+    assert mocked_signal.mock_calls[0].args == (signal.SIGINT, master.handle_signal)
+    assert mocked_signal.mock_calls[1].args == (signal.SIGTERM, master.handle_signal)
 
 
 @pytest.mark.parametrize('worker_type', WORKER_TYPES)
 def test_start_worker_process(mocker, worker_type):
     handler = mocker.MagicMock()
-    handler._config = mocker.MagicMock()
     mocked_process = mocker.MagicMock()
-    mocked_process_cls = mocker.patch(
-        'connect.eaas.runner.master.Process',
+    mocked_start_process = mocker.patch(
+        'connect.eaas.runner.master.start_process',
         return_value=mocked_process,
     )
+
     master = Master()
     master.start_worker_process(worker_type, handler)
     assert master.workers[worker_type] == mocked_process
-    assert mocked_process_cls.mock_calls[0].kwargs['target'] == Master.PROCESS_TARGETS[worker_type]
-    assert mocked_process_cls.mock_calls[0].kwargs['args'] == (handler,)
-    mocked_process.start.assert_called_once()
+    mocked_start_process.assert_called_once_with(
+        master.PROCESS_TARGETS[worker_type],
+        'function',
+        (handler, master.debug, master.no_rich),
+        {},
+    )
 
 
-def test_run_start_processes(mocker):
+def test_start(mocker):
+    mocked_thread = mocker.MagicMock()
+    mocked_thread_cls = mocker.patch(
+        'connect.eaas.runner.master.threading.Thread',
+        return_value=mocked_thread,
+    )
+    mocker.patch
     for handler_cls in (AnvilApp, WebApp, EventsApp):
         mocker.patch.object(
             handler_cls,
@@ -76,23 +116,94 @@ def test_run_start_processes(mocker):
         )
 
     mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
-    mocked_signal = mocker.patch('connect.eaas.runner.master.signal.signal')
 
     master = Master()
-    master.stop_event.set()
-    master.run()
+    master.start()
 
     assert tuple([
         mock_call.args[0] for mock_call in mocked_start_process.mock_calls
     ]) == WORKER_TYPES
 
-    assert mocked_signal.mock_calls[0].args[0] == signal.SIGINT
-    assert mocked_signal.mock_calls[1].args[0] == signal.SIGTERM
+    assert master.monitor_event.is_set() is True
+    mocked_thread_cls.assert_called_once_with(target=master.monitor_processes)
+    mocked_thread.start.assert_called_once()
 
 
-def test_run_restart_died_process(mocker):
+def test_stop(mocker):
+    master = Master()
+    master.monitor_event.set()
+    master.monitor_thread = mocker.MagicMock()
+    master.workers['test'] = mocker.MagicMock()
+
+    master.stop()
+
+    assert master.monitor_event.is_set() is False
+    master.monitor_thread.join.assert_called_once()
+    master.workers['test'].stop.assert_called_once_with(sigint_timeout=5, sigkill_timeout=1)
+
+
+def test_restart(mocker):
+    mocked_stop = mocker.patch.object(Master, 'stop')
+    mocked_start = mocker.patch.object(Master, 'start')
+
+    master = Master()
+
+    master.restart()
+
+    mocked_stop.assert_called_once()
+    mocked_start.assert_called_once()
+
+
+def test_handle_signal():
+    master = Master()
+    master.handle_signal()
+    assert master.stop_event.is_set() is True
+
+
+def test_next():
+    master = Master()
+    master.watcher = iter([[(None, '/file1.py')], None])
+
+    assert next(master) == [Path('/file1.py')]
+    assert next(master) is None
+
+
+def test_run(mocker):
+    mocked_start = mocker.patch.object(Master, 'start')
+    mocked_stop = mocker.patch.object(Master, 'stop')
+
+    master = Master()
+    master.stop_event.wait = mocker.MagicMock()
+
+    master.run()
+    mocked_start.assert_called_once()
+    mocked_stop.assert_called_once()
+    master.stop_event.wait.assert_called_once()
+
+
+def test_run_with_reload(mocker, caplog):
+    mocked_start = mocker.patch.object(Master, 'start')
+    mocked_stop = mocker.patch.object(Master, 'stop')
+    mocked_restart = mocker.patch.object(Master, 'restart')
+    mocker.patch.object(
+        Master,
+        '__next__',
+        side_effect=[[Path.cwd() / Path('changed_file.py')], None],
+    )
+
+    master = Master(reload=True)
+    master.stop_event.wait = mocker.MagicMock()
+    with caplog.at_level(logging.WARNING):
+        master.run()
+    assert 'Detected changes in "changed_file.py"' in caplog.text
+    mocked_start.assert_called_once()
+    mocked_restart.assert_called_once()
+    mocked_stop.assert_called_once()
+    master.stop_event.wait.assert_not_called()
+
+
+def test_monitor_restart_died_process(mocker):
     mocker.patch('connect.eaas.runner.master.PROCESS_CHECK_INTERVAL_SECS', 0.01)
-    mocker.patch('connect.eaas.runner.master.signal.signal')
     mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
     mocked_notify = mocker.patch('connect.eaas.runner.master.notify_process_restarted')
 
@@ -102,12 +213,12 @@ def test_run_restart_died_process(mocker):
 
     master = Master()
     master.workers['webapp'] = mocked_process
-    master.exited_workers['webapp'] = False
+    master.monitor_event.set()
 
-    t = threading.Thread(target=master.run)
+    t = threading.Thread(target=master.monitor_processes)
     t.start()
     time.sleep(.03)
-    master.stop_event.set()
+    master.monitor_event.clear()
     t.join()
 
     mocked_notify.assert_called()
@@ -118,30 +229,30 @@ def test_run_restart_died_process(mocker):
     )
 
 
-def test_run_process_exited(mocker):
+def test_monitor_process_exited(mocker, caplog):
     mocker.patch('connect.eaas.runner.master.PROCESS_CHECK_INTERVAL_SECS', 0.01)
     mocker.patch('connect.eaas.runner.master.signal.signal')
     mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
     mocked_notify = mocker.patch('connect.eaas.runner.master.notify_process_restarted')
 
     mocked_process = mocker.MagicMock()
-    mocked_process.is_alive.return_value = True
+    mocked_process.is_alive.return_value = False
+    mocked_process.exitcode = 0
 
     master = Master()
     master.workers['webapp'] = mocked_process
-    master.exited_workers['webapp'] = False
+    master.monitor_event.set()
 
-    t = threading.Thread(target=master.run)
-    t.start()
-    time.sleep(.03)
-    mocked_process.is_alive.return_value = False
-    mocked_process.exitcode = 0
-    time.sleep(.05)
-    t.join()
+    with caplog.at_level(logging.INFO):
+        t = threading.Thread(target=master.monitor_processes)
+        t.start()
+        time.sleep(.03)
+        master.monitor_event.clear()
+        t.join()
 
+    assert 'Webapp worker exited' in caplog.text
     mocked_notify.assert_not_called()
     mocked_start_process.assert_not_called()
-    assert master.exited_workers['webapp'] is True
 
 
 def test_get_available_features(mocker):

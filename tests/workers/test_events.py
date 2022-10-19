@@ -1823,9 +1823,11 @@ def test_start_interactive_worker_process(mocker):
         'get_extension_class',
     )
     mocker.patch.object(EventsWorker, 'start', start_mock)
+    mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.events.configure_logger')
 
-    start_interactive_worker_process(mocker.MagicMock())
+    start_interactive_worker_process(mocker.MagicMock(), True, False)
 
+    mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
 
 
@@ -1837,7 +1839,9 @@ def test_start_background_worker_process(mocker):
         'get_extension_class',
     )
     mocker.patch.object(EventsWorker, 'start', start_mock)
+    mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.events.configure_logger')
 
-    start_background_worker_process(mocker.MagicMock())
+    start_background_worker_process(mocker.MagicMock(), True, False)
 
+    mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()

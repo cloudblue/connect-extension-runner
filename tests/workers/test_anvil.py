@@ -168,7 +168,9 @@ def test_start_anvilapp_worker_process(mocker):
         'get_anvilapp_class',
     )
     mocker.patch.object(AnvilWorker, 'start', start_mock)
+    mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.anvil.configure_logger')
 
-    start_anvilapp_worker_process(mocker.MagicMock())
+    start_anvilapp_worker_process(mocker.MagicMock(), True, False)
 
+    mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
