@@ -14,7 +14,7 @@ ws4py = "*"
 
 [[package]]
 name = "anyio"
-version = "3.6.1"
+version = "3.6.2"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 category = "main"
 optional = false
@@ -27,7 +27,7 @@ sniffio = ">=1.1"
 [package.extras]
 doc = ["packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
 test = ["contextlib2", "coverage[toml] (>=4.5)", "hypothesis (>=4.0)", "mock (>=4)", "pytest (>=7.0)", "pytest-mock (>=3.6.1)", "trustme", "uvloop (<0.15)", "uvloop (>=0.15)"]
-trio = ["trio (>=0.16)"]
+trio = ["trio (>=0.16,<0.22)"]
 
 [[package]]
 name = "argparse"
@@ -135,7 +135,7 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
 name = "connect-eaas-core"
-version = "26.4"
+version = "26.5"
 description = "Connect Eaas Core"
 category = "main"
 optional = false
@@ -436,7 +436,7 @@ testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packag
 
 [[package]]
 name = "inflect"
-version = "6.0.0"
+version = "6.0.1"
 description = "Correctly generate plurals, singular nouns, ordinals, indefinite articles; convert numbers to words"
 category = "main"
 optional = false
@@ -446,8 +446,8 @@ python-versions = ">=3.7"
 pydantic = "*"
 
 [package.extras]
-docs = ["jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx"]
-testing = ["pygments", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)"]
+testing = ["flake8 (<5)", "pygments", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
 
 [[package]]
 name = "iniconfig"
@@ -938,7 +938,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "5f690cd4f7f4c6be0c4711908aab31d0e2aceb425473adc24ad8f614eefd0eb3"
+content-hash = "65838658e3174b83ca479755d0e6208124bb2e01dc7de0f64b7787b1650a3f0e"
 
 [metadata.files]
 anvil-uplink = [
@@ -946,8 +946,8 @@ anvil-uplink = [
     {file = "anvil_uplink-0.4.0-py2.py3-none-any.whl", hash = "sha256:384664176ec14166a5f19bcb6d5451e2faf0068b46b68714bda908ca8640f2b3"},
 ]
 anyio = [
-    {file = "anyio-3.6.1-py3-none-any.whl", hash = "sha256:cb29b9c70620506a9a8f87a309591713446953302d7d995344d0d7c6c0c9a7be"},
-    {file = "anyio-3.6.1.tar.gz", hash = "sha256:413adf95f93886e442aea925f3ee43baa5a765a64a0f52c6081894f9992fdd0b"},
+    {file = "anyio-3.6.2-py3-none-any.whl", hash = "sha256:fbbe32bd270d2a2ef3ed1c5d45041250284e31fc0a4df4a5a6071842051a51e3"},
+    {file = "anyio-3.6.2.tar.gz", hash = "sha256:25ea0d673ae30af41a0c442f81cf3b38c7e79fdc7b60335a4c14e05eb0947421"},
 ]
 argparse = [
     {file = "argparse-1.4.0-py2.py3-none-any.whl", hash = "sha256:c31647edb69fd3d465a847ea3157d37bed1f95f19760b11a47aa91c04b666314"},
@@ -989,8 +989,8 @@ commonmark = [
     {file = "commonmark-0.9.1.tar.gz", hash = "sha256:452f9dc859be7f06631ddcb328b6919c67984aca654e5fefb3914d54691aed60"},
 ]
 connect-eaas-core = [
-    {file = "connect_eaas_core-26.4-py3-none-any.whl", hash = "sha256:ac1957b149441b5307249a85ff0b14a902d3359e035fb2c0f999e99add171183"},
-    {file = "connect_eaas_core-26.4.tar.gz", hash = "sha256:2a9c7c86a37d681ed4c534f315a8943c241959f9dcfbbe5ac9785e454b1f9af0"},
+    {file = "connect_eaas_core-26.5-py3-none-any.whl", hash = "sha256:e9d4090f8757797e28893726aea99fbb5ac7237caea1ac39e81ce5059ad60f8a"},
+    {file = "connect_eaas_core-26.5.tar.gz", hash = "sha256:4b2d721af623771962bb04835c6eb3d6541abb7f85d35cacb478265e994072b7"},
 ]
 connect-markdown-renderer = [
     {file = "connect-markdown-renderer-2.0.1.tar.gz", hash = "sha256:fbaefff195a6c347a7f89e75a09e78f6be35c903d72a2766c8f263ca75758757"},
@@ -1193,8 +1193,8 @@ importlib-metadata = [
     {file = "importlib_metadata-5.0.0.tar.gz", hash = "sha256:da31db32b304314d044d3c12c79bd59e307889b287ad12ff387b3500835fc2ab"},
 ]
 inflect = [
-    {file = "inflect-6.0.0-py3-none-any.whl", hash = "sha256:e3b85d65a296843268f35f4136283ad7c012a129375db1529d49b4b01ecb400b"},
-    {file = "inflect-6.0.0.tar.gz", hash = "sha256:0bc1516ec2725e2d8221707a612245093cb6f1cea209cfd8cbd4fc5e96fa6365"},
+    {file = "inflect-6.0.1-py3-none-any.whl", hash = "sha256:27164f5627eb2753c55a0b09c615919d535001ba8c44d94dfc1ce5ea2664d91b"},
+    {file = "inflect-6.0.1.tar.gz", hash = "sha256:9e43f00d0f75b0d553e53c532ff45a249b99472dfe41683dbf978ca6c7839281"},
 ]
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},

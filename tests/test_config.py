@@ -25,7 +25,7 @@ def test_update_dynamic_config(mocker):
     mocker.patch('connect.eaas.runner.config.logging.getLogger')
     config = ConfigHelper()
     payload = SetupResponse(
-        variables={'var': 'value'},
+        variables=[{'name': 'var', 'value': 'value'}],
         environment_type='production',
         logging=Logging(
             log_level='DEBUG',
@@ -42,7 +42,7 @@ def test_update_dynamic_config(mocker):
     )
 
     config.update_dynamic_config(payload)
-    assert config.variables == payload.variables
+    assert config.variables == {var['name']: var['value'] for var in payload.variables}
     assert config.service_id == payload.logging.meta.service_id
     assert config.products == payload.logging.meta.products
     assert config.hub_id == payload.logging.meta.hub_id
@@ -59,7 +59,7 @@ def test_update_dynamic_config(mocker):
     )
 
     config.update_dynamic_config(payload2)
-    assert config.variables == payload.variables
+    assert config.variables == {var['name']: var['value'] for var in payload.variables}
     assert config.service_id == payload.logging.meta.service_id
     assert config.products == payload.logging.meta.products
     assert config.hub_id == payload.logging.meta.hub_id
@@ -69,11 +69,11 @@ def test_update_dynamic_config(mocker):
     assert config.environment_type == payload.environment_type
 
     payload3 = SetupResponse(
-        variables={'var2': 'value2'},
+        variables=[{'name': 'var2', 'value': 'value2'}],
     )
 
     config.update_dynamic_config(payload3)
-    assert config.variables == payload3.variables
+    assert config.variables == {var['name']: var['value'] for var in payload3.variables}
     assert config.service_id == payload.logging.meta.service_id
     assert config.products == payload.logging.meta.products
     assert config.hub_id == payload.logging.meta.hub_id

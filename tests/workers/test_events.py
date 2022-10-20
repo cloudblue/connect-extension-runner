@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 import time
 
@@ -111,7 +112,10 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         ).dict(),
     )
 
-    assert worker.config.variables == settings_payload['variables']
+    assert worker.config.variables == {
+        var['name']: var['value']
+        for var in settings_payload['variables']
+    }
     assert worker.config.logging_api_key == settings_payload['logging']['logging_api_key']
     assert worker.config.environment_type == settings_payload['environment_type']
     assert worker.config.account_id == settings_payload['logging']['meta']['account_id']
@@ -1188,10 +1192,18 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
         version=2,
         message_type=MessageType.SETUP_RESPONSE,
         data=SetupResponse(
-            variables={
-                'var1': 'value1',
-                'var2': 'value2',
-            },
+            variables=[
+                {
+                    'name': 'var1',
+                    'value': 'value1',
+                    'secure': False,
+                },
+                {
+                    'name': 'var2',
+                    'value': 'value2',
+                    'secure': False,
+                },
+            ],
             logging={'logging_api_key': 'token'},
             environment_type='development',
         ),
@@ -1272,10 +1284,18 @@ async def test_extension_settings_with_vars_decorated(mocker, ws_server, unused_
         version=2,
         message_type=MessageType.SETUP_RESPONSE,
         data=SetupResponse(
-            variables={
-                'var1': 'value1',
-                'var2': 'value2',
-            },
+            variables=[
+                {
+                    'name': 'var1',
+                    'value': 'value1',
+                    'secure': False,
+                },
+                {
+                    'name': 'var2',
+                    'value': 'value2',
+                    'secure': False,
+                },
+            ],
             logging={'logging_api_key': 'token'},
             environment_type='development',
         ),
@@ -1356,10 +1376,18 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
         version=2,
         message_type=MessageType.SETUP_RESPONSE,
         data=SetupResponse(
-            variables={
-                'var1': 'value1',
-                'var2': 'value2',
-            },
+            variables=[
+                {
+                    'name': 'var1',
+                    'value': 'value1',
+                    'secure': False,
+                },
+                {
+                    'name': 'var2',
+                    'value': 'value2',
+                    'secure': False,
+                },
+            ],
             logging={'logging_api_key': 'token'},
             environment_type='development',
         ),
@@ -1758,8 +1786,9 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
     )
 
     dyn_config = SetupResponse(**settings_payload)
-    settings_payload['variables'] = {'conf2': 'val2'}
-    updated_config = SetupResponse(**settings_payload)
+    second_payload = copy.deepcopy(settings_payload)
+    second_payload['variables'] = [{'name': 'conf2', 'value': 'val2', 'secure': False}]
+    updated_config = SetupResponse(**second_payload)
 
     data_to_send = [
         Message(
@@ -1789,7 +1818,6 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
         await asyncio.sleep(.5)
         worker.stop()
         await task
-
         assert worker.config.variables == {'conf2': 'val2'}
 
 

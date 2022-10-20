@@ -179,5 +179,8 @@ class EventsApp:
         return self._extension_class.get_variables()
 
     def get_extension_class(self):
-        ext_class = next(iter_entry_points('connect.eaas.ext', 'extension'), None)
+        ext_class = next(
+            iter_entry_points('connect.eaas.ext', 'eventsapp'),
+            next(iter_entry_points('connect.eaas.ext', 'extension'), None),
+        )
         return ext_class.load() if ext_class else None

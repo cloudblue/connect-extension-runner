@@ -67,7 +67,7 @@ def extension_cls():
 @pytest.fixture(scope='session')
 def settings_payload():
     return {
-        'variables': {'conf1': 'val1'},
+        'variables': [{'name': 'conf1', 'value': 'val1', 'secure': False}],
         'environment_type': 'development',
         'logging': {
             'logging_api_key': None,

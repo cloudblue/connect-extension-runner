@@ -95,7 +95,10 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
     handler.assert_received(msg.dict())
 
-    assert worker.config.variables == settings_payload['variables']
+    assert worker.config.variables == {
+        var['name']: var['value']
+        for var in settings_payload['variables']
+    }
     assert worker.config.logging_api_key == settings_payload['logging']['logging_api_key']
     assert worker.config.environment_type == settings_payload['environment_type']
     assert worker.config.account_id == settings_payload['logging']['meta']['account_id']
