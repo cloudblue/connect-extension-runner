@@ -71,7 +71,10 @@ class ConfigHelper:
 
     @property
     def variables(self):
-        return self.dyn_config.variables if self.dyn_config else {}
+        return (
+            {var['name']: var['value'] for var in self.dyn_config.variables or {}}
+            if self.dyn_config else {}
+        )
 
     @property
     def metadata(self):

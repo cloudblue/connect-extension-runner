@@ -1,5 +1,7 @@
 from importlib.metadata import EntryPoint
 
+import pytest
+
 from connect.eaas.core.proto import Logging, LogMeta, SetupResponse
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.events import EventsApp
@@ -38,7 +40,11 @@ def test_get_method(mocker, settings_payload, extension_cls):
     )
 
 
-def test_get_extension_class(mocker, settings_payload):
+@pytest.mark.parametrize(
+    'entrypoint_name',
+    ('eventsapp', 'extension'),
+)
+def test_get_extension_class(mocker, settings_payload, entrypoint_name):
 
     config = ConfigHelper()
     dyn_config = SetupResponse(
@@ -74,7 +80,7 @@ def test_get_extension_class(mocker, settings_payload):
     mocker.patch(
         'connect.eaas.runner.handlers.events.iter_entry_points',
         return_value=iter([
-            EntryPoint('extension', None, 'connect.eaas.ext'),
+            EntryPoint(entrypoint_name, None, 'connect.eaas.ext'),
         ]),
     )
 
