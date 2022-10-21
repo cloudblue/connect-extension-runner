@@ -5,7 +5,7 @@ import pytest
 from fastapi import Depends, Header
 from fastapi.routing import APIRouter
 
-from connect.client import ConnectClient
+from connect.client import ClientError, ConnectClient
 from connect.eaas.core.decorators import (
     account_settings_page,
     admin_pages,
@@ -15,6 +15,7 @@ from connect.eaas.core.decorators import (
 )
 from connect.eaas.core.extension import WebApplicationBase
 from connect.eaas.core.inject.synchronous import get_installation, get_installation_client
+from connect.eaas.core.utils import client_error_exception_handler
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.web import _OpenApiCORSMiddleware, WebApp
 
@@ -151,7 +152,10 @@ def test_get_asgi_application(mocker, static_root):
     )
 
     mocked_fastapi = mocker.MagicMock()
-    mocker.patch('connect.eaas.runner.handlers.web.FastAPI', return_value=mocked_fastapi)
+    mocked_fastapi_constructor = mocker.patch(
+        'connect.eaas.runner.handlers.web.FastAPI',
+        return_value=mocked_fastapi,
+    )
 
     mocked_static = mocker.MagicMock()
 
@@ -162,6 +166,13 @@ def test_get_asgi_application(mocker, static_root):
     handler = WebApp(config)
 
     assert handler.app == mocked_fastapi
+
+    mocked_fastapi_constructor.assert_called_once_with(
+        openapi_url='/openapi/spec.json',
+        exception_handlers={
+            ClientError: client_error_exception_handler,
+        },
+    )
 
     assert mocked_fastapi.include_router.mock_calls[0].args[0] == auth_router
     assert mocked_fastapi.include_router.mock_calls[0].kwargs['prefix'] == '/api'

@@ -135,7 +135,7 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
 name = "connect-eaas-core"
-version = "26.5"
+version = "26.6"
 description = "Connect Eaas Core"
 category = "main"
 optional = false
@@ -143,7 +143,7 @@ python-versions = ">=3.8,<4.0"
 
 [package.dependencies]
 anvil-uplink = ">=0.4.0,<0.5.0"
-connect-openapi-client = ">=25.11"
+connect-openapi-client = ">=25.14"
 fastapi = ">=0.78.0,<0.79.0"
 fastapi-utils = ">=0.2.1,<0.3.0"
 logzio-python-handler = ">=3.1.1,<4.0.0"
@@ -165,7 +165,7 @@ rich = ">=12.4.1,<13.0.0"
 
 [[package]]
 name = "connect-openapi-client"
-version = "25.13"
+version = "25.14"
 description = "Connect Python OpenAPI Client"
 category = "main"
 optional = false
@@ -436,14 +436,14 @@ testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packag
 
 [[package]]
 name = "inflect"
-version = "6.0.1"
+version = "6.0.2"
 description = "Correctly generate plurals, singular nouns, ordinals, indefinite articles; convert numbers to words"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-pydantic = "*"
+pydantic = ">=1.9.1"
 
 [package.extras]
 docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)"]
@@ -649,7 +649,7 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtuale
 
 [[package]]
 name = "pytest-httpx"
-version = "0.21.0"
+version = "0.21.1"
 description = "Send responses to httpx."
 category = "main"
 optional = false
@@ -938,7 +938,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "65838658e3174b83ca479755d0e6208124bb2e01dc7de0f64b7787b1650a3f0e"
+content-hash = "7d888d17e3654f474c6963175e8f95d2b3a7db3db3899b6e56cb53115167d6ec"
 
 [metadata.files]
 anvil-uplink = [
@@ -989,16 +989,16 @@ commonmark = [
     {file = "commonmark-0.9.1.tar.gz", hash = "sha256:452f9dc859be7f06631ddcb328b6919c67984aca654e5fefb3914d54691aed60"},
 ]
 connect-eaas-core = [
-    {file = "connect_eaas_core-26.5-py3-none-any.whl", hash = "sha256:e9d4090f8757797e28893726aea99fbb5ac7237caea1ac39e81ce5059ad60f8a"},
-    {file = "connect_eaas_core-26.5.tar.gz", hash = "sha256:4b2d721af623771962bb04835c6eb3d6541abb7f85d35cacb478265e994072b7"},
+    {file = "connect_eaas_core-26.6-py3-none-any.whl", hash = "sha256:e995cb3de5480224187ec877d652384b167d43a539c9e6f18a03ce4133513b89"},
+    {file = "connect_eaas_core-26.6.tar.gz", hash = "sha256:59cc43c8a3376df3a89247112dd6d219fa300f5de9e59e38ed6d08dc63cae9e7"},
 ]
 connect-markdown-renderer = [
     {file = "connect-markdown-renderer-2.0.1.tar.gz", hash = "sha256:fbaefff195a6c347a7f89e75a09e78f6be35c903d72a2766c8f263ca75758757"},
     {file = "connect_markdown_renderer-2.0.1-py3-none-any.whl", hash = "sha256:8d726b947d877697a42f528799908481685bf0db6a17b4e6d715389bfae9cccd"},
 ]
 connect-openapi-client = [
-    {file = "connect_openapi_client-25.13-py3-none-any.whl", hash = "sha256:aadcbd9e2699b9542da9b3745ac156573612030a10d9499f7ef2fa87bb7fb8b3"},
-    {file = "connect_openapi_client-25.13.tar.gz", hash = "sha256:6c4f55d59cd2d22e10761ddd46f77afbf34a3a370f51805cf7435b8ade87efdf"},
+    {file = "connect_openapi_client-25.14-py3-none-any.whl", hash = "sha256:754c45dcb6d58149fd56ea5ce556cc61a305fb85af7bb5b6f00681cb521cf414"},
+    {file = "connect_openapi_client-25.14.tar.gz", hash = "sha256:24f43a2671c240340659c2e10866a13373ea1d1775288a1e55209c4db81e4ebf"},
 ]
 coverage = [
     {file = "coverage-5.5-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:b6d534e4b2ab35c9f93f46229363e17f63c53ad01330df9f2d6bd1187e5eaacf"},
@@ -1193,8 +1193,8 @@ importlib-metadata = [
     {file = "importlib_metadata-5.0.0.tar.gz", hash = "sha256:da31db32b304314d044d3c12c79bd59e307889b287ad12ff387b3500835fc2ab"},
 ]
 inflect = [
-    {file = "inflect-6.0.1-py3-none-any.whl", hash = "sha256:27164f5627eb2753c55a0b09c615919d535001ba8c44d94dfc1ce5ea2664d91b"},
-    {file = "inflect-6.0.1.tar.gz", hash = "sha256:9e43f00d0f75b0d553e53c532ff45a249b99472dfe41683dbf978ca6c7839281"},
+    {file = "inflect-6.0.2-py3-none-any.whl", hash = "sha256:182741ec7e9e4c8f7f55b01fa6d80bcd3c4a183d349dfa6d9abbff0a1279e98f"},
+    {file = "inflect-6.0.2.tar.gz", hash = "sha256:f1a6bcb0105046f89619fde1a7d044c612c614c2d85ef182582d9dc9b86d309a"},
 ]
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
@@ -1300,8 +1300,8 @@ pytest-cov = [
     {file = "pytest_cov-2.12.1-py2.py3-none-any.whl", hash = "sha256:261bb9e47e65bd099c89c3edf92972865210c36813f80ede5277dceb77a4a62a"},
 ]
 pytest-httpx = [
-    {file = "pytest_httpx-0.21.0-py3-none-any.whl", hash = "sha256:b7633af7c79d61471db1b17fd020664759305f370b07ed55009e91d014590e27"},
-    {file = "pytest_httpx-0.21.0.tar.gz", hash = "sha256:00a007bd9c0928b30259a046a0ba21316ab5f444842a5bfc4f277c47f88b452f"},
+    {file = "pytest_httpx-0.21.1-py3-none-any.whl", hash = "sha256:bdf6ab7f503b7887557546667246acc89523a969f4fc1af462f9793bc43bcdf7"},
+    {file = "pytest_httpx-0.21.1.tar.gz", hash = "sha256:c74c4276a95bc1348bf82e09825d545e55cc0844f15a2691ad7a410f60d7c8ec"},
 ]
 pytest-mock = [
     {file = "pytest-mock-3.10.0.tar.gz", hash = "sha256:fbbdb085ef7c252a326fd8cdcac0aa3b1333d8811f131bdcc701002e1be7ed4f"},

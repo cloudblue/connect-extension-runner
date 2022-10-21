@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import generate_operation_summary, get_openapi
 
+from connect.client import ClientError
+from connect.eaas.core.utils import client_error_exception_handler
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.helpers import iter_entry_points
 
@@ -135,6 +137,9 @@ class WebApp:
     def get_asgi_application(self):
         app = FastAPI(
             openapi_url='/openapi/spec.json',
+            exception_handlers={
+                ClientError: client_error_exception_handler,
+            },
         )
         app.add_middleware(
             _OpenApiCORSMiddleware,
