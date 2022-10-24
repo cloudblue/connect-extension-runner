@@ -3,6 +3,13 @@ set -e
 
 EXTENSION_DIR=${EXTENSION_DIR:-'/extension'}
 
+C_RESET='\033[0m'
+C_I_BLUE='\033[0;94m'
+C_I_YELLOW='\033[0;93m'
+C_I_PURPLE='\033[0;95m'
+C_I_WHITE_UL='\033[1;4;97m'
+
+
 if [[ "$EXTENSION_DIR"  != /* ]]; then
     echo "Extension directory ($EXTENSION_DIR) must be an absolute path"
     exit 1
@@ -49,10 +56,43 @@ if [[ "$@" == *"cextrun"* ]]; then
 fi
 
 if [[ "$@" == *bash* ]]; then
-    echo "To install the extension execute poetry build inside /extension folder"
-    echo "In order to run the extension manually run the command cextrun"
-    echo "In order to run the extension in debug mode, please use cextrun -d command"
-    echo "In the case that you modified dependencies or want to install development dependencies run the command: poetry install"
+    echo
+
+    pyfiglet -f ansi_regular -c BLUE "Connect Extension Runner"
+    while read -r line; do echo -e $line; done << EOF
+
+To install your extension execute:
+
+\t${C_I_BLUE}$ poetry install${C_RESET}
+
+
+To start the Connect Extension Runner execute:
+
+\t${C_I_BLUE}$ cextrun${C_RESET}
+
+
+You can add the ${C_I_YELLOW}--debug${C_RESET} flag to the ${C_I_BLUE}cextrun${C_RESET} command to set the log level to ${C_I_YELLOW}DEBUG${C_RESET}.
+
+If you want the runner to detect the changes to your python files you can use the ${C_I_YELLOW}--reload${C_RESET} flag to start it in autoreload mode:
+
+\t${C_I_BLUE}$ cextrun${C_RESET} ${C_I_YELLOW}--debug${C_RESET} ${C_I_YELLOW}--reload${C_RESET}
+
+You can also use a pre-configured tmux session that starts the runner in debug and autoreload mode and, ${C_I_WHITE_UL}if your extension provide a UI,${C_RESET}
+it also starts webpack in watch mode.
+
+To run it execute:
+
+\t${C_I_BLUE}$ extension-devel${C_RESET}
+
+The following key bindings are configured for you:
+
+\t${C_I_PURPLE}F1${C_RESET} - Switch to runner window
+\t${C_I_PURPLE}F2${C_RESET} - Switch to webpack window
+\t${C_I_PURPLE}F3${C_RESET} - Send CTRL+C to both windows so the session will be terminated
+
+EOF
+
+
 fi
 
 exec "$@"

@@ -1,8 +1,13 @@
-FROM python:3.10
+FROM python:3.10-slim
 
 ENV NODE_VERSION=16.17.1
 
-RUN apt install -y curl
+RUN apt-get update; \
+    apt-get install -y git curl tmux; \
+    apt-get autoremove -y; \
+    apt-get clean -y; \
+    rm -rf /var/lib/apt/lists/*
+
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 ENV NVM_DIR=/root/.nvm
 RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
@@ -30,9 +35,19 @@ RUN poetry build
 
 RUN pip install dist/*.whl
 
+COPY ./connect/eaas/runner/artworks/ansi_regular.flf /install_temp/.
+COPY ./connect/eaas/runner/artworks/bloody.flf /install_temp/.
+
+RUN pyfiglet -L ansi_regular.flf && pyfiglet -L bloody.flf
+
 RUN rm -rf /install_temp
+
+COPY ./extension-devel /usr/local/bin/extension-devel
+RUN chmod 755 /usr/local/bin/extension-devel
 
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
+
+WORKDIR /extension
 
 ENTRYPOINT [ "/entrypoint.sh" ]
