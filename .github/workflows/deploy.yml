@@ -43,11 +43,6 @@ jobs:
         if [ "$(curl -s -o /dev/null -w '%{http_code}' https://pypi.org/pypi/connect-extension-runner/${{ steps.tag.outputs.result }}/json)" = "404" ]; then poetry publish -u $TWINE_USERNAME -p $TWINE_PASSWORD; fi
     - name: Set Connect and Runner major versions
       id: cnctver
-      outputs:
-        connect_major:
-          description: Connect current major version
-        runner_major:
-          description: Runner current major version
       run: |
         echo connect_major="$(curl -sI https://api.connect.cloudblue.com/public/v1|grep -Fi 'connect-version' | tr -d '\r' | sed -En 's/^Connect-Version: (.*)/\1/p'|cut -f1 -d'.')" >> $GITHUB_OUTPUT
         echo runner_major="$(echo ${{ steps.tag.outputs.result }}|cut -f1 -d '.')" >> $GITHUB_OUTPUT
