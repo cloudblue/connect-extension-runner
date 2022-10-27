@@ -204,6 +204,7 @@ def test_properties(mocker):
     assert handler.schedulables == MyExtension.get_schedulables()
     assert handler.readme == descriptor['readme_url']
     assert handler.changelog == descriptor['changelog_url']
+    assert handler.audience is None
     assert handler.should_start is True
 
 

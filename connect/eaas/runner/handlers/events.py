@@ -54,6 +54,10 @@ class EventsApp:
         return self._descriptor['changelog_url']
 
     @property
+    def audience(self):
+        return self._descriptor.get('audience')
+
+    @property
     def features(self):
         return {
             'events': self.get_events(),

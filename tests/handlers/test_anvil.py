@@ -37,6 +37,7 @@ def test_properties(mocker):
     descriptor = {
         'readme_url': 'https://readme.com',
         'changelog_url': 'https://changelog.org',
+        'audience': ['vendor'],
     }
 
     variables = [
@@ -76,6 +77,7 @@ def test_properties(mocker):
     assert handler.variables == variables
     assert handler.readme == descriptor['readme_url']
     assert handler.changelog == descriptor['changelog_url']
+    assert handler.audience == descriptor['audience']
     assert handler.should_start is True
 
 

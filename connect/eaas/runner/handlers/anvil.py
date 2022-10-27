@@ -51,6 +51,10 @@ class AnvilApp:
         return self._anvilapp_class.get_descriptor()['changelog_url']
 
     @property
+    def audience(self):
+        return self._anvilapp_class.get_descriptor().get('audience')
+
+    @property
     def features(self):
         return {
             'callables': self._anvilapp_class.get_anvil_callables(),
