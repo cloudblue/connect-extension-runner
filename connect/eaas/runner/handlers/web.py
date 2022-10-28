@@ -75,6 +75,10 @@ class WebApp:
         return self._webapp_class.get_descriptor().get('icon')
 
     @property
+    def audience(self):
+        return self._webapp_class.get_descriptor().get('audience')
+
+    @property
     def app(self):
         if not self._app:
             self._app = self.get_asgi_application()

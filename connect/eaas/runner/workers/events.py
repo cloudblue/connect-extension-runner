@@ -92,6 +92,7 @@ class EventsWorker(WorkerBase):
                     'readme_url': self.handler.readme,
                     'changelog_url': self.handler.changelog,
                 },
+                audience=self.handler.audience,
                 runner_version=get_version(),
             ),
         )

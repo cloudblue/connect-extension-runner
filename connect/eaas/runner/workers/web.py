@@ -51,6 +51,7 @@ class WebWorker(WorkerBase):
                     'changelog_url': self.handler.changelog,
                 },
                 icon=self.handler.icon,
+                audience=self.handler.audience,
                 runner_version=get_version(),
             ),
         )
