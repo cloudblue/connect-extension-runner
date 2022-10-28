@@ -644,8 +644,9 @@ def test_anvilapp_detail_table():
     features = {
         'callables': [
             {
+                'method': 'summary(self, param)',
                 'summary': 'Summary',
-                'signature': 'summary(self, param)',
+                'description': 'Description',
             },
         ],
     }
@@ -703,8 +704,9 @@ def test_get_features_table():
             'features': {
                 'callables': [
                     {
+                        'method': 'summary(self, param)',
                         'summary': 'Summary',
-                        'signature': 'summary(self, param)',
+                        'description': 'Description',
                     },
                 ],
             },

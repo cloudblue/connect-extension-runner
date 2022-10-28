@@ -1,0 +1,17 @@
+
+
+To start the Connect Extension Runner execute:
+
+\t\033[0;94m$ cextrun\033[0m
+
+
+You can add the \033[0;93m--debug\033[0m flag to the \033[0;94mcextrun\033[0m command to set the log level to \033[0;93mDEBUG\033[0m.
+
+If you want the runner to detect the changes to your python files you can use the \033[0;93m--reload\033[0m flag to start it in autoreload mode:
+
+\t\033[0;94m$ cextrun\033[0m \033[0;93m--debug\033[0m \033[0;93m--reload\033[0m
+
+To run the linter and tests running:
+
+\t\033[0;94m$ extension-test\033[0m
+

@@ -45,6 +45,13 @@ RUN rm -rf /install_temp
 COPY ./extension-devel /usr/local/bin/extension-devel
 RUN chmod 755 /usr/local/bin/extension-devel
 
+COPY ./extension-test /usr/local/bin/extension-test
+RUN chmod 755 /usr/local/bin/extension-test
+
+RUN mkdir /banners
+
+COPY ./banner* /banners
+
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
 

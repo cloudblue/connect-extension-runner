@@ -1,9 +1,9 @@
 #!/bin/sh
-tmux new-session -d -s devel -n runner 'cextrun -d -r'
-tmux new-window -n npm 'npm run watch'
+tmux set -g remain-on-exit on
+tmux new-session -d -s devel -n runner '/bin/bash -c "cextrun -d -r; exec bash"'
 tmux set -g window-status-current-format ''
 tmux set -g window-status-format ''
-tmux set -g status-left '(F1) runner - (F2) npm - (F3) exit'
+
 tmux set -g status-left-length 36
 tmux set -g status-right-length 60
 tmux set -g status-style fg=white,bg=#1565c0
@@ -11,8 +11,14 @@ tmux set -g status-right "Host $SERVER_ADDRESS"
 tmux set -ag status-right "|Runner #(pip list |grep connect-extension-runner|tr -s ' '|cut -f2 -d' ')"
 tmux set -ag status-right "|Core #(pip list |grep connect-eaas-core|tr -s ' '|cut -f2 -d' ')"
 tmux set -ag status-right "|Client #(pip list |grep connect-openapi-client|tr -s ' '|cut -f2 -d' ')"
-tmux bind-key -T root F1 select-window -t runner
-tmux bind-key -T root F2 select-window -t npm
+if [ -f package.json ]; then
+    tmux new-window -n npm '/bin/bash -c "npm run watch; exec bash"'
+    tmux set -g status-left '(F1) runner - (F2) npm - (F3) exit'
+    tmux bind-key -T root F1 select-window -t runner
+    tmux bind-key -T root F2 select-window -t npm
+else
+    tmux set -g status-left '(F3) exit'
+fi
 tmux bind-key -T root F3 send-keys -t npm C-c \\\; send-keys -t runner C-c; 
 tmux select-window -t runner
 tmux a -t devel
