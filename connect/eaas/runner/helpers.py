@@ -355,10 +355,15 @@ def get_anvilapp_detail_table(details):
             expand=True,
             row_styles=['', 'dim'],
         )
+        callables_table.add_column('Method')
         callables_table.add_column('Summary')
-        callables_table.add_column('Signature')
+        callables_table.add_column('Description')
         for callable in callables:
-            callables_table.add_row(callable['summary'], callable['signature'])
+            callables_table.add_row(
+                callable['method'],
+                callable['summary'],
+                callable['description'],
+            )
 
     return callables_table
 
