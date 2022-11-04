@@ -33,10 +33,15 @@ if [[ "$1" == "cextrun" ]]; then
     fi
 
     poetry install -q
+    if [[ "$RUNNING_MODE" == "local" ]] && [[ -f $EXTENSION_DIR/package.json ]]; then
+        test ! -L "node_modules" && ln -s /install_temp/node_modules .
+        npm run build
+    fi
 
 fi
 
-if [[ "$1" == "extension-"* ]]; then
+
+if [[ "$1" == "extension-test" ]] || [[ "$1" == "extension-devel" ]]; then
     poetry install -q
 
     if [[ "$RUNNING_MODE" == "local" ]] && [[ -f $EXTENSION_DIR/package.json ]]; then

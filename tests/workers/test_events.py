@@ -1498,6 +1498,7 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
     )
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.parametrize(
     ('tries', 'ordinal'),
     (
