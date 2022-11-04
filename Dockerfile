@@ -48,6 +48,9 @@ RUN chmod 755 /usr/local/bin/extension-devel
 COPY ./extension-test /usr/local/bin/extension-test
 RUN chmod 755 /usr/local/bin/extension-test
 
+COPY ./extension-check-static /usr/local/bin/extension-check-static
+RUN chmod 755 /usr/local/bin/extension-test
+
 RUN mkdir /banners
 
 COPY ./banner* /banners
