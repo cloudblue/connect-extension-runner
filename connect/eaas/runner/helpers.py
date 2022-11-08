@@ -502,6 +502,38 @@ def get_webapp_detail_table(details):
     return grid
 
 
+def get_tfnapp_detail_table(details):
+    grid = Table.grid(expand=True)
+    grid.add_column()
+
+    transformations = details['features'].get('transformations')
+
+    if transformations:
+        table = Table(
+            box=box.MINIMAL_HEAVY_HEAD,
+            title='Transformations',
+            title_style='blue',
+            show_header=True,
+            expand=True,
+            row_styles=['', 'dim'],
+        )
+        table.add_column('Name')
+        table.add_column('Description')
+        table.add_column('Edit dialog')
+        table.add_column('Class')
+        for transformation in transformations:
+            table.add_row(
+                transformation['name'],
+                transformation['description'],
+                transformation['edit_dialog_ui'],
+                transformation['class_fqn'],
+            )
+
+        grid.add_row(table)
+
+    return grid
+
+
 def get_features_table(features):
     table = Table(
         box=box.ROUNDED,
@@ -540,5 +572,11 @@ def get_features_table(features):
                 HANDLER_CLASS_TITLE[feature_handler],
                 Align.center('[green]\u2714[/]'),
                 Align.center(get_anvilapp_detail_table(details)),
+            )
+        elif feature_handler == 'TfnApp':
+            table.add_row(
+                HANDLER_CLASS_TITLE[feature_handler],
+                Align.center('[green]\u2714[/]'),
+                Align.center(get_tfnapp_detail_table(details)),
             )
     return table

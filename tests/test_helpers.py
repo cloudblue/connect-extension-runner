@@ -33,6 +33,7 @@ from connect.eaas.runner.helpers import (
     get_features_table,
     get_no_features_table,
     get_pypi_runner_minor_version,
+    get_tfnapp_detail_table,
     get_version,
     get_webapp_detail_table,
     iter_entry_points,
@@ -697,6 +698,20 @@ def test_websapp_detail_table():
     assert isinstance(get_webapp_detail_table({'features': features}), Table)
 
 
+def test_tfnapp_detail_table():
+    features = {
+        'transformations': [
+            {
+                'name': 'Test transformation',
+                'description': 'Description',
+                'edit_dialog_ui': '/static/settings.html',
+                'class_fqn': 'package.tfnapp.TestTransformation',
+            },
+        ],
+    }
+    assert isinstance(get_tfnapp_detail_table({'features': features}), Table)
+
+
 def test_get_features_table():
     features = {
         'AnvilApp': {
@@ -754,6 +769,19 @@ def test_get_features_table():
                         'name': 'Name',
                         'url': '/static/name.html',
                         'integration_point': 'Account Settings',
+                    },
+                ],
+            },
+        },
+        'TfnApp': {
+            'available': True,
+            'features': {
+                'transformations': [
+                    {
+                        'name': 'Test transformation',
+                        'description': 'Description',
+                        'edit_dialog_ui': '/static/settings.html',
+                        'class_fqn': 'package.tfnapp.TestTransformation',
                     },
                 ],
             },

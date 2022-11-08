@@ -14,14 +14,17 @@ from connect.eaas.runner.constants import (
     BACKGROUND_EVENTS_WORKER,
     INTERACTIVE_EVENTS_WORKER,
     PROCESS_CHECK_INTERVAL_SECS,
+    TFNAPP_WORKER,
     WEBAPP_WORKER,
     WORKER_TYPES,
 )
 from connect.eaas.runner.handlers.anvil import AnvilApp
 from connect.eaas.runner.handlers.events import EventsApp
+from connect.eaas.runner.handlers.transformations import TfnApp
 from connect.eaas.runner.handlers.web import WebApp
 from connect.eaas.runner.helpers import notify_process_restarted
 from connect.eaas.runner.workers.anvil import start_anvilapp_worker_process
+from connect.eaas.runner.workers.transformations import start_tfnapp_worker_process
 from connect.eaas.runner.workers.web import start_webapp_worker_process
 from connect.eaas.runner.workers.events import (
     start_background_worker_process,
@@ -49,6 +52,7 @@ class Master:
         INTERACTIVE_EVENTS_WORKER: EventsApp,
         WEBAPP_WORKER: WebApp,
         ANVILAPP_WORKER: AnvilApp,
+        TFNAPP_WORKER: TfnApp,
     }
 
     PROCESS_TARGETS = {
@@ -56,6 +60,7 @@ class Master:
         INTERACTIVE_EVENTS_WORKER: start_interactive_worker_process,
         WEBAPP_WORKER: start_webapp_worker_process,
         ANVILAPP_WORKER: start_anvilapp_worker_process,
+        TFNAPP_WORKER: start_tfnapp_worker_process,
     }
 
     def __init__(self, secure=True, debug=False, no_rich=False, reload=False):

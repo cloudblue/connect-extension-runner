@@ -120,18 +120,21 @@ BACKGROUND_EVENTS_WORKER = 'background'
 INTERACTIVE_EVENTS_WORKER = 'interactive'
 WEBAPP_WORKER = 'webapp'
 ANVILAPP_WORKER = 'anvilapp'
+TFNAPP_WORKER = 'tfnapp'
 
 WORKER_TYPES = (
     BACKGROUND_EVENTS_WORKER,
     INTERACTIVE_EVENTS_WORKER,
     WEBAPP_WORKER,
     ANVILAPP_WORKER,
+    TFNAPP_WORKER,
 )
 
 HANDLER_CLASS_TITLE = {
     'EventsApp': 'Events Processing Application',
     'AnvilApp': 'Anvil Application',
     'WebApp': 'Web Application',
+    'TfnApp': 'Transformation Application',
 }
 
 PROCESS_CHECK_INTERVAL_SECS = 1

@@ -116,6 +116,13 @@ class ConfigHelper:
             f'/{self.env["environment_id"]}/{self.env["instance_id"]}/anvilapp'
         )
 
+    def get_tfnapp_ws_url(self):
+        proto = 'wss' if self.secure else 'ws'
+        return (
+            f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
+            f'/{self.env["environment_id"]}/{self.env["instance_id"]}/tfnapp'
+        )
+
     def get_api_url(self):
         return f'https://{self.env["api_address"]}/public/v1'
 
