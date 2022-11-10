@@ -15,6 +15,7 @@ from connect.eaas.runner.constants import (
 )
 from connect.eaas.runner.handlers.anvil import AnvilApp
 from connect.eaas.runner.handlers.events import EventsApp
+from connect.eaas.runner.handlers.transformations import TfnApp
 from connect.eaas.runner.handlers.web import WebApp
 from connect.eaas.runner.master import Master
 from connect.eaas.runner.workers.anvil import start_anvilapp_worker_process
@@ -108,7 +109,7 @@ def test_start(mocker):
         return_value=mocked_thread,
     )
     mocker.patch
-    for handler_cls in (AnvilApp, WebApp, EventsApp):
+    for handler_cls in (AnvilApp, WebApp, EventsApp, TfnApp):
         mocker.patch.object(
             handler_cls,
             'should_start',
@@ -292,6 +293,17 @@ def test_get_available_features(mocker):
         new_callable=mocker.PropertyMock(return_value={'endpoints': {}}),
     )
 
+    mocker.patch.object(
+        TfnApp,
+        'should_start',
+        new_callable=mocker.PropertyMock(return_value=True),
+    )
+    mocker.patch.object(
+        TfnApp,
+        'features',
+        new_callable=mocker.PropertyMock(return_value={'transformations': []}),
+    )
+
     master = Master()
 
     assert master.get_available_features() == (
@@ -308,6 +320,10 @@ def test_get_available_features(mocker):
             'WebApp': {
                 'available': True,
                 'features': {'endpoints': {}},
+            },
+            'TfnApp': {
+                'available': True,
+                'features': {'transformations': []},
             },
         },
     )
