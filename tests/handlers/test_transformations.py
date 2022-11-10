@@ -20,7 +20,7 @@ def test_get_tfnapp_module(mocker, settings_payload):
 
     handler = TfnApp(config)
 
-    assert handler._tfn_module is not None
+    assert handler.get_tfn_module() is not None
 
 
 def test_properties(mocker):
@@ -35,13 +35,15 @@ def test_properties(mocker):
     class MyExtension(TransformationBase):
         pass
 
-    mocker.patch.object(EntryPoint, 'load')
     mocker.patch(
         'connect.eaas.runner.handlers.transformations.iter_entry_points',
-        return_value=iter([
-            EntryPoint('tfnapp', None, 'connect.eaas.ext'),
-        ]),
+        sidde_effect=[
+            iter([EntryPoint('tfnapp', None, 'connect.eaas.ext')]),
+            iter([EntryPoint('tfnapp', None, 'connect.eaas.ext')]),
+            iter([EntryPoint('tfnapp', None, 'connect.eaas.ext')]),
+        ],
     )
+    mocker.patch.object(EntryPoint, 'load')
     mocker.patch(
         'connect.eaas.runner.handlers.transformations.inspect.getmembers',
         return_value=[('target_class', MyExtension)],

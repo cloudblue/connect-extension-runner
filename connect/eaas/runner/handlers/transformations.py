@@ -28,18 +28,17 @@ class TfnApp:
         self._transformations = None
         self._descriptor = None
 
-        self._tfn_module = self.get_tfn_module()
-
     def get_tfn_module(self):
         tfn_module = next(iter_entry_points('connect.eaas.ext', 'tfnapp'), None)
         return tfn_module.load() if tfn_module else None
 
     def get_descriptor(self):  # pragma: no cover
         if not self._descriptor:
-            if self._tfn_module:
+            tfn_module = self.get_tfn_module()
+            if tfn_module:
                 self._descriptor = json.load(
                     pkg_resources.resource_stream(
-                        self._tfn_module.__name__,
+                        tfn_module.__name__,
                         'extension.json',
                     ),
                 )
@@ -48,7 +47,7 @@ class TfnApp:
 
     @property
     def should_start(self):
-        return self._tfn_module is not None
+        return self.get_tfn_module() is not None
 
     @property
     def config(self):
@@ -72,14 +71,16 @@ class TfnApp:
             return self._transformations
 
         result = []
-        try:
-            if self._tfn_module:
-                for _, el in inspect.getmembers(self._tfn_module):
+
+        tfn_module = self.get_tfn_module()
+        if tfn_module:
+            try:
+                for _, el in inspect.getmembers(tfn_module):
                     if inspect.isclass(el) and issubclass(el, TransformationBase):
                         if el.get_transformation_info():
                             result.append(el.get_transformation_info())
-        except AttributeError:  # pragma: no branch
-            logger.warning(f'Can not inspect {self._tfn_module}...')
+            except AttributeError:  # pragma: no branch
+                logger.warning(f'Can not inspect {tfn_module}...')
 
         self._transformations = result
         return result
