@@ -134,7 +134,10 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
 
     httpx_mock.add_response(
         method='GET',
-        url=f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        url=(
+            f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending,inquiring)))'
+            '&limit=0&offset=0'
+        ),
         json=[],
         headers={'Content-Range': 'items 0-0/1'},
     )
@@ -276,7 +279,10 @@ async def test_pr_task_decorated(mocker, ws_server, unused_port, httpx_mock, set
 
     httpx_mock.add_response(
         method='GET',
-        url=f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        url=(
+            f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending,inquiring)))'
+            '&limit=0&offset=0'
+        ),
         json=[],
         headers={'Content-Range': 'items 0-0/1'},
     )
