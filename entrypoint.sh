@@ -32,31 +32,31 @@ if [[ "$1" == "cextrun" ]]; then
         exit 1
     fi
 
-    poetry install -q
+    poetry install
     if [[ "$RUNNING_MODE" == "local" ]] && [[ -f $EXTENSION_DIR/package.json ]]; then
         test ! -L "node_modules" && ln -s /install_temp/node_modules .
-        npm run build
+        npm run build --if-present
     fi
 
 fi
 
 
 if [[ "$1" == "extension-test" ]] || [[ "$1" == "extension-devel" ]]; then
-    poetry install -q
+    poetry install
 
     if [[ "$RUNNING_MODE" == "local" ]] && [[ -f $EXTENSION_DIR/package.json ]]; then
         test ! -L "node_modules" && ln -s /install_temp/node_modules .
-        npm run build
+        npm run build --if-present
     fi
 fi
 
 if [[ "$1" == *bash* ]] && [[ "$#" -eq 1 ]] && [[ -f pyproject.toml ]]; then
 
-    poetry install -q
+    poetry install
 
     if [[ "$RUNNING_MODE" == "local" ]] && [[ -f $EXTENSION_DIR/package.json ]]; then
         test ! -L "node_modules" && ln -s /install_temp/node_modules .
-        npm run build
+        npm run build --if-present
     fi
 
     echo
