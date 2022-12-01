@@ -125,6 +125,7 @@ class Master:
 
     def monitor_processes(self):
         while self.monitor_event.is_set():
+            exited_workers = []
             for worker_type, p in self.workers.items():
                 if not p.is_alive():
                     if p.exitcode != 0:
@@ -132,7 +133,10 @@ class Master:
                         logger.info(f'Process of type {worker_type} is dead, restart it')
                         self.start_worker_process(worker_type, self.handlers[worker_type])
                     else:
+                        exited_workers.append(worker_type)
                         logger.info(f'{worker_type.capitalize()} worker exited')
+            if exited_workers == list(self.workers.keys()):
+                self.stop_event.set()
 
             time.sleep(PROCESS_CHECK_INTERVAL_SECS)
 

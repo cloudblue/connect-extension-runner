@@ -254,6 +254,7 @@ def test_monitor_process_exited(mocker, caplog):
     assert 'Webapp worker exited' in caplog.text
     mocked_notify.assert_not_called()
     mocked_start_process.assert_not_called()
+    assert master.stop_event.is_set() is True
 
 
 def test_get_available_features(mocker):

@@ -1130,9 +1130,30 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
         return_value=MyExtension,
     )
 
+    data_to_send = Message(
+        version=2,
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(
+            variables=[
+                {
+                    'name': 'var1',
+                    'value': 'value1',
+                    'secure': False,
+                },
+                {
+                    'name': 'var2',
+                    'value': 'value2',
+                    'secure': False,
+                },
+            ],
+            logging={'logging_api_key': 'token'},
+            environment_type='development',
+        ),
+    ).dict()
+
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
-        None,
+        data_to_send,
         ['receive', 'send'],
     )
 
@@ -1143,7 +1164,7 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
         worker = EventsWorker(ext_handler)
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
-            await asyncio.sleep(.5)
+            await asyncio.sleep(.01)
             assert f'{worker} started' in caplog.text
             worker.stop()
             await task
@@ -1435,6 +1456,8 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
 
 @pytest.mark.asyncio
 async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
+    mocker.patch('connect.eaas.runner.workers.events.RESULT_SENDER_MAX_RETRIES', 3)
+    mocker.patch('connect.eaas.runner.workers.events.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.001)
     mocker.patch.object(
         EventsApp,
         'get_extension_class',
@@ -1542,8 +1565,8 @@ async def test_ensure_connection_maintenance(mocker, caplog):
         'get_extension_class',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', .1)
     mocker.patch(
         'connect.eaas.runner.workers.base.websockets.connect',
         side_effect=InvalidStatusCode(502, None),
@@ -1570,8 +1593,8 @@ async def test_ensure_connection_other_statuses(mocker, caplog, status):
         EventsApp,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', .1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch(
         'connect.eaas.runner.workers.base.websockets.connect',
@@ -1598,8 +1621,8 @@ async def test_ensure_connection_generic_exception(mocker, caplog):
         EventsApp,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', .1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', 1)
     mocker.patch(
         'connect.eaas.runner.workers.base.websockets.connect',
@@ -1655,8 +1678,8 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
         EventsApp,
         'get_extension_class',
     )
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 10)
-    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', .1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
     mocker.patch(
         'connect.eaas.runner.workers.base.websockets.connect',
         side_effect=RuntimeError('generic error'),
@@ -1673,11 +1696,14 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
         task = asyncio.create_task(worker.run())
         await task
 
+    assert worker.stop_event.is_set() is True
     assert 'max connection attemps reached, exit!' in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, settings_payload):
+async def test_shutdown_pending_task_timeout(
+    mocker, ws_server, unused_port, settings_payload, caplog,
+):
 
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -1728,7 +1754,7 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
     handler = WSHandler(
         '/public/v1/devops/ws/ENV-000-0001/INS-000-0002?running_tasks=0&running_scheduled_tasks=0',
         data_to_send,
-        ['receive', 'send', 'send'] + ['receive' for _ in range(100)],
+        ['receive', 'send', 'send'] + ['receive' for _ in range(10)],
     )
 
     task_result = Task(
@@ -1745,12 +1771,14 @@ async def test_shutdown_pending_task_timeout(mocker, ws_server, unused_port, set
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
-        for _ in range(100):
-            await worker.results_queue.put(task_result)
-        asyncio.create_task(worker.start())
-        await asyncio.sleep(.5)
+    with caplog.at_level(logging.ERROR):
+        async with ws_server(handler):
+            worker = EventsWorker(ext_handler)
+            for _ in range(10):
+                await worker.results_queue.put(task_result)
+            asyncio.create_task(worker.start())
+            await asyncio.sleep(.5)
+    assert 'Cannot send all results timeout of 0.2 exceeded, cancel task' in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1830,6 +1858,7 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
 
 @pytest.mark.asyncio
 async def test_handle_signal(mocker, settings_payload):
+    mocker.patch('connect.eaas.runner.workers.base.SHUTDOWN_WAIT_GRACE_SECONDS', .01)
     mocker.patch.object(
         EventsApp,
         'get_extension_class',
