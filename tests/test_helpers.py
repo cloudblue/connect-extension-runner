@@ -244,8 +244,8 @@ def test_get_connect_version(mocker, responses):
 
 def test_get_connect_version_server_error(mocker, responses):
     mocker.patch(
-        'connect.eaas.runner.helpers.get_environment',
-        return_value={'api_address': 'localhost', 'api_key': 'ApiKey test:key'},
+        'connect.eaas.runner.helpers.get_client',
+        return_value=ConnectClient('api', endpoint='https://localhost/public/v1', max_retries=0),
     )
     responses.add(
         'GET',

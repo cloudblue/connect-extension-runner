@@ -28,6 +28,7 @@ from connect.eaas.runner.constants import (
     MAX_RETRY_DELAY_TIME_SECONDS,
     MAX_RETRY_TIME_GENERIC_SECONDS,
     MAX_RETRY_TIME_MAINTENANCE_SECONDS,
+    SHUTDOWN_WAIT_GRACE_SECONDS,
 )
 from connect.eaas.runner.exceptions import (
     CommunicationError,
@@ -165,11 +166,11 @@ class WorkerBase(ABC):
                         continue
                     await self.process_message(message)
             except (ConnectionClosedOK, StopBackoffError):
-                self.run_event.clear()
+                self.stop()
                 continue
             except (CommunicationError, MaintenanceError):
                 logger.error(f'{self}: max connection attemps reached, exit!')
-                self.run_event.clear()
+                self.stop()
                 continue
             except ConnectionClosedError:
                 logger.warning(
@@ -249,7 +250,7 @@ class WorkerBase(ABC):
 
     def handle_signal(self):
         asyncio.create_task(self.send_shutdown())
-        time.sleep(1)
+        time.sleep(SHUTDOWN_WAIT_GRACE_SECONDS)
         self.stop()
 
     @abstractmethod
