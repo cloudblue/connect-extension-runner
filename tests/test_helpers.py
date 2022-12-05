@@ -32,7 +32,7 @@ from connect.eaas.runner.helpers import (
     get_eventsapp_detail_table,
     get_features_table,
     get_no_features_table,
-    get_pypi_runner_minor_version,
+    get_pypi_runner_latest_version,
     get_tfnapp_detail_table,
     get_version,
     get_webapp_detail_table,
@@ -282,7 +282,7 @@ def test_get_connect_version_api_key_error(mocker, responses):
     ) in str(cv.value)
 
 
-def test_get_pypi_runner_minor_version(responses):
+def test_get_pypi_runner_latest_version(responses):
     responses.add(
         'GET',
         'https://pypi.org/pypi/connect-extension-runner/json',
@@ -298,12 +298,12 @@ def test_get_pypi_runner_minor_version(responses):
         status=200,
     )
 
-    minor_version = get_pypi_runner_minor_version('26')
+    latest_version = get_pypi_runner_latest_version('26')
 
-    assert minor_version == '13'
+    assert latest_version == '26.13'
 
 
-def test_get_pypi_runner_minor_version_no_releases(responses):
+def test_get_pypi_runner_latest_version_no_releases(responses):
     responses.add(
         'GET',
         'https://pypi.org/pypi/connect-extension-runner/json',
@@ -314,12 +314,12 @@ def test_get_pypi_runner_minor_version_no_releases(responses):
         status=200,
     )
 
-    minor_version = get_pypi_runner_minor_version('26')
+    latest_version = get_pypi_runner_latest_version('26')
 
-    assert minor_version == '13'
+    assert latest_version == '26.13'
 
 
-def test_get_pypi_runner_minor_version_request_error(responses):
+def test_get_pypi_runner_latest_version_request_error(responses):
     responses.add(
         'GET',
         'https://pypi.org/pypi/connect-extension-runner/json',
@@ -328,7 +328,7 @@ def test_get_pypi_runner_minor_version_request_error(responses):
     )
 
     with pytest.raises(Exception) as cv:
-        get_pypi_runner_minor_version('26')
+        get_pypi_runner_latest_version('26')
 
     assert str(cv.value) == 'Cannot check the current EaaS Runner version: error.'
 
@@ -506,8 +506,8 @@ def test_check_runner_version(mocker):
         return_value='26.13',
     )
     mocker.patch(
-        'connect.eaas.runner.helpers.get_pypi_runner_minor_version',
-        return_value='13',
+        'connect.eaas.runner.helpers.get_pypi_runner_latest_version',
+        return_value='26.13',
     )
 
     result = check_runner_version({})
@@ -526,8 +526,8 @@ def test_check_runner_version_outdated(mocker):
         return_value='26.13',
     )
     mocker.patch(
-        'connect.eaas.runner.helpers.get_pypi_runner_minor_version',
-        return_value='12',
+        'connect.eaas.runner.helpers.get_pypi_runner_latest_version',
+        return_value='26.14',
     )
 
     result = check_runner_version({})

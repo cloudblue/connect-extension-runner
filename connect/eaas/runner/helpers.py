@@ -114,7 +114,7 @@ def get_connect_version():
     return connect_client.response.headers['Connect-Version']
 
 
-def get_pypi_runner_minor_version(major_version):
+def get_pypi_runner_latest_version(major_version):
     res = requests.get(PYPI_EXTENSION_RUNNER_URL)
     if res.status_code != 200:
         logger.error(
@@ -128,8 +128,8 @@ def get_pypi_runner_minor_version(major_version):
         for version in content['releases'] if version.startswith(f'{major_version}.')
     ]
     if tags:
-        return str(max(tags))
-    return content['info']['version'].split('.')[1]
+        return f'{major_version}.{str(max(tags))}'
+    return content['info']['version']
 
 
 def get_client():
@@ -238,19 +238,16 @@ def check_runner_version(context):
         connect_full_version = get_connect_version()
         connect_version = connect_full_version.split('.')[0]
         runner_version = get_version()
-        latest_minor_version = get_pypi_runner_minor_version(connect_version)
+        latest_runner_version = get_pypi_runner_latest_version(connect_version)
 
-        if not (
-                connect_version == runner_version.split('.')[0]
-                and runner_version.split('.')[1] == latest_minor_version
-        ):
+        if runner_version != latest_runner_version:
             return ValidationResult(
                 items=[
                     ValidationItem(
                         level='ERROR',
                         message=(
                             'Runner is outdated, please, update. '
-                            f'Required version {connect_version}.{latest_minor_version}, '
+                            f'Required version {latest_runner_version}, '
                             f'current version: {runner_version}.'
                         ),
                     ),
