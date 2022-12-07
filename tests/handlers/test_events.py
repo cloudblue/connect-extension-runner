@@ -1,4 +1,5 @@
 from importlib.metadata import EntryPoint
+import os
 
 import pytest
 
@@ -99,6 +100,8 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
     dyn_config.logging.logging_api_key = 'test_key'
     config.update_dynamic_config(dyn_config)
     mocker.patch('connect.eaas.runner.handlers.events.logging.getLogger')
+    test_random_bytes = os.urandom(8)
+    mocker.patch('connect.eaas.runner.handlers.events.os.urandom', return_value=test_random_bytes)
     ext_class = extension_cls('test_method')
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
@@ -118,7 +121,7 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
         'test_method',
         installation={'installation': 'data'},
         api_key='installation_key',
-        connect_correlation_id='correlation_id',
+        connect_correlation_id='correlation_id-for-events-application',
     )
     assert method.__name__ == 'test_method'
     assert method.__self__.__class__ == ext_class
@@ -126,10 +129,51 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
     assert method.__self__.installation == {'installation': 'data'}
     assert method.__self__.installation_client.api_key == 'installation_key'
 
+    default_headers = method.__self__.installation_client.default_headers
+    assert 'ext-traceparent' in default_headers
+    correlation_id = f'00-relation_id-for-events-applicat-{test_random_bytes.hex()}-01'
+    assert default_headers['ext-traceparent'] == correlation_id
+
     mocked_log_handler.assert_called_once_with(
         config.logging_api_key,
         default_extra_fields=config.metadata,
     )
+
+
+def test_get_method_multi_account_no_cor_id(mocker, settings_payload, extension_cls):
+    config = ConfigHelper()
+    dyn_config = SetupResponse(
+        varibles=settings_payload.get('configuration'),
+        environment_type=settings_payload.get('environment_type'),
+        logging=Logging(**settings_payload, meta=LogMeta(**settings_payload)),
+    )
+    dyn_config.logging.logging_api_key = 'test_key'
+    config.update_dynamic_config(dyn_config)
+    mocker.patch('connect.eaas.runner.handlers.events.logging.getLogger')
+    ext_class = extension_cls('test_method')
+    mocker.patch.object(ext_class, 'get_descriptor')
+    mocker.patch.object(
+        EventsApp,
+        'get_extension_class',
+        return_value=ext_class,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.events.ExtensionLogHandler',
+        autospec=True,
+    )
+    handler = EventsApp(config)
+
+    method = handler.get_method(
+        'event_type',
+        'TQ-000',
+        'test_method',
+        installation={'installation': 'data'},
+        api_key='installation_key',
+    )
+
+    assert method.__self__.installation == {'installation': 'data'}
+    assert method.__self__.installation_client.api_key == 'installation_key'
+    assert 'ext-traceparent' not in method.__self__.installation_client.default_headers
 
 
 def test_properties(mocker):

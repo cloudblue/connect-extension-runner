@@ -1,5 +1,6 @@
 import inspect
 import logging
+import os
 
 from connect.client import AsyncConnectClient, ConnectClient
 from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
@@ -133,7 +134,10 @@ class EventsApp:
         default_headers.update(self._config.get_user_agent())
 
         if connect_correlation_id:
-            default_headers['traceparent'] = connect_correlation_id
+            operation_id = connect_correlation_id[3:34]
+            span_id = os.urandom(8).hex()
+            correlation_id = f'00-{operation_id}-{span_id}-01'
+            default_headers['ext-traceparent'] = correlation_id
 
         return Client(
             api_key,
