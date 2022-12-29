@@ -39,7 +39,7 @@ pyfiglet = "^0.8.post1"
 devtools = "^0.9.0"
 watchfiles = "^0.17.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.test.dependencies]
 pytest = "^7.1.3"
 pytest-cov = "^4.0.0"
 pytest-mock = "^3.3.1"
@@ -52,6 +52,7 @@ flake8-commas = "^2.1.0"
 flake8-future-import = "~0.4"
 flake8-import-order = "~0.18"
 flake8-broken-line = "^0.6"
+flake8-pyproject = "^1.2.2"
 pytest-asyncio = "0.20.*"
 pytest-httpx = ">=0.20"
 responses = "^0.21.0"
@@ -61,3 +62,43 @@ flaky = "^3.7.0"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.flake8]
+exclude = [
+    ".idea",
+    ".vscode",
+    ".git",
+    "pg_data",
+    "venv",
+    "*/settings/*.py",
+    "*/migrations/*.py"
+]
+show-source = true
+max-line-length = 100
+application-import-names = "connect"
+import-order-style = "smarkets"
+max-cognitive-complexity = 20
+ignore = ["FI1", "I100", "W503"]
+
+[tool.coverage.report]
+omit = [
+    "connect/eaas/runner/constants.py",
+    "connect/eaas/dataclasses.py",
+    "connect/eaas/extension.py"
+]
+
+
+exclude_lines = [
+    "raise NotImplementedError",
+    "pragma: no cover",
+    "pragma: no branch"
+]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_cli = false
+addopts = "-v --cov=connect.eaas.runner --cov-report=term-missing:skip-covered --cov-report=html --cov-report=xml"
+python_files = "test_*.py"
+junit_family = "xunit2"
+asyncio_mode = "strict"
