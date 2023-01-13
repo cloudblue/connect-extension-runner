@@ -97,7 +97,7 @@ def test_start_worker_process(mocker, worker_type):
     mocked_start_process.assert_called_once_with(
         master.PROCESS_TARGETS[worker_type],
         'function',
-        (handler, master.debug, master.no_rich),
+        (handler.__class__, mocker.ANY, master.debug, master.no_rich),
         {},
     )
 
@@ -117,6 +117,7 @@ def test_start(mocker):
         )
 
     mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
+    mocker.patch.object(Master, 'check')
 
     master = Master()
     master.start()
@@ -328,3 +329,38 @@ def test_get_available_features(mocker):
             },
         },
     )
+
+
+def test_check_validate_ok(mocker):
+    mocker.patch.object(Master, 'get_available_features', return_value=(True, {}))
+    mocker.patch('connect.eaas.runner.master.validate_extension', return_value=('INFO', []))
+    master = Master(False, False, False, False, False)
+    assert master.check() is True
+
+
+def test_start_validate_warning(mocker):
+    mocker.patch.object(Master, 'get_available_features', return_value=(True, {}))
+    mocker.patch('connect.eaas.runner.master.validate_extension', return_value=('WARNING', []))
+    master = Master(False, False, False, False, False)
+    assert master.check() is True
+
+
+def test_start_validate_error(mocker):
+    mocker.patch.object(Master, 'get_available_features', return_value=(True, {}))
+    mocker.patch('connect.eaas.runner.master.validate_extension', return_value=('ERROR', []))
+    master = Master(False, False, False, False, False)
+    assert master.check() is False
+
+
+def test_start_no_feature(mocker):
+    mocker.patch.object(Master, 'get_available_features', return_value=(False, {}))
+    mocker.patch('connect.eaas.runner.master.validate_extension', return_value=('INFO', []))
+    master = Master(False, False, False, False, False)
+    assert master.check() is False
+
+
+def test_start_check_fails(mocker):
+    mocker.patch.object(Master, 'check', return_value=False)
+    master = Master(False, False, False, False, False)
+    with pytest.raises(SystemExit):
+        master.start()

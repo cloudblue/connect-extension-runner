@@ -29,7 +29,7 @@ async def test_sync(mocker, extension_cls, settings_payload):
         result=ScheduledExecutionResponse.done(),
     )
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.scheduled.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
@@ -72,7 +72,7 @@ async def test_async(mocker, extension_cls, settings_payload):
         async_impl=True,
     )
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.scheduled.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)

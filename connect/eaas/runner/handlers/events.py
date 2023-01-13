@@ -6,63 +6,33 @@ from connect.client import AsyncConnectClient, ConnectClient
 from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
-from connect.eaas.runner.helpers import iter_entry_points
+from connect.eaas.runner.handlers.base import ApplicationHandlerBase
 
 
 logger = logging.getLogger(__name__)
 
 
-class EventsApp:
+class EventsApp(ApplicationHandlerBase):
     """
     Handle the lifecycle of an extension.
     """
     def __init__(self, config: ConfigHelper):
+        super().__init__(config)
         self._config = config
-        self._extension_class = self.get_extension_class()
-        if self._extension_class:
-            self._descriptor = self._extension_class.get_descriptor()
-            self._events = self.get_events()
-            self._schedulables = self.get_schedulables()
-            self._variables = self.get_variables()
         self._logging_handler = None
 
     @property
-    def config(self):
-        return self._config
-
-    @property
-    def should_start(self):
-        return self._extension_class is not None
-
-    @property
     def events(self):
-        return self._events
-
-    @property
-    def variables(self):
-        return self._variables
+        return self.get_events()
 
     @property
     def schedulables(self):
-        return self._schedulables
+        return self.get_schedulables()
 
-    @property
-    def readme(self):
-        return self._descriptor['readme_url']
-
-    @property
-    def changelog(self):
-        return self._descriptor['changelog_url']
-
-    @property
-    def audience(self):
-        return self._descriptor.get('audience')
-
-    @property
-    def features(self):
+    def get_features(self):
         return {
-            'events': self.get_events(),
-            'schedulables': self.get_schedulables(),
+            'events': self.events,
+            'schedulables': self.schedulables,
         }
 
     def get_method(
@@ -94,7 +64,7 @@ class EventsApp:
                 connect_correlation_id,
             )
 
-        ext = self._extension_class(*args, **kwargs)
+        ext = self.get_application()(*args, **kwargs)
 
         return getattr(ext, method_name, None)
 
@@ -121,7 +91,7 @@ class EventsApp:
         Get an instance of the Connect Openapi Client. If the extension is asyncrhonous
         it returns an instance of the AsyncConnectClient otherwise the ConnectClient.
         """
-        method = getattr(self._extension_class, method_name)
+        method = getattr(self.get_application(), method_name)
 
         Client = ConnectClient if not inspect.iscoroutinefunction(method) else AsyncConnectClient
 
@@ -151,7 +121,7 @@ class EventsApp:
         )
 
     def get_events(self):
-        if 'capabilities' in self._descriptor:
+        if 'capabilities' in self.get_descriptor():
             logger.warning(
                 "The definition of extension's capabilities in extension.json is deprecated.",
             )
@@ -161,34 +131,33 @@ class EventsApp:
                     'event_type': event_type,
                     'statuses': statuses,
                 }
-                for event_type, statuses in self._descriptor['capabilities'].items()
+                for event_type, statuses in self.get_descriptor()['capabilities'].items()
             }
             return data
 
         return {
             event['event_type']: event
-            for event in self._extension_class.get_events()
+            for event in self.get_application().get_events()
         }
 
     def get_schedulables(self):
-        if 'schedulables' in self._descriptor:
+        if 'schedulables' in self.get_descriptor():
             logger.warning(
                 "The definition of extension's schedulables in extension.json is deprecated.",
             )
-            return self._descriptor['schedulables']
-        return self._extension_class.get_schedulables()
+            return self.get_descriptor()['schedulables']
+        return self.get_application().get_schedulables()
 
     def get_variables(self):
-        if 'variables' in self._descriptor:
+        if 'variables' in self.get_descriptor():
             logger.warning(
                 "The definition of extension's variables in extension.json is deprecated.",
             )
-            return self._descriptor['variables']
-        return self._extension_class.get_variables()
+            return self.get_descriptor()['variables']
+        return self.get_application().get_variables()
 
-    def get_extension_class(self):
-        ext_class = next(
-            iter_entry_points('connect.eaas.ext', 'eventsapp'),
-            next(iter_entry_points('connect.eaas.ext', 'extension'), None),
-        )
-        return ext_class.load() if ext_class else None
+    def get_application(self):
+        application = self.load_application('eventsapp')
+        if not application:
+            application = self.load_application('extension')
+        return application
