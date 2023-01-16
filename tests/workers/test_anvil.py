@@ -45,7 +45,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
     mocker.patch.object(
         AnvilApp,
-        'get_anvilapp_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch.object(AnvilApp, 'start')
@@ -134,7 +134,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
 
     mocker.patch.object(
         AnvilApp,
-        'get_anvilapp_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -168,7 +168,7 @@ def test_start_anvilapp_worker_process(mocker):
 
     mocker.patch.object(
         AnvilApp,
-        'get_anvilapp_class',
+        'load_application',
     )
     mocker.patch.object(AnvilWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.anvil.configure_logger')

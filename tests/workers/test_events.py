@@ -67,7 +67,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -185,7 +185,7 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -326,7 +326,7 @@ async def test_pr_task_decorated(mocker, ws_server, unused_port, httpx_mock, set
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -472,7 +472,7 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -617,7 +617,7 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -759,7 +759,7 @@ async def test_scheduled_task_decorated(
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -885,7 +885,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -921,7 +921,7 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -967,7 +967,7 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
     mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.1)
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -1011,7 +1011,7 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -1055,7 +1055,7 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -1126,7 +1126,7 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -1210,7 +1210,7 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -1302,7 +1302,7 @@ async def test_extension_settings_with_vars_decorated(mocker, ws_server, unused_
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -1394,7 +1394,7 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.get_version', return_value='24.1')
@@ -1460,7 +1460,7 @@ async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
     mocker.patch('connect.eaas.runner.workers.events.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.001)
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
 
     config = ConfigHelper(secure=False)
@@ -1494,7 +1494,7 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
     mocker.patch('connect.eaas.runner.workers.events.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 0.001)
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
 
     config = ConfigHelper(secure=False)
@@ -1540,7 +1540,7 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
 def test_backoff_log(mocker, caplog, tries, ordinal):
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     details = {'tries': tries, 'elapsed': 2.2, 'wait': 1.1}
     expected = (
@@ -1562,7 +1562,7 @@ def test_backoff_log(mocker, caplog, tries, ordinal):
 async def test_ensure_connection_maintenance(mocker, caplog):
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
@@ -1591,7 +1591,7 @@ async def test_ensure_connection_maintenance(mocker, caplog):
 async def test_ensure_connection_other_statuses(mocker, caplog, status):
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', .1)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
@@ -1619,7 +1619,7 @@ async def test_ensure_connection_other_statuses(mocker, caplog, status):
 async def test_ensure_connection_generic_exception(mocker, caplog):
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', .1)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
@@ -1647,7 +1647,7 @@ async def test_ensure_connection_generic_exception(mocker, caplog):
 async def test_ensure_connection_exit_backoff(mocker, caplog):
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 600)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', 1)
@@ -1676,7 +1676,7 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
 async def test_ensure_connection_exit_max_attemps(mocker, caplog):
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', .1)
     mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
@@ -1737,7 +1737,7 @@ async def test_shutdown_pending_task_timeout(
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
     mocker.patch('connect.eaas.runner.workers.events.RESULT_SENDER_WAIT_GRACE_SECONDS', .1)
@@ -1816,7 +1816,7 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -1861,7 +1861,7 @@ async def test_handle_signal(mocker, settings_payload):
     mocker.patch('connect.eaas.runner.workers.base.SHUTDOWN_WAIT_GRACE_SECONDS', .01)
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
 
     config = ConfigHelper(secure=False)
@@ -1884,12 +1884,12 @@ def test_start_interactive_worker_process(mocker):
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch.object(EventsWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.events.configure_logger')
 
-    start_interactive_worker_process(mocker.MagicMock(), True, False)
+    start_interactive_worker_process(mocker.MagicMock(), mocker.MagicMock(), True, False)
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
@@ -1900,12 +1900,12 @@ def test_start_background_worker_process(mocker):
 
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
     )
     mocker.patch.object(EventsWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.events.configure_logger')
 
-    start_background_worker_process(mocker.MagicMock(), True, False)
+    start_background_worker_process(mocker.MagicMock(), mocker.MagicMock(), True, False)
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()

@@ -62,7 +62,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
     mocker.patch.object(
         WebApp,
-        'get_webapp_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -190,7 +190,7 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
 
     mocker.patch.object(
         WebApp,
-        'get_webapp_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -319,7 +319,7 @@ async def test_http_call_exception(mocker, ws_server, unused_port, settings_payl
 
     mocker.patch.object(
         WebApp,
-        'get_webapp_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -454,7 +454,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
 
     mocker.patch.object(
         WebApp,
-        'get_webapp_class',
+        'load_application',
         return_value=MyExtension,
     )
 
@@ -488,12 +488,12 @@ def test_start_webapp_worker_process(mocker):
 
     mocker.patch.object(
         WebApp,
-        'get_webapp_class',
+        'load_application',
     )
     mocker.patch.object(WebWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.web.configure_logger')
 
-    start_webapp_worker_process(mocker.MagicMock(), True, False)
+    start_webapp_worker_process(mocker.MagicMock(), mocker.MagicMock(), True, False)
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()

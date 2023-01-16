@@ -1,4 +1,3 @@
-from importlib.metadata import EntryPoint
 import os
 
 import pytest
@@ -22,7 +21,7 @@ def test_get_method(mocker, settings_payload, extension_cls):
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=ext_class,
     )
     mocked_log_handler = mocker.patch(
@@ -73,21 +72,22 @@ def test_get_extension_class(mocker, settings_payload, entrypoint_name):
         def get_variables(cls):
             pass
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.events.iter_entry_points',
-        return_value=iter([
-            EntryPoint(entrypoint_name, None, 'connect.eaas.ext'),
-        ]),
+    mocked_load = mocker.patch.object(EventsApp, 'load_application', return_value=MyExtension)
+
+    handler = EventsApp(config)
+
+    assert handler.get_application() == MyExtension
+    mocked_load.assert_called_once_with('eventsapp')
+
+    mocked_load = mocker.patch.object(
+        EventsApp, 'load_application', side_effect=[None, MyExtension],
     )
 
     handler = EventsApp(config)
 
-    assert handler._extension_class == MyExtension
+    assert handler.get_application() == MyExtension
+    assert mocked_load.call_count == 2
+    assert mocked_load.mock_calls[1].args[0] == 'extension'
 
 
 def test_get_method_multi_account(mocker, settings_payload, extension_cls):
@@ -106,7 +106,7 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=ext_class,
     )
     mocked_log_handler = mocker.patch(
@@ -154,7 +154,7 @@ def test_get_method_multi_account_no_cor_id(mocker, settings_payload, extension_
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(
         EventsApp,
-        'get_extension_class',
+        'load_application',
         return_value=ext_class,
     )
     mocker.patch(
@@ -222,20 +222,14 @@ def test_properties(mocker):
             return variables
 
     mocker.patch.object(
-        EntryPoint,
-        'load',
+        EventsApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.events.iter_entry_points',
-        return_value=iter([
-            EntryPoint('extension', None, 'connect.eaas.ext'),
-        ]),
     )
 
     handler = EventsApp(config)
 
-    assert handler._extension_class == MyExtension
+    assert handler.get_application() == MyExtension
     assert handler.events == {
         'test_event': {
             'event_type': 'test_event',
@@ -294,21 +288,11 @@ def test_properties_legacy_extension(mocker):
         def get_variables(cls):
             return []
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.events.iter_entry_points',
-        return_value=iter([
-            EntryPoint('extension', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocker.patch.object(EventsApp, 'load_application', return_value=MyExtension)
 
     handler = EventsApp(config)
 
-    assert handler._extension_class == MyExtension
+    assert handler.get_application() == MyExtension
     assert handler.events == {
         'asset_purchase_request_processing': {
             'event_type': 'asset_purchase_request_processing',
@@ -358,15 +342,9 @@ def test_get_features(mocker):
             return []
 
     mocker.patch.object(
-        EntryPoint,
-        'load',
+        EventsApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.events.iter_entry_points',
-        return_value=iter([
-            EntryPoint('extension', None, 'connect.eaas.ext'),
-        ]),
     )
 
     handler = EventsApp(config)
@@ -420,15 +398,9 @@ def test_get_features_legacy_extension(mocker):
             return []
 
     mocker.patch.object(
-        EntryPoint,
-        'load',
+        EventsApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.events.iter_entry_points',
-        return_value=iter([
-            EntryPoint('extension', None, 'connect.eaas.ext'),
-        ]),
     )
 
     handler = EventsApp(config)
