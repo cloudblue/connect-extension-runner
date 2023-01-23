@@ -4,6 +4,7 @@ import os
 
 from connect.client import AsyncConnectClient, ConnectClient
 from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
+from connect.eaas.core.models import Context
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
 from connect.eaas.runner.helpers import iter_entry_points
@@ -94,7 +95,16 @@ class EventsApp:
                 connect_correlation_id,
             )
 
-        ext = self._extension_class(*args, **kwargs)
+        app_class = self.get_application()
+
+        if 'context' in inspect.signature(app_class.__init__).parameters:
+            kwargs['context'] = Context(
+                extension_id=self.config.service_id,
+                environment_id=self.config.environment_id,
+                environment_type=self.config.environment_type,
+            )
+
+        ext = app_class(*args, **kwargs)
 
         return getattr(ext, method_name, None)
 
