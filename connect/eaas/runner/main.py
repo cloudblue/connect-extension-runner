@@ -6,18 +6,10 @@
 import argparse
 import logging
 import logging.config
-import sys
 
 import uvloop
-from rich.console import Console
 
-from connect.eaas.runner.artworks.banner import print_banner
-from connect.eaas.runner.helpers import (
-    configure_logger,
-    get_features_table,
-    get_no_features_table,
-    validate_extension,
-)
+from connect.eaas.runner.helpers import configure_logger
 from connect.eaas.runner.master import Master
 
 
@@ -26,41 +18,13 @@ logger = logging.getLogger('connect.eaas')
 
 def start(data):
     uvloop.install()
-    console = Console()
-
-    highest_message_level = 'INFO'
-    tables = []
-
-    if not data.no_validate:
-        highest_message_level, tables = validate_extension()
-
     master = Master(
         secure=not data.unsecure,
         debug=data.debug,
         no_rich=data.no_rich_logging,
+        no_validate=data.no_validate,
         reload=data.reload,
     )
-
-    have_features, features = master.get_available_features()
-
-    if not have_features:
-        highest_message_level = 'ERROR'
-
-    console.print()
-
-    print_banner(highest_message_level)
-
-    if not have_features:
-        console.print(get_no_features_table())
-
-    for table in tables:
-        console.print(table)
-
-    if highest_message_level == 'ERROR':
-        sys.exit(-1)
-
-    console.print()
-    console.print(get_features_table(features))
 
     logger.info('Starting Connect EaaS runtime....')
     if data.unsecure:
@@ -105,8 +69,6 @@ def main():
     )
     data = parser.parse_args()
     configure_logger(data.debug, data.no_rich_logging)
-    if not data.no_validate:
-        validate_extension()
     start(data)
 
 

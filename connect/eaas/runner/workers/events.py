@@ -202,7 +202,8 @@ class EventsWorker(WorkerBase):
         return super().__repr__()
 
 
-def _start_event_worker_process(handler, runner_type, debug, no_rich):
+def _start_event_worker_process(handler_class, config, runner_type, debug, no_rich):
+    handler = handler_class(config)
     configure_logger(debug, no_rich)
     worker = EventsWorker(handler, runner_type=runner_type)
     loop = asyncio.get_event_loop()
@@ -217,9 +218,9 @@ def _start_event_worker_process(handler, runner_type, debug, no_rich):
     loop.run_until_complete(worker.start())
 
 
-def start_interactive_worker_process(handler, debug, no_rich):
-    _start_event_worker_process(handler, 'interactive', debug, no_rich)
+def start_interactive_worker_process(handler_class, config, debug, no_rich):
+    _start_event_worker_process(handler_class, config, 'interactive', debug, no_rich)
 
 
-def start_background_worker_process(handler, debug, no_rich):
-    _start_event_worker_process(handler, 'background', debug, no_rich)
+def start_background_worker_process(handler_class, config, debug, no_rich):
+    _start_event_worker_process(handler_class, config, 'background', debug, no_rich)

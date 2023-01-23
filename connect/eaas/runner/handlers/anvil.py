@@ -10,59 +10,45 @@ import anvil.server
 from connect.client import ConnectClient
 from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.helpers import iter_entry_points
+from connect.eaas.runner.handlers.base import ApplicationHandlerBase
 
 
 logger = logging.getLogger(__name__)
 
 
-class AnvilApp:
+class AnvilApp(ApplicationHandlerBase):
     """
     Handle the lifecycle of an Anvil extension.
     """
     def __init__(self, config: ConfigHelper):
-        self._config = config
-        self._anvilapp_class = self.get_anvilapp_class()
+        super().__init__(config)
         self._anvilapp_instance = None
         self._logging_handler = None
 
-    @property
-    def config(self):
-        return self._config
+    def get_application(self):
+        return self.load_application('anvilapp')
 
-    @property
-    def should_start(self):
-        return self._anvilapp_class is not None
+    def get_descriptor(self):
+        if application := self.get_application():
+            return application.get_descriptor()
 
-    @property
-    def variables(self):
-        return self._anvilapp_class.get_variables()
+    def get_features(self):
+        return {
+            'callables': self.callables,
+        }
+
+    def get_variables(self):
+        if application := self.get_application():
+            return application.get_variables()
 
     @property
     def callables(self):
-        return self._anvilapp_class.get_anvil_callables()
-
-    @property
-    def readme(self):
-        return self._anvilapp_class.get_descriptor()['readme_url']
-
-    @property
-    def changelog(self):
-        return self._anvilapp_class.get_descriptor()['changelog_url']
-
-    @property
-    def audience(self):
-        return self._anvilapp_class.get_descriptor().get('audience')
-
-    @property
-    def features(self):
-        return {
-            'callables': self._anvilapp_class.get_anvil_callables(),
-        }
+        if application := self.get_application():
+            return application.get_anvil_callables()
 
     def start(self):
         logger.info('Create anvil connection...')
-        var_name = self._anvilapp_class.get_anvil_key_variable()
+        var_name = self.get_application().get_anvil_key_variable()
         anvil_api_key = self._config.variables.get(var_name)
         if not anvil_api_key:
             logger.error(f'Cannot start Anvil application: variable {var_name} not found!')
@@ -78,13 +64,9 @@ class AnvilApp:
         anvil.server.disconnect()
         logger.info('Anvil server stopped successfully.')
 
-    def get_anvilapp_class(self):
-        anvil_class = next(iter_entry_points('connect.eaas.ext', 'anvilapp'), None)
-        return anvil_class.load() if anvil_class else None
-
     def setup_anvilapp(self):
         if not self._anvilapp_instance:
-            self._anvilapp_instance = self._anvilapp_class(
+            self._anvilapp_instance = self.get_application()(
                 self.get_client(),
                 self.get_logger(),
                 self._config.variables,

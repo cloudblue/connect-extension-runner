@@ -1,9 +1,11 @@
 import logging
 import threading
 import signal
+import sys
 import time
 from pathlib import Path
 
+from rich.console import Console
 from watchfiles import watch
 from watchfiles.filters import PythonFilter
 from watchfiles.run import start_process
@@ -17,6 +19,12 @@ from connect.eaas.runner.constants import (
     TFNAPP_WORKER,
     WEBAPP_WORKER,
     WORKER_TYPES,
+)
+from connect.eaas.runner.artworks.banner import print_banner
+from connect.eaas.runner.helpers import (
+    get_features_table,
+    get_no_features_table,
+    validate_extension,
 )
 from connect.eaas.runner.handlers.anvil import AnvilApp
 from connect.eaas.runner.handlers.events import EventsApp
@@ -63,7 +71,7 @@ class Master:
         TFNAPP_WORKER: start_tfnapp_worker_process,
     }
 
-    def __init__(self, secure=True, debug=False, no_rich=False, reload=False):
+    def __init__(self, secure=True, debug=False, no_rich=False, no_validate=False, reload=False):
         self.config = ConfigHelper(secure=secure)
         self.handlers = {
             worker_type: self.HANDLER_CLASSES[worker_type](self.config)
@@ -72,6 +80,7 @@ class Master:
         self.reload = reload
         self.debug = debug
         self.no_rich = no_rich
+        self.no_validate = no_validate
         self.workers = {}
         self.stop_event = threading.Event()
         self.monitor_event = threading.Event()
@@ -105,7 +114,40 @@ class Master:
     def handle_signal(self, *args, **kwargs):
         self.stop_event.set()
 
+    def check(self):
+        console = Console()
+
+        highest_message_level = 'INFO'
+        tables = []
+
+        if not self.no_validate:
+            highest_message_level, tables = validate_extension()
+
+        have_features, features = self.get_available_features()
+
+        if not have_features:
+            highest_message_level = 'ERROR'
+
+        console.print()
+
+        print_banner(highest_message_level)
+
+        if not have_features:
+            console.print(get_no_features_table())
+
+        for table in tables:
+            console.print(table)
+
+        if highest_message_level == 'ERROR':
+            return False
+
+        console.print()
+        console.print(get_features_table(features))
+        return True
+
     def start(self):
+        if not self.check():
+            sys.exit(-1)
         for worker_type, handler in self.handlers.items():
             if handler.should_start:
                 self.start_worker_process(worker_type, handler)
@@ -117,7 +159,7 @@ class Master:
         p = start_process(
             self.PROCESS_TARGETS[worker_type],
             'function',
-            (handler, self.debug, self.no_rich),
+            (handler.__class__, self.config, self.debug, self.no_rich),
             {},
         )
         self.workers[worker_type] = p
@@ -149,6 +191,8 @@ class Master:
 
     def restart(self):
         self.stop()
+        for handler in self.handlers.values():
+            handler.reload()
         self.start()
 
     def __iter__(self):

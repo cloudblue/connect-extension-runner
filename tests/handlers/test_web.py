@@ -1,5 +1,4 @@
 import os
-from importlib.metadata import EntryPoint
 
 import pytest
 from fastapi import Depends, Header
@@ -29,21 +28,16 @@ def test_get_webapp_class(mocker, settings_payload):
         def get_static_root(cls):
             return ''
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
+    mocked_load = mocker.patch.object(
+        WebApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.web.iter_entry_points',
-        return_value=iter([
-            EntryPoint('webapp', None, 'connect.eaas.ext'),
-        ]),
     )
 
     handler = WebApp(config)
 
-    assert handler._webapp_class == MyExtension
+    assert handler.get_application() == MyExtension
+    mocked_load.assert_called_once_with('webapp')
 
 
 def test_properties(mocker):
@@ -87,20 +81,14 @@ def test_properties(mocker):
             }
 
     mocker.patch.object(
-        EntryPoint,
-        'load',
+        WebApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.web.iter_entry_points',
-        return_value=iter([
-            EntryPoint('webapp', None, 'connect.eaas.ext'),
-        ]),
     )
 
     handler = WebApp(config)
 
-    assert handler._webapp_class == MyExtension
+    assert handler.get_application() == MyExtension
     assert handler.ui_modules == {
         'settings': {
             'label': 'Test label',
@@ -142,15 +130,9 @@ def test_get_asgi_application(mocker, static_root):
             return auth_router, no_auth_router
 
     mocker.patch.object(
-        EntryPoint,
-        'load',
+        WebApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.web.iter_entry_points',
-        return_value=iter([
-            EntryPoint('webapp', None, 'connect.eaas.ext'),
-        ]),
     )
 
     mocked_fastapi = mocker.MagicMock()
@@ -224,15 +206,9 @@ def test_openapi_schema_generation(mocker):
             return
 
     mocker.patch.object(
-        EntryPoint,
-        'load',
+        WebApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.web.iter_entry_points',
-        return_value=iter([
-            EntryPoint('webapp', None, 'connect.eaas.ext'),
-        ]),
     )
 
     handler = WebApp(config)
@@ -299,15 +275,9 @@ def test_get_features(mocker):
             return
 
     mocker.patch.object(
-        EntryPoint,
-        'load',
+        WebApp,
+        'load_application',
         return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.web.iter_entry_points',
-        return_value=iter([
-            EntryPoint('webapp', None, 'connect.eaas.ext'),
-        ]),
     )
 
     handler = WebApp(config)

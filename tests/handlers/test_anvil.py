@@ -1,5 +1,3 @@
-from importlib.metadata import EntryPoint
-
 import pytest
 
 from connect.eaas.core.decorators import anvil_callable
@@ -15,21 +13,12 @@ def test_get_anvilapp_class(mocker, settings_payload):
     class MyExtension:
         pass
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvil.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocked_load = mocker.patch.object(AnvilApp, 'load_application', return_value=MyExtension)
 
     handler = AnvilApp(config)
 
-    assert handler._anvilapp_class == MyExtension
+    assert handler.get_application() == MyExtension
+    mocked_load.assert_called_once_with('anvilapp')
 
 
 def test_properties(mocker):
@@ -58,21 +47,11 @@ def test_properties(mocker):
         def get_variables(cls):
             return variables
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvil.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocker.patch.object(AnvilApp, 'load_application', return_value=MyExtension)
 
     handler = AnvilApp(config)
 
-    assert handler._anvilapp_class == MyExtension
+    assert handler.get_application() == MyExtension
     assert handler.config == config
     assert handler.variables == variables
     assert handler.readme == descriptor['readme_url']
@@ -118,17 +97,7 @@ def test_start(mocker, logging_key):
 
     mocked_setup_callables = mocker.patch.object(MyExtension, 'setup_anvil_callables')
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvil.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocker.patch.object(AnvilApp, 'load_application', return_value=MyExtension)
 
     mocked_anvil_connect = mocker.patch(
         'connect.eaas.runner.handlers.anvil.anvil.server.connect',
@@ -176,18 +145,7 @@ def test_start_no_api_key(mocker):
             pass
 
     mocked_setup_callables = mocker.patch.object(MyExtension, 'setup_anvil_callables')
-
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvil.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocker.patch.object(AnvilApp, 'load_application', return_value=MyExtension)
 
     mocked_anvil_connect = mocker.patch(
         'connect.eaas.runner.handlers.anvil.anvil.server.connect',
@@ -207,17 +165,7 @@ def test_stop(mocker):
     class MyExtension:
         pass
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvil.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocker.patch.object(AnvilApp, 'load_application', return_value=MyExtension)
 
     mocked_anvil_disconnect = mocker.patch(
         'connect.eaas.runner.handlers.anvil.anvil.server.disconnect',
@@ -236,17 +184,7 @@ def test_features(mocker):
         def my_callable(self):
             pass
 
-    mocker.patch.object(
-        EntryPoint,
-        'load',
-        return_value=MyExtension,
-    )
-    mocker.patch(
-        'connect.eaas.runner.handlers.anvil.iter_entry_points',
-        return_value=iter([
-            EntryPoint('anvilapp', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocker.patch.object(AnvilApp, 'load_application', return_value=MyExtension)
 
     mocker.patch(
         'connect.eaas.runner.handlers.anvil.anvil.server.disconnect',

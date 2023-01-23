@@ -1,5 +1,3 @@
-from importlib.metadata import EntryPoint
-
 from connect.eaas.core.decorators import transformation
 from connect.eaas.core.extension import TransformationBase
 from connect.eaas.runner.config import ConfigHelper
@@ -10,17 +8,12 @@ def test_get_tfnapp_module(mocker, settings_payload):
 
     config = ConfigHelper()
 
-    mocker.patch.object(EntryPoint, 'load')
-    mocker.patch(
-        'connect.eaas.runner.handlers.transformations.iter_entry_points',
-        return_value=iter([
-            EntryPoint('tfnapp', None, 'connect.eaas.ext'),
-        ]),
-    )
+    mocked_load = mocker.patch.object(TfnApp, 'load_application')
 
     handler = TfnApp(config)
 
-    assert handler.get_tfn_module() is not None
+    assert handler.get_application() is not None
+    mocked_load.assert_called_once_with('tfnapp')
 
 
 def test_properties(mocker):
@@ -35,26 +28,19 @@ def test_properties(mocker):
     class MyExtension(TransformationBase):
         pass
 
-    mocker.patch(
-        'connect.eaas.runner.handlers.transformations.iter_entry_points',
-        sidde_effect=[
-            iter([EntryPoint('tfnapp', None, 'connect.eaas.ext')]),
-            iter([EntryPoint('tfnapp', None, 'connect.eaas.ext')]),
-            iter([EntryPoint('tfnapp', None, 'connect.eaas.ext')]),
-        ],
-    )
-    mocker.patch.object(EntryPoint, 'load')
+    mocker.patch.object(TfnApp, 'load_application')
+    mocker.patch.object(TfnApp, 'get_descriptor', return_value={
+        'readme_url': 'https://readme.com',
+        'changelog_url': 'https://changelog.org',
+        'audience': ['vendor'],
+    })
+
     mocker.patch(
         'connect.eaas.runner.handlers.transformations.inspect.getmembers',
         return_value=[('target_class', MyExtension)],
     )
 
     handler = TfnApp(config)
-    handler._descriptor = {
-        'readme_url': 'https://readme.com',
-        'changelog_url': 'https://changelog.org',
-        'audience': ['vendor'],
-    }
 
     tfn = {
         'name': 'my transformation',

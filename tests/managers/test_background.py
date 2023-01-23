@@ -42,7 +42,7 @@ async def test_sync(mocker, extension_cls, event_type, settings_payload):
 
     cls = extension_cls(method)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
@@ -95,7 +95,7 @@ async def test_async(mocker, extension_cls, event_type, settings_payload):
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.background.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
@@ -166,7 +166,7 @@ async def test_get_argument(
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
@@ -233,7 +233,7 @@ async def test_get_argument_multi_account(
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
@@ -309,7 +309,7 @@ async def test_get_argument_status_changed(
 
     cls = extension_cls(method, async_impl=True)
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     result_queue = mocker.patch.object(asyncio.Queue, 'put')
