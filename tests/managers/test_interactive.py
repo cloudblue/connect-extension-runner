@@ -53,7 +53,7 @@ async def test_validation_sync(mocker, extension_cls, event_type, settings_paylo
 
     cls = extension_cls(method, result=ValidationResponse.done(task_response_data))
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.interactive.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
@@ -114,7 +114,7 @@ async def test_validation_async(mocker, extension_cls, event_type, settings_payl
         async_impl=True,
     )
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.interactive.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
@@ -182,7 +182,7 @@ async def test_others_sync(mocker, extension_cls, event_type, result, settings_p
         result=result,
     )
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.interactive.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
@@ -253,7 +253,7 @@ async def test_others_async(mocker, extension_cls, event_type, result, settings_
         async_impl=True,
     )
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocked_time = mocker.patch('connect.eaas.runner.managers.interactive.time')
     mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)

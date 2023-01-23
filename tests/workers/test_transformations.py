@@ -35,7 +35,13 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         },
     )
 
-    mocker.patch.object(TfnApp, 'get_tfn_module')
+    mocker.patch.object(TfnApp, 'load_application')
+    mocker.patch.object(TfnApp, 'get_descriptor', return_value={
+        'readme_url': 'https://readme.com',
+        'changelog_url': 'https://changelog.org',
+        'audience': ['vendor'],
+    })
+
     mocker.patch('connect.eaas.runner.workers.transformations.get_version', return_value='24.1')
 
     data_to_send = Message(
@@ -53,11 +59,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
 
     config = ConfigHelper(secure=False)
     ext_handler = TfnApp(config)
-    ext_handler._descriptor = {
-        'readme_url': 'https://readme.com',
-        'changelog_url': 'https://changelog.org',
-        'audience': ['vendor'],
-    }
+
     ext_handler._transformations = [{
         'name': 'my transformation',
         'description': 'The my transformation',
@@ -106,7 +108,12 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
         },
     )
 
-    mocker.patch.object(TfnApp, 'get_tfn_module')
+    mocker.patch.object(TfnApp, 'load_application')
+    mocker.patch.object(TfnApp, 'get_descriptor', return_value={
+        'readme_url': 'https://readme.com',
+        'changelog_url': 'https://changelog.org',
+        'audience': ['vendor'],
+    })
 
     data_to_send = [
         Message(
@@ -125,11 +132,6 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
 
     config = ConfigHelper(secure=False)
     ext_handler = TfnApp(config)
-    ext_handler._descriptor = {
-        'readme_url': 'https://readme.com',
-        'changelog_url': 'https://changelog.org',
-        'audience': ['vendor'],
-    }
     ext_handler._transformations = [{
         'name': 'my transformation',
         'description': 'The my transformation',
@@ -144,10 +146,10 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
         assert worker.run_event.is_set() is False
 
 
-def test_start_anvilapp_worker_process(mocker):
+def test_start_tfnapp_worker_process(mocker):
     start_mock = mocker.AsyncMock()
 
-    mocker.patch.object(TfnApp, 'get_tfn_module')
+    mocker.patch.object(TfnApp, 'load_application')
     mocker.patch.object(TransformationWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch(
         'connect.eaas.runner.workers.transformations.configure_logger',

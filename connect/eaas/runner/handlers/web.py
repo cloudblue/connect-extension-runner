@@ -9,7 +9,7 @@ from fastapi.openapi.utils import generate_operation_summary, get_openapi
 from connect.client import ClientError
 from connect.eaas.core.utils import client_error_exception_handler
 from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.helpers import iter_entry_points
+from connect.eaas.runner.handlers.base import ApplicationHandlerBase
 
 
 logger = logging.getLogger(__name__)
@@ -24,59 +24,18 @@ class _OpenApiCORSMiddleware(CORSMiddleware):
         await super().__call__(scope, receive, send)  # pragma: no cover
 
 
-class WebApp:
+class WebApp(ApplicationHandlerBase):
     """
     Handle the lifecycle of an extension.
     """
     def __init__(self, config: ConfigHelper):
-        self._config = config
-        self._webapp_class = self.get_webapp_class()
+        super().__init__(config)
         self._logging_handler = None
         self._app = None
 
     @property
-    def config(self):
-        return self._config
-
-    @property
-    def should_start(self):
-        return self._webapp_class is not None
-
-    @property
-    def name(self):
-        return self._webapp_class.get_descriptor().get('name', 'Unnamed API')
-
-    @property
-    def description(self):
-        return self._webapp_class.get_descriptor().get('description', '')
-
-    @property
-    def version(self):
-        return self._webapp_class.get_descriptor().get('version', '0.0.0')
-
-    @property
     def ui_modules(self):
-        return self._webapp_class.get_ui_modules()
-
-    @property
-    def variables(self):
-        return self._webapp_class.get_variables()
-
-    @property
-    def readme(self):
-        return self._webapp_class.get_descriptor()['readme_url']
-
-    @property
-    def changelog(self):
-        return self._webapp_class.get_descriptor()['changelog_url']
-
-    @property
-    def icon(self):
-        return self._webapp_class.get_descriptor().get('icon')
-
-    @property
-    def audience(self):
-        return self._webapp_class.get_descriptor().get('audience')
+        return self.get_application().get_ui_modules()
 
     @property
     def app(self):
@@ -84,8 +43,10 @@ class WebApp:
             self._app = self.get_asgi_application()
         return self._app
 
-    @property
-    def features(self):
+    def get_application(self):
+        return self.load_application('webapp')
+
+    def get_features(self):
         return {
             'endpoints': self.get_endpoints(),
             'ui_modules': self.get_ui_components(),
@@ -123,7 +84,7 @@ class WebApp:
         return components
 
     def get_endpoints(self):
-        auth, no_auth = self._webapp_class.get_routers()
+        auth, no_auth = self.get_application().get_routers()
         endpoints = {
             'auth': [],
             'no_auth': [],
@@ -149,19 +110,15 @@ class WebApp:
             _OpenApiCORSMiddleware,
             allow_origins=['*'],
         )
-        auth, no_auth = self._webapp_class.get_routers()
+        auth, no_auth = self.get_application().get_routers()
         app.include_router(auth, prefix='/api')
         app.include_router(no_auth, prefix='/guest')
         app.openapi = functools.partial(self.get_api_schema, app)
-        static_root = self._webapp_class.get_static_root()
+        static_root = self.get_application().get_static_root()
         if static_root:
             app.mount('/static', StaticFiles(directory=static_root), name='static')
 
         return app
-
-    def get_webapp_class(self):
-        ext_class = next(iter_entry_points('connect.eaas.ext', 'webapp'), None)
-        return ext_class.load() if ext_class else None
 
     def get_api_schema(self, app):
         if app.openapi_schema:

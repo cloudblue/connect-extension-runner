@@ -115,6 +115,8 @@ class WebWorker(WorkerBase):
         headers['X-Connect-Api-Gateway-Url'] = self.config.get_api_url()
         headers['X-Connect-User-Agent'] = self.config.get_user_agent()['User-Agent']
         headers['X-Connect-Extension-Id'] = self.config.service_id
+        headers['X-Connect-Environment-Id'] = self.config.environment_id
+        headers['X-Connect-Environment-Type'] = self.config.environment_type
         headers['X-Connect-Logging-Level'] = self.get_logging_level()
         headers['X-Connect-Config'] = json.dumps(self.config.variables)
 
@@ -175,7 +177,8 @@ class WebWorker(WorkerBase):
         return message.serialize()
 
 
-def start_webapp_worker_process(handler, debug, no_rich):
+def start_webapp_worker_process(handler_class, config, debug, no_rich):
+    handler = handler_class(config)
     configure_logger(debug, no_rich)
     worker = WebWorker(handler)
     loop = asyncio.get_event_loop()

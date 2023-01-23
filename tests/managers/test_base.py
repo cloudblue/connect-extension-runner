@@ -30,7 +30,7 @@ async def test_submit(mocker, extension_cls, task_payload):
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     extension_instance = cls(None, None, None)
@@ -83,7 +83,7 @@ async def test_submit_multi_account(mocker, extension_cls, task_payload):
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     extension_instance = cls(None, None, None)
@@ -144,7 +144,7 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, mocked_put)
@@ -181,7 +181,7 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     mocked_put = mocker.AsyncMock()
@@ -212,7 +212,7 @@ async def test_submit_no_argument(mocker, extension_cls, task_payload):
     mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
 
     config = ConfigHelper()
     handler = EventsApp(config)
@@ -241,7 +241,7 @@ async def test_submit_no_method(mocker, extension_cls, task_payload):
 
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     mocker.patch.object(EventsApp, 'get_method', return_value=None)
 
     config = ConfigHelper()
@@ -274,7 +274,7 @@ async def test_log_exception(mocker, extension_cls, settings_payload, task_paylo
     config.update_dynamic_config(dyn)
     cls = extension_cls('my_method')
     mocker.patch.object(cls, 'get_descriptor')
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
@@ -327,7 +327,7 @@ async def test_get_installation(
     mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
     config.update_dynamic_config(SetupResponse(**settings_payload))
-    mocker.patch.object(EventsApp, 'get_extension_class', return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
