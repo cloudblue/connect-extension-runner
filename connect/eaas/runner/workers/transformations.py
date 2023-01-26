@@ -64,7 +64,8 @@ class TransformationWorker(WorkerBase):
         await super().shutdown()
 
 
-def start_tfnapp_worker_process(handler, debug, no_rich):
+def start_tfnapp_worker_process(handler_class, config, debug, no_rich):
+    handler = handler_class(config)
     configure_logger(debug, no_rich)
     worker = TransformationWorker(handler)
     loop = asyncio.get_event_loop()
