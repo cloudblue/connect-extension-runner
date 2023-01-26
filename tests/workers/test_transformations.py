@@ -155,7 +155,11 @@ def test_start_tfnapp_worker_process(mocker):
         'connect.eaas.runner.workers.transformations.configure_logger',
     )
 
-    start_tfnapp_worker_process(mocker.MagicMock(), True, False)
+    handler_class_mock = mocker.MagicMock()
+    config_mock = mocker.MagicMock()
+
+    start_tfnapp_worker_process(handler_class_mock, config_mock, True, False)
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
+    handler_class_mock.assert_called_once_with(config_mock)
