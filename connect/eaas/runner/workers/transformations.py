@@ -56,7 +56,7 @@ class TransformationWorker(WorkerBase):
         message = Message.deserialize(data)
         logger.debug(f'Received message: {pformat(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
-            self.process_setup_response(message.data)
+            await self.process_setup_response(message.data)
         elif message.message_type == MessageType.SHUTDOWN:
             await self.shutdown()
 
@@ -64,10 +64,23 @@ class TransformationWorker(WorkerBase):
         await super().shutdown()
 
 
-def start_tfnapp_worker_process(handler_class, config, debug, no_rich):
+def start_tfnapp_worker_process(
+    handler_class,
+    config,
+    lifecycle_lock,
+    on_startup_fired,
+    on_shutdown_fired,
+    debug,
+    no_rich,
+):
     handler = handler_class(config)
     configure_logger(debug, no_rich)
-    worker = TransformationWorker(handler)
+    worker = TransformationWorker(
+        handler,
+        lifecycle_lock,
+        on_startup_fired,
+        on_shutdown_fired,
+    )
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
         signal.SIGINT,

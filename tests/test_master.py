@@ -90,6 +90,7 @@ def test_start_worker_process(mocker, worker_type):
         'connect.eaas.runner.master.start_process',
         return_value=mocked_process,
     )
+    mocker.patch.dict(Master.HANDLER_CLASSES, {worker_type: handler.__class__})
 
     master = Master()
     master.start_worker_process(worker_type, handler)
@@ -97,7 +98,15 @@ def test_start_worker_process(mocker, worker_type):
     mocked_start_process.assert_called_once_with(
         master.PROCESS_TARGETS[worker_type],
         'function',
-        (handler.__class__, mocker.ANY, master.debug, master.no_rich),
+        (
+            handler.__class__,
+            mocker.ANY,
+            master.lifecycle_lock,
+            master.lifecycle_events[handler.__class__].on_startup,
+            master.lifecycle_events[handler.__class__].on_shutdown,
+            master.debug,
+            master.no_rich,
+        ),
         {},
     )
 
