@@ -142,7 +142,9 @@ class TasksManagerBase(ABC):
         logger.warning(
             f'Got exception during execution of task {task_data.options.task_id}: {e}',
         )
-        ext_logger = self.handler.get_logger(task_data.options.task_id)
+        ext_logger = self.handler.get_logger(
+            extra={'task_id': task_data.options.task_id},
+        )
         ext_logger.exception(
             f'Unhandled exception during execution of task {task_data.options.task_id}',
         )

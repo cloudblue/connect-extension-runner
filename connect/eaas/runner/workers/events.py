@@ -38,8 +38,8 @@ class EventsWorker(WorkerBase):
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, handler, runner_type=None):
-        super().__init__(handler)
+    def __init__(self, handler, lock, startup_fired, shutdown_fired, runner_type=None):
+        super().__init__(handler, lock, startup_fired, shutdown_fired)
         self.runner_type = runner_type
         self.results_queue = asyncio.Queue()
         self.background_manager = BackgroundTasksManager(
@@ -106,7 +106,7 @@ class EventsWorker(WorkerBase):
         message = Message.deserialize(data)
         logger.debug(f'Received message: {pformat(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
-            self.process_setup_response(message.data)
+            await self.process_setup_response(message.data)
         elif message.message_type == MessageType.TASK:
             await self.process_task(message.data)
         elif message.message_type == MessageType.SHUTDOWN:
@@ -202,10 +202,25 @@ class EventsWorker(WorkerBase):
         return super().__repr__()
 
 
-def _start_event_worker_process(handler_class, config, runner_type, debug, no_rich):
+def _start_event_worker_process(
+    handler_class,
+    config,
+    lifecycle_lock,
+    on_startup_fired,
+    on_shutdown_fired,
+    runner_type,
+    debug,
+    no_rich,
+):
     handler = handler_class(config)
     configure_logger(debug, no_rich)
-    worker = EventsWorker(handler, runner_type=runner_type)
+    worker = EventsWorker(
+        handler,
+        lifecycle_lock,
+        on_startup_fired,
+        on_shutdown_fired,
+        runner_type=runner_type,
+    )
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
         signal.SIGINT,
@@ -218,9 +233,43 @@ def _start_event_worker_process(handler_class, config, runner_type, debug, no_ri
     loop.run_until_complete(worker.start())
 
 
-def start_interactive_worker_process(handler_class, config, debug, no_rich):
-    _start_event_worker_process(handler_class, config, 'interactive', debug, no_rich)
+def start_interactive_worker_process(
+    handler_class,
+    config,
+    lifecycle_lock,
+    on_startup_fired,
+    on_shutdown_fired,
+    debug,
+    no_rich,
+):
+    _start_event_worker_process(
+        handler_class,
+        config,
+        lifecycle_lock,
+        on_startup_fired,
+        on_shutdown_fired,
+        'interactive',
+        debug,
+        no_rich,
+    )
 
 
-def start_background_worker_process(handler_class, config, debug, no_rich):
-    _start_event_worker_process(handler_class, config, 'background', debug, no_rich)
+def start_background_worker_process(
+    handler_class,
+    config,
+    lifecycle_lock,
+    on_startup_fired,
+    on_shutdown_fired,
+    debug,
+    no_rich,
+):
+    _start_event_worker_process(
+        handler_class,
+        config,
+        lifecycle_lock,
+        on_startup_fired,
+        on_shutdown_fired,
+        'background',
+        debug,
+        no_rich,
+    )

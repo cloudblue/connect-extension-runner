@@ -1,14 +1,17 @@
 import importlib
 import inspect
+import logging
 import sys
 from abc import ABC, abstractmethod
 
+from connect.eaas.core.logging import ExtensionLogHandler
 from connect.eaas.runner.helpers import iter_entry_points
 
 
 class ApplicationHandlerBase(ABC):
     def __init__(self, config):
         self._config = config
+        self._logging_handler = None
 
     @property
     def config(self):
@@ -79,6 +82,24 @@ class ApplicationHandlerBase(ABC):
     def get_variables(self):
         if application := self.get_application():
             return application.get_variables()
+
+    def get_logger(self, extra=None):
+        """
+        Returns a logger instance configured with the LogZ.io handler.
+        This logger will be used by the extension to send logging records
+        to the Logz.io service.
+        """
+        logger = logging.getLogger(self.LOGGER_NAME)
+        if self._logging_handler is None and self._config.logging_api_key is not None:
+            self._logging_handler = ExtensionLogHandler(
+                self._config.logging_api_key,
+                default_extra_fields=self._config.metadata,
+            )
+            logger.addHandler(self._logging_handler)
+        return logging.LoggerAdapter(
+            logger,
+            extra=extra,
+        )
 
     @abstractmethod
     def get_application(self):

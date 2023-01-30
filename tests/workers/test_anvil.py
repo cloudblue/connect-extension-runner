@@ -69,7 +69,9 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     ext_handler = AnvilApp(config)
 
     async with ws_server(handler):
-        worker = AnvilWorker(ext_handler)
+        worker = AnvilWorker(
+            ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -157,7 +159,9 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     ext_handler = AnvilApp(config)
 
     async with ws_server(handler):
-        worker = AnvilWorker(ext_handler)
+        worker = AnvilWorker(
+            ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock(),
+        )
         asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         assert worker.run_event.is_set() is False
@@ -173,7 +177,15 @@ def test_start_anvilapp_worker_process(mocker):
     mocker.patch.object(AnvilWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.anvil.configure_logger')
 
-    start_anvilapp_worker_process(mocker.MagicMock(), True, False)
+    start_anvilapp_worker_process(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        True,
+        False,
+    )
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()

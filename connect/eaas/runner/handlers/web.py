@@ -28,6 +28,9 @@ class WebApp(ApplicationHandlerBase):
     """
     Handle the lifecycle of an extension.
     """
+
+    LOGGER_NAME = 'eaas.webapp'
+
     def __init__(self, config: ConfigHelper):
         super().__init__(config)
         self._logging_handler = None

@@ -3,7 +3,7 @@ import logging
 import os
 
 from connect.client import AsyncConnectClient, ConnectClient
-from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
+from connect.eaas.core.logging import RequestLogger
 from connect.eaas.core.models import Context
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
@@ -17,6 +17,9 @@ class EventsApp(ApplicationHandlerBase):
     """
     Handle the lifecycle of an extension.
     """
+
+    LOGGER_NAME = 'eaas.extension'
+
     def __init__(self, config: ConfigHelper):
         super().__init__(config)
         self._config = config
@@ -51,7 +54,7 @@ class EventsApp(ApplicationHandlerBase):
             self._create_client(
                 event_type, task_id, method_name, self._config.api_key, connect_correlation_id,
             ),
-            self.get_logger(task_id),
+            self.get_logger(extra={'task_id': task_id}),
             self._config.variables,
         )
         kwargs = {}
@@ -77,24 +80,6 @@ class EventsApp(ApplicationHandlerBase):
         ext = app_class(*args, **kwargs)
 
         return getattr(ext, method_name, None)
-
-    def get_logger(self, task_id):
-        """
-        Returns a logger instance configured with the LogZ.io handler.
-        This logger will be used by the extension to send logging records
-        to the Logz.io service.
-        """
-        logger = logging.getLogger('eaas.extension')
-        if self._logging_handler is None and self._config.logging_api_key is not None:
-            self._logging_handler = ExtensionLogHandler(
-                self._config.logging_api_key,
-                default_extra_fields=self._config.metadata,
-            )
-            logger.addHandler(self._logging_handler)
-        return logging.LoggerAdapter(
-            logger,
-            {'task_id': task_id},
-        )
 
     def _create_client(self, event_type, task_id, method_name, api_key, connect_correlation_id):
         """
@@ -125,7 +110,7 @@ class EventsApp(ApplicationHandlerBase):
             use_specs=False,
             max_retries=3,
             logger=RequestLogger(
-                self.get_logger(task_id),
+                self.get_logger(extra={'task_id': task_id}),
             ),
             default_headers=default_headers,
         )
