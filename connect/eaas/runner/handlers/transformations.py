@@ -23,7 +23,6 @@ class TfnApp(ApplicationHandlerBase):
     """
     def __init__(self, config: ConfigHelper):
         super().__init__(config)
-        self._logging_handler = None
         self._transformations = None
 
     def get_application(self):
