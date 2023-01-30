@@ -89,7 +89,12 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -225,7 +230,12 @@ async def test_pr_task(mocker, ws_server, unused_port, httpx_mock, settings_payl
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -366,7 +376,12 @@ async def test_pr_task_decorated(mocker, ws_server, unused_port, httpx_mock, set
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -511,7 +526,12 @@ async def test_tcr_task(mocker, ws_server, unused_port, httpx_mock, settings_pay
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -657,7 +677,12 @@ async def test_scheduled_task(mocker, ws_server, unused_port, httpx_mock, settin
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -799,7 +824,12 @@ async def test_scheduled_task_decorated(
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -908,7 +938,12 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         assert worker.run_event.is_set() is False
@@ -946,7 +981,12 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=ConnectionClosedError(1006, 'disconnected'))
         with caplog.at_level(logging.INFO):
@@ -992,7 +1032,12 @@ async def test_connection_websocket_exception(mocker, ws_server, unused_port, ca
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=WebSocketException('test error'))
         with caplog.at_level(logging.INFO):
@@ -1036,7 +1081,12 @@ async def test_connection_maintenance(mocker, ws_server, unused_port, caplog):
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=InvalidStatusCode(502, None))
         with caplog.at_level(logging.INFO):
@@ -1080,7 +1130,12 @@ async def test_connection_internal_server_error(mocker, ws_server, unused_port, 
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         worker.do_handshake = mocker.AsyncMock()
         worker.receive = mocker.AsyncMock(side_effect=InvalidStatusCode(500, None))
         with caplog.at_level(logging.INFO):
@@ -1161,7 +1216,12 @@ async def test_start_stop(mocker, ws_server, unused_port, caplog):
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(.01)
@@ -1246,7 +1306,12 @@ async def test_extension_settings_with_vars(mocker, ws_server, unused_port):
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1338,7 +1403,12 @@ async def test_extension_settings_with_vars_decorated(mocker, ws_server, unused_
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1430,7 +1500,12 @@ async def test_extension_settings_without_vars(mocker, ws_server, unused_port):
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1467,7 +1542,12 @@ async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
     ext_handler = EventsApp(config)
 
     with caplog.at_level(logging.WARNING):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         worker.get_extension_message = mocker.MagicMock(return_value={})
         worker.config.update_dynamic_config(SetupResponse(**settings_payload))
         worker.run = mocker.AsyncMock()
@@ -1501,7 +1581,12 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
     ext_handler = EventsApp(config)
 
     with caplog.at_level(logging.WARNING):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         worker.get_extension_message = mocker.MagicMock(return_value={})
         worker.config.update_dynamic_config(SetupResponse(**settings_payload))
         worker.run = mocker.AsyncMock()
@@ -1552,7 +1637,12 @@ def test_backoff_log(mocker, caplog, tries, ordinal):
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    w = EventsWorker(ext_handler)
+    w = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
     with caplog.at_level(logging.INFO):
         w._backoff_log(details)
     assert expected in caplog.records[0].message
@@ -1575,7 +1665,12 @@ async def test_ensure_connection_maintenance(mocker, caplog):
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    worker = EventsWorker(ext_handler)
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1604,7 +1699,12 @@ async def test_ensure_connection_other_statuses(mocker, caplog, status):
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    worker = EventsWorker(ext_handler)
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1632,7 +1732,12 @@ async def test_ensure_connection_generic_exception(mocker, caplog):
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    worker = EventsWorker(ext_handler)
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1659,7 +1764,12 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    worker = EventsWorker(ext_handler)
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1688,7 +1798,12 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    worker = EventsWorker(ext_handler)
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
@@ -1773,7 +1888,12 @@ async def test_shutdown_pending_task_timeout(
 
     with caplog.at_level(logging.ERROR):
         async with ws_server(handler):
-            worker = EventsWorker(ext_handler)
+            worker = EventsWorker(
+                ext_handler,
+                mocker.MagicMock(),
+                mocker.MagicMock(),
+                mocker.MagicMock(),
+            )
             for _ in range(10):
                 await worker.results_queue.put(task_result)
             asyncio.create_task(worker.start())
@@ -1848,7 +1968,12 @@ async def test_update_configuration(mocker, ws_server, unused_port, settings_pay
     ext_handler = EventsApp(config)
 
     async with ws_server(handler):
-        worker = EventsWorker(ext_handler)
+        worker = EventsWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -1867,7 +1992,12 @@ async def test_handle_signal(mocker, settings_payload):
     config = ConfigHelper(secure=False)
     ext_handler = EventsApp(config)
 
-    worker = EventsWorker(ext_handler)
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
     worker.config.update_dynamic_config(SetupResponse(**settings_payload))
     worker.run = mocker.AsyncMock()
     worker.send = mocker.AsyncMock()
@@ -1889,7 +2019,15 @@ def test_start_interactive_worker_process(mocker):
     mocker.patch.object(EventsWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.events.configure_logger')
 
-    start_interactive_worker_process(mocker.MagicMock(), mocker.MagicMock(), True, False)
+    start_interactive_worker_process(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        True,
+        False,
+    )
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
@@ -1905,7 +2043,15 @@ def test_start_background_worker_process(mocker):
     mocker.patch.object(EventsWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.events.configure_logger')
 
-    start_background_worker_process(mocker.MagicMock(), mocker.MagicMock(), True, False)
+    start_background_worker_process(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        True,
+        False,
+    )
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()

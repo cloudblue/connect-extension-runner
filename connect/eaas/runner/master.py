@@ -3,6 +3,8 @@ import threading
 import signal
 import sys
 import time
+from collections import namedtuple
+from multiprocessing import get_context
 from pathlib import Path
 
 from rich.console import Console
@@ -41,6 +43,9 @@ from connect.eaas.runner.workers.events import (
 
 
 logger = logging.getLogger('connect.eaas')
+
+
+LifecycleFlags = namedtuple('LifecycleFlags', ('on_startup', 'on_shutdown'))
 
 
 HANDLED_SIGNALS = (signal.SIGINT, signal.SIGTERM)
@@ -92,6 +97,14 @@ class Master:
             yield_on_timeout=True,
         )
         self.monitor_thread = None
+        self.lifecycle_lock = get_context('spawn').Lock()
+        self.lifecycle_events = {
+            handler_class: LifecycleFlags(
+                get_context('spawn').Value('H', 0),
+                get_context('spawn').Value('H', 0),
+            )
+            for handler_class in set(self.HANDLER_CLASSES.values())
+        }
         self.setup_signals_handler()
 
     def setup_signals_handler(self):
@@ -156,10 +169,19 @@ class Master:
         self.monitor_thread.start()
 
     def start_worker_process(self, worker_type, handler):
+        lifecycle_flags = self.lifecycle_events[handler.__class__]
         p = start_process(
             self.PROCESS_TARGETS[worker_type],
             'function',
-            (handler.__class__, self.config, self.debug, self.no_rich),
+            (
+                handler.__class__,
+                self.config,
+                self.lifecycle_lock,
+                lifecycle_flags.on_startup,
+                lifecycle_flags.on_shutdown,
+                self.debug,
+                self.no_rich,
+            ),
             {},
         )
         self.workers[worker_type] = p

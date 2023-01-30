@@ -57,7 +57,7 @@ class AnvilWorker(WorkerBase):
         message = Message.deserialize(data)
         logger.debug(f'Received message: {pformat(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
-            self.process_setup_response(message.data)
+            await self.process_setup_response(message.data)
             self.handler.start()
         elif message.message_type == MessageType.SHUTDOWN:
             await self.shutdown()
@@ -67,9 +67,12 @@ class AnvilWorker(WorkerBase):
         await super().shutdown()
 
 
-def start_anvilapp_worker_process(handler, debug, no_rich):
+def start_anvilapp_worker_process(
+        handler_class, config, lock, startup_fired, shutdown_fired, debug, no_rich,
+):
+    handler = handler_class(config)
     configure_logger(debug, no_rich)
-    worker = AnvilWorker(handler)
+    worker = AnvilWorker(handler, lock, startup_fired, shutdown_fired)
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(
         signal.SIGINT,

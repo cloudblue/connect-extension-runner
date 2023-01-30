@@ -8,7 +8,7 @@ import logging
 import anvil.server
 
 from connect.client import ConnectClient
-from connect.eaas.core.logging import ExtensionLogHandler, RequestLogger
+from connect.eaas.core.logging import RequestLogger
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.base import ApplicationHandlerBase
 
@@ -20,6 +20,9 @@ class AnvilApp(ApplicationHandlerBase):
     """
     Handle the lifecycle of an Anvil extension.
     """
+
+    LOGGER_NAME = 'eaas.anvilapp'
+
     def __init__(self, config: ConfigHelper):
         super().__init__(config)
         self._anvilapp_instance = None
@@ -84,18 +87,3 @@ class AnvilApp(ApplicationHandlerBase):
                 self.get_logger(),
             ),
         )
-
-    def get_logger(self):
-        """
-        Returns a logger instance configured with the LogZ.io handler.
-        This logger will be used by the extension to send logging records
-        to the Logz.io service.
-        """
-        logger = logging.getLogger('eaas.anvilapp')
-        if self._logging_handler is None and self._config.logging_api_key is not None:
-            self._logging_handler = ExtensionLogHandler(
-                self._config.logging_api_key,
-                default_extra_fields=self._config.metadata,
-            )
-            logger.addHandler(self._logging_handler)
-        return logger

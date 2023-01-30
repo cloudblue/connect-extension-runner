@@ -85,7 +85,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     ext_handler = WebApp(config)
 
     async with ws_server(handler):
-        worker = WebWorker(ext_handler)
+        worker = WebWorker(ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -229,7 +229,7 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
 
     worker = None
     async with ws_server(handler):
-        worker = WebWorker(ext_handler)
+        worker = WebWorker(ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -369,7 +369,7 @@ async def test_http_call_exception(mocker, ws_server, unused_port, settings_payl
 
     worker = None
     async with ws_server(handler):
-        worker = WebWorker(ext_handler)
+        worker = WebWorker(ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
         task = asyncio.create_task(worker.start())
         await asyncio.sleep(.5)
         worker.stop()
@@ -477,7 +477,7 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
     ext_handler = WebApp(config)
 
     async with ws_server(handler):
-        worker = WebWorker(ext_handler)
+        worker = WebWorker(ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
         asyncio.create_task(worker.start())
         await asyncio.sleep(1)
         assert worker.run_event.is_set() is False
@@ -493,7 +493,235 @@ def test_start_webapp_worker_process(mocker):
     mocker.patch.object(WebWorker, 'start', start_mock)
     mocked_configure_logger = mocker.patch('connect.eaas.runner.workers.web.configure_logger')
 
-    start_webapp_worker_process(mocker.MagicMock(), mocker.MagicMock(), True, False)
+    start_webapp_worker_process(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        True,
+        False,
+    )
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_trigger_lifecycle_events_sync(mocker, ws_server, unused_port, settings_payload):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+
+    ui_modules = {
+        'settings': {
+            'label': 'Settings',
+            'url': '/static/settings.html',
+        },
+    }
+
+    @account_settings_page('Settings', '/static/settings.html')
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'name': 'name',
+                'description': 'description',
+                'version': '0.1.2',
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+        @classmethod
+        def on_startup(cls, logger, config):
+            pass
+
+        @classmethod
+        def on_shutdown(cls, logger, config):
+            pass
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    mocked_on_startup = mocker.patch.object(MyExtension, 'on_startup')
+    mocked_on_startup.__self__ = MyExtension
+    mocked_on_shutdown = mocker.patch.object(MyExtension, 'on_shutdown')
+    mocked_on_shutdown.__self__ = MyExtension
+
+    mocked_inspect = mocker.patch('connect.eaas.runner.workers.base.inspect')
+    mocked_inspect.ismethod.return_value = True
+    mocked_inspect.iscoroutinefunction.return_value = False
+
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
+
+    data_to_send = Message(
+        version=2,
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(**settings_payload),
+    ).dict()
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
+        data_to_send,
+        ['receive', 'send'],
+    )
+    worker = None
+
+    config = ConfigHelper(secure=False)
+    ext_handler = WebApp(config)
+
+    async with ws_server(handler):
+        worker = WebWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(value=0),
+            mocker.MagicMock(value=0),
+        )
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+    msg = Message(
+        version=2,
+        message_type=MessageType.SETUP_REQUEST,
+        data=SetupRequest(
+            event_subscriptions=None,
+            ui_modules=ui_modules,
+            variables=[],
+            schedulables=None,
+            repository={
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            },
+            runner_version='24.1',
+        ),
+    )
+
+    handler.assert_received(msg.dict())
+    mocked_on_startup.assert_called_once()
+    mocked_on_shutdown.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_trigger_lifecycle_events_async(mocker, ws_server, unused_port, settings_payload):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+
+    ui_modules = {
+        'settings': {
+            'label': 'Settings',
+            'url': '/static/settings.html',
+        },
+    }
+
+    @account_settings_page('Settings', '/static/settings.html')
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'name': 'name',
+                'description': 'description',
+                'version': '0.1.2',
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+        @classmethod
+        async def on_startup(cls, logger, config):
+            pass
+
+        @classmethod
+        async def on_shutdown(cls, logger, config):
+            pass
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    mocked_on_startup = mocker.patch.object(MyExtension, 'on_startup')
+    mocked_on_startup.__self__ = MyExtension
+    mocked_on_shutdown = mocker.patch.object(MyExtension, 'on_shutdown')
+    mocked_on_shutdown.__self__ = MyExtension
+
+    mocked_inspect = mocker.patch('connect.eaas.runner.workers.base.inspect')
+    mocked_inspect.ismethod.return_value = True
+    mocked_inspect.iscoroutinefunction.return_value = True
+
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
+
+    data_to_send = Message(
+        version=2,
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(**settings_payload),
+    ).dict()
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
+        data_to_send,
+        ['receive', 'send'],
+    )
+    worker = None
+
+    config = ConfigHelper(secure=False)
+    ext_handler = WebApp(config)
+
+    async with ws_server(handler):
+        worker = WebWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(value=0),
+            mocker.MagicMock(value=0),
+        )
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+    msg = Message(
+        version=2,
+        message_type=MessageType.SETUP_REQUEST,
+        data=SetupRequest(
+            event_subscriptions=None,
+            ui_modules=ui_modules,
+            variables=[],
+            schedulables=None,
+            repository={
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            },
+            runner_version='24.1',
+        ),
+    )
+
+    handler.assert_received(msg.dict())
+    mocked_on_startup.assert_awaited_once()
+    mocked_on_shutdown.assert_awaited_once()

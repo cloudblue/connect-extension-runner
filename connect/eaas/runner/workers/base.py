@@ -4,6 +4,7 @@
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
 import asyncio
+import inspect
 import json
 import logging
 import time
@@ -60,7 +61,7 @@ class WorkerBase(ABC):
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
-    def __init__(self, handler):
+    def __init__(self, handler, lifecycle_lock, on_startup_fired, on_shutdown_fired):
         self.handler = handler
         self.config = handler.config
         self.lock = asyncio.Lock()
@@ -69,6 +70,9 @@ class WorkerBase(ABC):
         self.ws = None
         self.main_task = None
         self.results_task = None
+        self.lifecycle_lock = lifecycle_lock
+        self.on_startup_fired = on_startup_fired
+        self.on_shutdown_fired = on_shutdown_fired
 
     async def ensure_connection(self):  # noqa: CCR001
         """
@@ -199,14 +203,43 @@ class WorkerBase(ABC):
                 await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
         logger.info(f'{self} main loop exited!')
 
-    def process_setup_response(self, data):
+    async def process_setup_response(self, data):
         """
         Process the configuration message.
         It will stop the tasks manager so the extension can be
         reconfigured, then restart the tasks manager.
         """
         self.config.update_dynamic_config(data)
+        await self.trigger_event('on_startup')
         logger.info('Extension configuration has been updated.')
+
+    async def trigger_event(self, event):
+        with self.lifecycle_lock:
+            if event == 'on_startup':
+                if self.on_startup_fired.value:
+                    return
+                self.on_startup_fired.value = 1
+            if event == 'on_shutdown':
+                if self.on_shutdown_fired.value:
+                    return
+                self.on_shutdown_fired.value = 1
+
+        application = self.handler.get_application()
+        event_handler = getattr(application, event, None)
+        if (
+            event_handler
+            and inspect.ismethod(event_handler)
+            and event_handler.__self__ is application
+        ):
+            if inspect.iscoroutinefunction(event_handler):
+                await event_handler(self.handler.get_logger(), self.config.variables)
+            else:
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    event_handler,
+                    self.handler.get_logger(),
+                    self.config.variables,
+                )
 
     async def shutdown(self):
         """
@@ -225,6 +258,7 @@ class WorkerBase(ABC):
         logger.info(f'{self} started')
         await self.stop_event.wait()
         await self.stopping()
+        await self.trigger_event('on_shutdown')
         await self.main_task
         if self.ws:
             await self.ws.close()
