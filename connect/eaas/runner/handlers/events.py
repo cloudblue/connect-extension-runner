@@ -18,7 +18,7 @@ class EventsApp(ApplicationHandlerBase):
     Handle the lifecycle of an extension.
     """
 
-    LOGGER_NAME = 'eaas.extension'
+    LOGGER_NAME = 'eaas.eventsapp'
 
     def __init__(self, config: ConfigHelper):
         super().__init__(config)

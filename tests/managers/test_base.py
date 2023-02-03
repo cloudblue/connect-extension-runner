@@ -285,7 +285,7 @@ async def test_log_exception(mocker, extension_cls, settings_payload, task_paylo
         manager.log_exception(task_data, Exception('test exc'))
 
     assert caplog.record_tuples[-1] == (
-        'eaas.extension',
+        'eaas.eventsapp',
         logging.ERROR,
         'Unhandled exception during execution of task TQ-000',
     )
