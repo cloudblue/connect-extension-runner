@@ -1,3 +1,4 @@
+import inspect
 import functools
 import logging
 
@@ -5,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import generate_operation_summary, get_openapi
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from connect.client import ClientError
 from connect.eaas.core.utils import client_error_exception_handler
@@ -113,6 +115,9 @@ class WebApp(ApplicationHandlerBase):
             _OpenApiCORSMiddleware,
             allow_origins=['*'],
         )
+        if hasattr(self.get_application(), 'get_middlewares'):
+            self.setup_middlewares(app, self.get_application().get_middlewares() or [])
+
         auth, no_auth = self.get_application().get_routers()
         app.include_router(auth, prefix='/api')
         app.include_router(no_auth, prefix='/guest')
@@ -122,6 +127,15 @@ class WebApp(ApplicationHandlerBase):
             app.mount('/static', StaticFiles(directory=static_root), name='static')
 
         return app
+
+    def setup_middlewares(self, app, middlewares):
+        for middleware in middlewares:
+            if inspect.isfunction(middleware):
+                app.add_middleware(BaseHTTPMiddleware, dispatch=middleware)
+            elif inspect.isclass(middleware):
+                app.add_middleware(middleware)
+            elif isinstance(middleware, tuple):
+                app.add_middleware(middleware[0], **middleware[1])
 
     def get_api_schema(self, app):
         if app.openapi_schema:

@@ -3,6 +3,7 @@ import os
 import pytest
 from fastapi import Depends, Header
 from fastapi.routing import APIRouter
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from connect.client import ClientError, ConnectClient
 from connect.eaas.core.decorators import (
@@ -112,6 +113,12 @@ def test_get_asgi_application(mocker, static_root):
     auth_router = mocker.MagicMock()
     no_auth_router = mocker.MagicMock()
 
+    async def middleware_fn():
+        pass
+
+    class MiddlewareClass:
+        pass
+
     class MyExtension:
         @classmethod
         def get_descriptor(cls):
@@ -128,6 +135,14 @@ def test_get_asgi_application(mocker, static_root):
         @classmethod
         def get_routers(cls):
             return auth_router, no_auth_router
+
+        @classmethod
+        def get_middlewares(cls):
+            return [
+                middleware_fn,
+                MiddlewareClass,
+                (MiddlewareClass, {'arg1': 'val1'}),
+            ]
 
     mocker.patch.object(
         WebApp,
@@ -163,10 +178,17 @@ def test_get_asgi_application(mocker, static_root):
     assert mocked_fastapi.include_router.mock_calls[1].args[0] == no_auth_router
     assert mocked_fastapi.include_router.mock_calls[1].kwargs['prefix'] == '/guest'
 
-    mocked_fastapi.add_middleware.assert_called_once_with(
-        _OpenApiCORSMiddleware,
-        allow_origins=['*'],
-    )
+    assert mocked_fastapi.add_middleware.mock_calls[0].args[0] == _OpenApiCORSMiddleware
+    assert mocked_fastapi.add_middleware.mock_calls[0].kwargs['allow_origins'] == ['*']
+
+    assert mocked_fastapi.add_middleware.mock_calls[1].args[0] == BaseHTTPMiddleware
+    assert mocked_fastapi.add_middleware.mock_calls[1].kwargs['dispatch'] == middleware_fn
+
+    assert mocked_fastapi.add_middleware.mock_calls[2].args[0] == MiddlewareClass
+
+    assert mocked_fastapi.add_middleware.mock_calls[3].args[0] == MiddlewareClass
+    assert mocked_fastapi.add_middleware.mock_calls[3].kwargs['arg1'] == 'val1'
+
     if static_root:
         mocked_static_files.assert_called_once_with(directory=static_root)
         mocked_fastapi.mount.assert_called_once_with(
