@@ -1,9 +1,17 @@
 import pytest
 
-from connect.eaas.core.decorators import anvil_callable
-from connect.eaas.core.extension import AnvilApplicationBase
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.anvil import AnvilApp
+from connect.eaas.core.decorators import (
+    anvil_callable,
+)
+from connect.eaas.core.extension import (
+    AnvilApplicationBase,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.anvil import (
+    AnvilApp,
+)
 
 
 def test_get_anvilapp_class(mocker, settings_payload):

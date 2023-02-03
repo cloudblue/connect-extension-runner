@@ -2,19 +2,31 @@ import asyncio
 
 import pytest
 
-from connect.eaas.core.decorators import anvil_key_variable
-from connect.eaas.core.extension import AnvilApplicationBase
+from connect.eaas.core.decorators import (
+    anvil_key_variable,
+)
+from connect.eaas.core.extension import (
+    AnvilApplicationBase,
+)
 from connect.eaas.core.proto import (
     Message,
     MessageType,
     SetupRequest,
     SetupResponse,
 )
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.anvil import AnvilApp
-from connect.eaas.runner.workers.anvil import AnvilWorker, start_anvilapp_worker_process
-
-from tests.utils import WSHandler
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.anvil import (
+    AnvilApp,
+)
+from connect.eaas.runner.workers.anvil import (
+    AnvilWorker,
+    start_anvilapp_worker_process,
+)
+from tests.utils import (
+    WSHandler,
+)
 
 
 @pytest.mark.asyncio

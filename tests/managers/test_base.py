@@ -2,12 +2,24 @@ import asyncio
 import logging
 
 import pytest
+from connect.client import (
+    ClientError,
+)
 
-from connect.client import ClientError
-from connect.eaas.core.proto import SetupResponse, Task, TaskOutput
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.managers.base import TasksManagerBase
-from connect.eaas.runner.handlers.events import EventsApp
+from connect.eaas.core.proto import (
+    SetupResponse,
+    Task,
+    TaskOutput,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
+from connect.eaas.runner.managers.base import (
+    TasksManagerBase,
+)
 
 
 @pytest.mark.asyncio

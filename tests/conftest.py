@@ -10,9 +10,15 @@ import pytest
 import responses as sentry_responses
 import websockets
 
-from connect.eaas.core.extension import Extension
-from connect.eaas.core.responses import ProcessingResponse
-from connect.eaas.runner.constants import BACKGROUND_EVENT_TYPES
+from connect.eaas.core.extension import (
+    Extension,
+)
+from connect.eaas.core.responses import (
+    ProcessingResponse,
+)
+from connect.eaas.runner.constants import (
+    BACKGROUND_EVENT_TYPES,
+)
 
 
 @pytest.fixture

@@ -3,20 +3,32 @@ import time
 
 import pytest
 
-from connect.eaas.core.enums import EventType, ResultType, TaskCategory
+from connect.eaas.core.enums import (
+    EventType,
+    ResultType,
+    TaskCategory,
+)
 from connect.eaas.core.proto import (
     SetupResponse,
     Task,
     TaskOutput,
 )
-from connect.eaas.core.responses import ProcessingResponse
-from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.core.responses import (
+    ProcessingResponse,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
 from connect.eaas.runner.constants import (
     BACKGROUND_EVENT_TYPES,
     EVENT_TYPE_EXT_METHOD_MAP,
 )
-from connect.eaas.runner.handlers.events import EventsApp
-from connect.eaas.runner.managers import BackgroundTasksManager
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
+from connect.eaas.runner.managers import (
+    BackgroundTasksManager,
+)
 
 
 @pytest.mark.asyncio

@@ -3,13 +3,6 @@ import time
 
 import pytest
 
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.constants import (
-    EVENT_TYPE_EXT_METHOD_MAP,
-    INTERACTIVE_EVENT_TYPES,
-    OTHER_INTERACTIVE_EVENT_TYPES,
-    VALIDATION_EVENT_TYPES,
-)
 from connect.eaas.core.enums import (
     EventType,
     ResultType,
@@ -25,8 +18,21 @@ from connect.eaas.core.responses import (
     ProductActionResponse,
     ValidationResponse,
 )
-from connect.eaas.runner.handlers.events import EventsApp
-from connect.eaas.runner.managers import InteractiveTasksManager
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.constants import (
+    EVENT_TYPE_EXT_METHOD_MAP,
+    INTERACTIVE_EVENT_TYPES,
+    OTHER_INTERACTIVE_EVENT_TYPES,
+    VALIDATION_EVENT_TYPES,
+)
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
+from connect.eaas.runner.managers import (
+    InteractiveTasksManager,
+)
 
 
 @pytest.mark.asyncio

@@ -9,8 +9,12 @@ import logging.config
 
 import uvloop
 
-from connect.eaas.runner.helpers import configure_logger
-from connect.eaas.runner.master import Master
+from connect.eaas.runner.helpers import (
+    configure_logger,
+)
+from connect.eaas.runner.master import (
+    Master,
+)
 
 
 logger = logging.getLogger('connect.eaas')

@@ -2,9 +2,17 @@ import os
 
 import pytest
 
-from connect.eaas.core.proto import Logging, LogMeta, SetupResponse
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.events import EventsApp
+from connect.eaas.core.proto import (
+    Logging,
+    LogMeta,
+    SetupResponse,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
 
 
 def test_get_method(mocker, settings_payload, extension_cls):

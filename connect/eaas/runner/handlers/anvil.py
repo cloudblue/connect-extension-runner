@@ -6,11 +6,19 @@
 import logging
 
 import anvil.server
+from connect.client import (
+    ConnectClient,
+)
 
-from connect.client import ConnectClient
-from connect.eaas.core.logging import RequestLogger
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.base import ApplicationHandlerBase
+from connect.eaas.core.logging import (
+    RequestLogger,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.base import (
+    ApplicationHandlerBase,
+)
 
 
 logger = logging.getLogger(__name__)

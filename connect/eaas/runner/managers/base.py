@@ -6,13 +6,29 @@
 import asyncio
 import inspect
 import logging
-from abc import ABC, abstractmethod
-from asyncio.futures import Future
-from concurrent.futures import ThreadPoolExecutor
+from abc import (
+    ABC,
+    abstractmethod,
+)
+from asyncio.futures import (
+    Future,
+)
+from concurrent.futures import (
+    ThreadPoolExecutor,
+)
 
-from connect.client import AsyncConnectClient, ClientError
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.events import EventsApp
+from connect.client import (
+    AsyncConnectClient,
+    ClientError,
+)
+
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
+
 
 logger = logging.getLogger(__name__)
 

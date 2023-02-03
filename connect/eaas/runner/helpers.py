@@ -3,23 +3,48 @@
 #
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
-import os
 import logging
+import os
 import subprocess
-from datetime import datetime
-from importlib.metadata import entry_points, version
-from uuid import uuid4
+from datetime import (
+    datetime,
+)
+from importlib.metadata import (
+    entry_points,
+    version,
+)
+from uuid import (
+    uuid4,
+)
 
 import requests
-from rich import box
-from rich.align import Align
-from rich.markdown import Markdown
-from rich.table import Table
-from rich.syntax import Syntax
+from connect.client import (
+    ClientError,
+    ConnectClient,
+)
+from rich import (
+    box,
+)
+from rich.align import (
+    Align,
+)
+from rich.markdown import (
+    Markdown,
+)
+from rich.syntax import (
+    Syntax,
+)
+from rich.table import (
+    Table,
+)
 
-from connect.client import ClientError, ConnectClient
-from connect.eaas.core.validation.models import ValidationItem, ValidationResult
-from connect.eaas.core.validation.validators import get_validators
+from connect.eaas.core.validation.models import (
+    ValidationItem,
+    ValidationResult,
+)
+from connect.eaas.core.validation.validators import (
+    get_validators,
+)
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
     HANDLER_CLASS_TITLE,
@@ -28,6 +53,7 @@ from connect.eaas.runner.constants import (
     PYPI_EXTENSION_RUNNER_URL,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
+
 
 logger = logging.getLogger('connect.eaas')
 

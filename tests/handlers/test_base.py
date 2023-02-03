@@ -1,8 +1,12 @@
-from importlib.metadata import EntryPoint
+from importlib.metadata import (
+    EntryPoint,
+)
 
 import pytest
 
-from connect.eaas.runner.handlers.base import ApplicationHandlerBase
+from connect.eaas.runner.handlers.base import (
+    ApplicationHandlerBase,
+)
 
 
 def test_config(mocker):

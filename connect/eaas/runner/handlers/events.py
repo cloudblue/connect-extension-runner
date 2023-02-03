@@ -2,12 +2,26 @@ import inspect
 import logging
 import os
 
-from connect.client import AsyncConnectClient, ConnectClient
-from connect.eaas.core.logging import RequestLogger
-from connect.eaas.core.models import Context
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.constants import EVENT_TYPE_EXT_METHOD_MAP
-from connect.eaas.runner.handlers.base import ApplicationHandlerBase
+from connect.client import (
+    AsyncConnectClient,
+    ConnectClient,
+)
+
+from connect.eaas.core.logging import (
+    RequestLogger,
+)
+from connect.eaas.core.models import (
+    Context,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.constants import (
+    EVENT_TYPE_EXT_METHOD_MAP,
+)
+from connect.eaas.runner.handlers.base import (
+    ApplicationHandlerBase,
+)
 
 
 logger = logging.getLogger(__name__)

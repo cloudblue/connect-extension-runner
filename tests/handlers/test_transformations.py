@@ -1,7 +1,15 @@
-from connect.eaas.core.decorators import transformation
-from connect.eaas.core.extension import TransformationsApplicationBase
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.transformations import TfnApp
+from connect.eaas.core.decorators import (
+    transformation,
+)
+from connect.eaas.core.extension import (
+    TransformationsApplicationBase,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.transformations import (
+    TfnApp,
+)
 
 
 def test_get_tfnapp_module(mocker, settings_payload):

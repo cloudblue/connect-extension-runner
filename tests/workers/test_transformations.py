@@ -8,14 +8,19 @@ from connect.eaas.core.proto import (
     SetupRequest,
     SetupResponse,
 )
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.transformations import TfnApp
-from connect.eaas.runner.workers.transformations import (
-    start_tfnapp_worker_process,
-    TransformationWorker,
+from connect.eaas.runner.config import (
+    ConfigHelper,
 )
-
-from tests.utils import WSHandler
+from connect.eaas.runner.handlers.transformations import (
+    TfnApp,
+)
+from connect.eaas.runner.workers.transformations import (
+    TransformationWorker,
+    start_tfnapp_worker_process,
+)
+from tests.utils import (
+    WSHandler,
+)
 
 
 @pytest.mark.asyncio

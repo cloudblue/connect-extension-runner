@@ -1,7 +1,12 @@
 import os
 import sys
 
-from pyfiglet import Figlet, FigletFont, parse_color
+from pyfiglet import (
+    Figlet,
+    FigletFont,
+    parse_color,
+)
+
 
 LEVEL_TO_FONT_COLOR = {
     'INFO': ('ansi_regular', 'BLUE'),

@@ -3,7 +3,6 @@ import time
 
 import pytest
 
-from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.core.enums import (
     EventType,
     ResultType,
@@ -14,9 +13,18 @@ from connect.eaas.core.proto import (
     Task,
     TaskOutput,
 )
-from connect.eaas.core.responses import ScheduledExecutionResponse
-from connect.eaas.runner.handlers.events import EventsApp
-from connect.eaas.runner.managers import ScheduledTasksManager
+from connect.eaas.core.responses import (
+    ScheduledExecutionResponse,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
+from connect.eaas.runner.managers import (
+    ScheduledTasksManager,
+)
 
 
 @pytest.mark.asyncio

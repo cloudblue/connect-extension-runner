@@ -1,5 +1,11 @@
-from connect.eaas.core.proto import Logging, LogMeta, SetupResponse
-from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.core.proto import (
+    Logging,
+    LogMeta,
+    SetupResponse,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
 
 
 def test_get_user_agent(mocker):

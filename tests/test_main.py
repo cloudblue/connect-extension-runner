@@ -4,7 +4,9 @@
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
 import sys
-from collections import namedtuple
+from collections import (
+    namedtuple,
+)
 
 import pytest
 

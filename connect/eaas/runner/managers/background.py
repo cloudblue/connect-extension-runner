@@ -7,14 +7,31 @@ import asyncio
 import logging
 import time
 import traceback
-from string import Template
+from string import (
+    Template,
+)
 
-from connect.client import AsyncConnectClient
-from connect.client.models import AsyncCollection, AsyncResource
-from connect.eaas.core.enums import ResultType
-from connect.eaas.core.responses import ProcessingResponse
-from connect.eaas.core.proto import Task, TaskOutput
-from connect.eaas.runner.managers.base import TasksManagerBase
+from connect.client import (
+    AsyncConnectClient,
+)
+from connect.client.models import (
+    AsyncCollection,
+    AsyncResource,
+)
+
+from connect.eaas.core.enums import (
+    ResultType,
+)
+from connect.eaas.core.proto import (
+    Task,
+    TaskOutput,
+)
+from connect.eaas.core.responses import (
+    ProcessingResponse,
+)
+from connect.eaas.runner.managers.base import (
+    TasksManagerBase,
+)
 
 
 logger = logging.getLogger(__name__)
