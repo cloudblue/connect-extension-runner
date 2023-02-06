@@ -9,6 +9,7 @@ from fastapi.openapi.utils import generate_operation_summary, get_openapi
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from connect.client import ClientError
+from connect.eaas.core.decorators import router as root_router
 from connect.eaas.core.utils import client_error_exception_handler
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.base import ApplicationHandlerBase
@@ -162,3 +163,7 @@ class WebApp(ApplicationHandlerBase):
 
         app.openapi_schema = openapi_schema
         return app.openapi_schema
+
+    def reload(self):
+        root_router.routes = []
+        return super().reload()
