@@ -1,5 +1,5 @@
 from connect.eaas.core.decorators import transformation
-from connect.eaas.core.extension import TransformationBase
+from connect.eaas.core.extension import TransformationsApplicationBase
 from connect.eaas.runner.config import ConfigHelper
 from connect.eaas.runner.handlers.transformations import TfnApp
 
@@ -20,25 +20,21 @@ def test_properties(mocker):
 
     config = ConfigHelper()
 
-    @transformation(
-        name='my transformation',
-        description='The my transformation',
-        edit_dialog_ui='/static/my_settings.html',
-    )
-    class MyExtension(TransformationBase):
-        pass
+    class MyExtension(TransformationsApplicationBase):
+        @transformation(
+            name='my transformation',
+            description='The my transformation',
+            edit_dialog_ui='/static/my_settings.html',
+        )
+        def my_transformation(self, row):
+            pass
 
-    mocker.patch.object(TfnApp, 'load_application')
+    mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocker.patch.object(TfnApp, 'get_descriptor', return_value={
         'readme_url': 'https://readme.com',
         'changelog_url': 'https://changelog.org',
         'audience': ['vendor'],
     })
-
-    mocker.patch(
-        'connect.eaas.runner.handlers.transformations.inspect.getmembers',
-        return_value=[('target_class', MyExtension)],
-    )
 
     handler = TfnApp(config)
 
@@ -46,7 +42,7 @@ def test_properties(mocker):
         'name': 'my transformation',
         'description': 'The my transformation',
         'edit_dialog_ui': '/static/my_settings.html',
-        'class_fqn': 'tests.handlers.test_transformations.MyExtension',
+        'method': 'my_transformation',
     }
 
     assert handler.config == config
