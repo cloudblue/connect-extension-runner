@@ -41,6 +41,17 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         'changelog_url': 'https://changelog.org',
         'audience': ['vendor'],
     })
+    mocked_trans = mocker.patch.object(
+        TfnApp,
+        'transformations',
+        new_callable=mocker.PropertyMock,
+    )
+    mocked_trans.return_value = [{
+        'name': 'my transformation',
+        'description': 'The my transformation',
+        'edit_dialog_ui': '/static/my_settings.html',
+        'method': 'transform_it',
+    }]
 
     mocker.patch('connect.eaas.runner.workers.transformations.get_version', return_value='24.1')
 
@@ -60,13 +71,6 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     config = ConfigHelper(secure=False)
     ext_handler = TfnApp(config)
 
-    ext_handler._transformations = [{
-        'name': 'my transformation',
-        'description': 'The my transformation',
-        'edit_dialog_ui': '/static/my_settings.html',
-        'class_fqn': 'tests.handlers.test_transformations.MyExtension',
-    }]
-
     async with ws_server(handler):
         worker = TransformationWorker(
             ext_handler,
@@ -83,7 +87,12 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         version=2,
         message_type=MessageType.SETUP_REQUEST,
         data=SetupRequest(
-            transformations=ext_handler._transformations,
+            transformations=[{
+                'name': 'my transformation',
+                'description': 'The my transformation',
+                'edit_dialog_ui': '/static/my_settings.html',
+                'method': 'transform_it',
+            }],
             repository={
                 'readme_url': 'https://readme.com',
                 'changelog_url': 'https://changelog.org',
@@ -120,6 +129,18 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
         'audience': ['vendor'],
     })
 
+    mocked_trans = mocker.patch.object(
+        TfnApp,
+        'transformations',
+        new_callable=mocker.PropertyMock,
+    )
+    mocked_trans.return_value = [{
+        'name': 'my transformation',
+        'description': 'The my transformation',
+        'edit_dialog_ui': '/static/my_settings.html',
+        'method': 'transform_it',
+    }]
+
     data_to_send = [
         Message(
             version=2,
@@ -137,12 +158,6 @@ async def test_shutdown(mocker, ws_server, unused_port, settings_payload):
 
     config = ConfigHelper(secure=False)
     ext_handler = TfnApp(config)
-    ext_handler._transformations = [{
-        'name': 'my transformation',
-        'description': 'The my transformation',
-        'edit_dialog_ui': '/static/my_settings.html',
-        'class_fqn': 'tests.handlers.test_transformations.MyExtension',
-    }]
 
     async with ws_server(handler):
         worker = TransformationWorker(
