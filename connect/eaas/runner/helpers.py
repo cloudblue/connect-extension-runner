@@ -517,13 +517,13 @@ def get_tfnapp_detail_table(details):
         table.add_column('Name')
         table.add_column('Description')
         table.add_column('Edit dialog')
-        table.add_column('Class')
+        table.add_column('Method')
         for transformation in transformations:
             table.add_row(
                 transformation['name'],
                 transformation['description'],
                 transformation['edit_dialog_ui'],
-                transformation['class_fqn'],
+                transformation['method'],
             )
 
         grid.add_row(table)
