@@ -705,7 +705,7 @@ def test_tfnapp_detail_table():
                 'name': 'Test transformation',
                 'description': 'Description',
                 'edit_dialog_ui': '/static/settings.html',
-                'class_fqn': 'package.tfnapp.TestTransformation',
+                'method': 'package.tfnapp.TestTransformation',
             },
         ],
     }
@@ -781,7 +781,7 @@ def test_get_features_table():
                         'name': 'Test transformation',
                         'description': 'Description',
                         'edit_dialog_ui': '/static/settings.html',
-                        'class_fqn': 'package.tfnapp.TestTransformation',
+                        'method': 'package.tfnapp.TestTransformation',
                     },
                 ],
             },
