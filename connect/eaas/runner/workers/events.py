@@ -7,24 +7,31 @@ import asyncio
 import logging
 import signal
 
-from devtools import pformat
+from devtools import (
+    pformat,
+)
 
 from connect.eaas.core.proto import (
     Message,
     MessageType,
     SetupRequest,
 )
-from connect.eaas.runner.workers.base import WorkerBase
 from connect.eaas.runner.constants import (
     DELAY_ON_CONNECT_EXCEPTION_SECONDS,
     RESULT_SENDER_MAX_RETRIES,
     RESULT_SENDER_WAIT_GRACE_SECONDS,
 )
-from connect.eaas.runner.helpers import configure_logger, get_version
+from connect.eaas.runner.helpers import (
+    configure_logger,
+    get_version,
+)
 from connect.eaas.runner.managers import (
     BackgroundTasksManager,
     InteractiveTasksManager,
     ScheduledTasksManager,
+)
+from connect.eaas.runner.workers.base import (
+    WorkerBase,
 )
 
 

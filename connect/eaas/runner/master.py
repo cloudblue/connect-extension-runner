@@ -1,18 +1,37 @@
 import logging
-import threading
 import signal
 import sys
+import threading
 import time
-from collections import namedtuple
-from multiprocessing import get_context
-from pathlib import Path
+from collections import (
+    namedtuple,
+)
+from multiprocessing import (
+    get_context,
+)
+from pathlib import (
+    Path,
+)
 
-from rich.console import Console
-from watchfiles import watch
-from watchfiles.filters import PythonFilter
-from watchfiles.run import start_process
+from rich.console import (
+    Console,
+)
+from watchfiles import (
+    watch,
+)
+from watchfiles.filters import (
+    PythonFilter,
+)
+from watchfiles.run import (
+    start_process,
+)
 
-from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.runner.artworks.banner import (
+    print_banner,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
 from connect.eaas.runner.constants import (
     ANVILAPP_WORKER,
     BACKGROUND_EVENTS_WORKER,
@@ -22,23 +41,36 @@ from connect.eaas.runner.constants import (
     WEBAPP_WORKER,
     WORKER_TYPES,
 )
-from connect.eaas.runner.artworks.banner import print_banner
+from connect.eaas.runner.handlers.anvil import (
+    AnvilApp,
+)
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
+from connect.eaas.runner.handlers.transformations import (
+    TfnApp,
+)
+from connect.eaas.runner.handlers.web import (
+    WebApp,
+)
 from connect.eaas.runner.helpers import (
     get_features_table,
     get_no_features_table,
+    notify_process_restarted,
     validate_extension,
 )
-from connect.eaas.runner.handlers.anvil import AnvilApp
-from connect.eaas.runner.handlers.events import EventsApp
-from connect.eaas.runner.handlers.transformations import TfnApp
-from connect.eaas.runner.handlers.web import WebApp
-from connect.eaas.runner.helpers import notify_process_restarted
-from connect.eaas.runner.workers.anvil import start_anvilapp_worker_process
-from connect.eaas.runner.workers.transformations import start_tfnapp_worker_process
-from connect.eaas.runner.workers.web import start_webapp_worker_process
+from connect.eaas.runner.workers.anvil import (
+    start_anvilapp_worker_process,
+)
 from connect.eaas.runner.workers.events import (
     start_background_worker_process,
     start_interactive_worker_process,
+)
+from connect.eaas.runner.workers.transformations import (
+    start_tfnapp_worker_process,
+)
+from connect.eaas.runner.workers.web import (
+    start_webapp_worker_process,
 )
 
 

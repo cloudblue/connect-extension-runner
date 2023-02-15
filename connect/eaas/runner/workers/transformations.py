@@ -7,15 +7,22 @@ import asyncio
 import logging
 import signal
 
-from devtools import pformat
+from devtools import (
+    pformat,
+)
 
 from connect.eaas.core.proto import (
     Message,
     MessageType,
     SetupRequest,
 )
-from connect.eaas.runner.workers.base import WorkerBase
-from connect.eaas.runner.helpers import configure_logger, get_version
+from connect.eaas.runner.helpers import (
+    configure_logger,
+    get_version,
+)
+from connect.eaas.runner.workers.base import (
+    WorkerBase,
+)
 
 
 logger = logging.getLogger(__name__)

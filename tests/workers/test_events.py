@@ -4,11 +4,25 @@ import logging
 import time
 
 import pytest
-from websockets.exceptions import ConnectionClosedError, InvalidStatusCode, WebSocketException
+from websockets.exceptions import (
+    ConnectionClosedError,
+    InvalidStatusCode,
+    WebSocketException,
+)
 
-from connect.eaas.core.decorators import event, schedulable, variables
-from connect.eaas.core.enums import EventType, ResultType, TaskCategory
-from connect.eaas.core.extension import Extension
+from connect.eaas.core.decorators import (
+    event,
+    schedulable,
+    variables,
+)
+from connect.eaas.core.enums import (
+    EventType,
+    ResultType,
+    TaskCategory,
+)
+from connect.eaas.core.extension import (
+    Extension,
+)
 from connect.eaas.core.proto import (
     Message,
     MessageType,
@@ -16,21 +30,29 @@ from connect.eaas.core.proto import (
     SetupResponse,
     Task,
 )
-from connect.eaas.core.responses import ProcessingResponse, ScheduledExecutionResponse
-from connect.eaas.runner.config import ConfigHelper
+from connect.eaas.core.responses import (
+    ProcessingResponse,
+    ScheduledExecutionResponse,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
 from connect.eaas.runner.exceptions import (
     CommunicationError,
     MaintenanceError,
     StopBackoffError,
 )
-from connect.eaas.runner.handlers.events import EventsApp
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
 from connect.eaas.runner.workers.events import (
     EventsWorker,
     start_background_worker_process,
     start_interactive_worker_process,
 )
-
-from tests.utils import WSHandler
+from tests.utils import (
+    WSHandler,
+)
 
 
 @pytest.mark.asyncio

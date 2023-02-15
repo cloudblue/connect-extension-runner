@@ -8,14 +8,23 @@ import os
 import subprocess
 
 import pytest
+from connect.client import (
+    ConnectClient,
+)
+from freezegun import (
+    freeze_time,
+)
+from responses import (
+    matchers,
+)
+from rich.table import (
+    Table,
+)
 
-from connect.client import ConnectClient
-
-from freezegun import freeze_time
-from responses import matchers
-from rich.table import Table
-
-from connect.eaas.core.validation.models import ValidationItem, ValidationResult
+from connect.eaas.core.validation.models import (
+    ValidationItem,
+    ValidationResult,
+)
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,

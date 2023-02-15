@@ -2,7 +2,9 @@ import logging
 import signal
 import threading
 import time
-from pathlib import Path
+from pathlib import (
+    Path,
+)
 
 import pytest
 
@@ -13,16 +15,31 @@ from connect.eaas.runner.constants import (
     WEBAPP_WORKER,
     WORKER_TYPES,
 )
-from connect.eaas.runner.handlers.anvil import AnvilApp
-from connect.eaas.runner.handlers.events import EventsApp
-from connect.eaas.runner.handlers.transformations import TfnApp
-from connect.eaas.runner.handlers.web import WebApp
-from connect.eaas.runner.master import Master
-from connect.eaas.runner.workers.anvil import start_anvilapp_worker_process
-from connect.eaas.runner.workers.events import (
-    start_background_worker_process, start_interactive_worker_process,
+from connect.eaas.runner.handlers.anvil import (
+    AnvilApp,
 )
-from connect.eaas.runner.workers.web import start_webapp_worker_process
+from connect.eaas.runner.handlers.events import (
+    EventsApp,
+)
+from connect.eaas.runner.handlers.transformations import (
+    TfnApp,
+)
+from connect.eaas.runner.handlers.web import (
+    WebApp,
+)
+from connect.eaas.runner.master import (
+    Master,
+)
+from connect.eaas.runner.workers.anvil import (
+    start_anvilapp_worker_process,
+)
+from connect.eaas.runner.workers.events import (
+    start_background_worker_process,
+    start_interactive_worker_process,
+)
+from connect.eaas.runner.workers.web import (
+    start_webapp_worker_process,
+)
 
 
 def test_process_targets():

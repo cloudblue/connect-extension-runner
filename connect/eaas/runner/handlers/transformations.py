@@ -5,8 +5,12 @@
 #
 import logging
 
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.base import ApplicationHandlerBase
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.base import (
+    ApplicationHandlerBase,
+)
 
 
 logger = logging.getLogger(__name__)

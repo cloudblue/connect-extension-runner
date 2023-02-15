@@ -2,10 +2,17 @@ import importlib
 import inspect
 import logging
 import sys
-from abc import ABC, abstractmethod
+from abc import (
+    ABC,
+    abstractmethod,
+)
 
-from connect.eaas.core.logging import ExtensionLogHandler
-from connect.eaas.runner.helpers import iter_entry_points
+from connect.eaas.core.logging import (
+    ExtensionLogHandler,
+)
+from connect.eaas.runner.helpers import (
+    iter_entry_points,
+)
 
 
 class ApplicationHandlerBase(ABC):

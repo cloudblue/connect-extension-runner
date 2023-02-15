@@ -4,8 +4,8 @@
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
 import asyncio
-import logging
 import json
+import logging
 
 
 logger = logging.getLogger('connect.eaas')

@@ -40,7 +40,7 @@ devtools = "^0.9.0"
 watchfiles = "^0.17.0"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.1.3"
+pytest = "^7.2.1"
 pytest-cov = "^4.0.0"
 pytest-mock = "^3.3.1"
 pytest-randomly = "^3.12.0"
@@ -50,7 +50,6 @@ flake8-bugbear = "^22"
 flake8-cognitive-complexity = "^0.1"
 flake8-commas = "^2.1.0"
 flake8-future-import = "~0.4"
-flake8-import-order = "~0.18"
 flake8-broken-line = "^0.6"
 flake8-pyproject = "^1.2.2"
 pytest-asyncio = "0.20.*"
@@ -58,6 +57,7 @@ pytest-httpx = ">=0.20"
 responses = "^0.21.0"
 freezegun = "^1.2.1"
 flaky = "^3.7.0"
+flake8-isort = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -75,10 +75,11 @@ exclude = [
 ]
 show-source = true
 max-line-length = 100
-application-import-names = "connect"
-import-order-style = "smarkets"
 max-cognitive-complexity = 20
 ignore = ["FI1", "I100", "W503"]
+
+[tool.coverage.run]
+branch = true
 
 [tool.coverage.report]
 omit = [
@@ -86,8 +87,6 @@ omit = [
     "connect/eaas/dataclasses.py",
     "connect/eaas/extension.py"
 ]
-
-
 exclude_lines = [
     "raise NotImplementedError",
     "pragma: no cover",
@@ -102,3 +101,15 @@ addopts = "-v --cov=connect.eaas.runner --cov-report=term-missing:skip-covered -
 python_files = "test_*.py"
 junit_family = "xunit2"
 asyncio_mode = "strict"
+
+[tool.isort]
+src_paths = "*"
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+group_by_package = true
+multi_line_output = 3
+force_grid_wrap = 1
+combine_as_imports = true
+use_parentheses = true
+include_trailing_comma = true
+line_length = 100
+lines_after_imports = 2

@@ -11,7 +11,9 @@ import logging
 import signal
 
 import httpx
-from devtools import pformat
+from devtools import (
+    pformat,
+)
 
 from connect.eaas.core.proto import (
     HttpRequest,
@@ -21,8 +23,13 @@ from connect.eaas.core.proto import (
     SetupRequest,
     WebTask,
 )
-from connect.eaas.runner.workers.base import WorkerBase
-from connect.eaas.runner.helpers import configure_logger, get_version
+from connect.eaas.runner.helpers import (
+    configure_logger,
+    get_version,
+)
+from connect.eaas.runner.workers.base import (
+    WorkerBase,
+)
 
 
 logger = logging.getLogger(__name__)

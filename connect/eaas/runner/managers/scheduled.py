@@ -8,12 +8,16 @@ import logging
 import time
 import traceback
 
-from connect.eaas.core.enums import ResultType
+from connect.eaas.core.enums import (
+    ResultType,
+)
 from connect.eaas.core.proto import (
     Task,
     TaskOutput,
 )
-from connect.eaas.runner.managers.base import TasksManagerBase
+from connect.eaas.runner.managers.base import (
+    TasksManagerBase,
+)
 
 
 logger = logging.getLogger(__name__)

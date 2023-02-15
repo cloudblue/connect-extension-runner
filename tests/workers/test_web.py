@@ -1,12 +1,20 @@
 import asyncio
 import copy
+import logging
 
 import pytest
+from websockets.exceptions import (
+    ConnectionClosedOK,
+)
 
 from connect.eaas.core.decorators import (
-    account_settings_page, router, web_app,
+    account_settings_page,
+    router,
+    web_app,
 )
-from connect.eaas.core.extension import WebApplicationBase
+from connect.eaas.core.extension import (
+    WebApplicationBase,
+)
 from connect.eaas.core.proto import (
     HttpRequest,
     HttpResponse,
@@ -17,11 +25,19 @@ from connect.eaas.core.proto import (
     WebTask,
     WebTaskOptions,
 )
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.workers.web import start_webapp_worker_process, WebWorker
-from connect.eaas.runner.handlers.web import WebApp
-
-from tests.utils import WSHandler
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.web import (
+    WebApp,
+)
+from connect.eaas.runner.workers.web import (
+    WebWorker,
+    start_webapp_worker_process,
+)
+from tests.utils import (
+    WSHandler,
+)
 
 
 @pytest.mark.asyncio
@@ -725,3 +741,86 @@ async def test_trigger_lifecycle_events_async(mocker, ws_server, unused_port, se
     handler.assert_received(msg.dict())
     mocked_on_startup.assert_awaited_once()
     mocked_on_shutdown.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_close_connection_with_reason(
+    mocker,
+    ws_server,
+    unused_port,
+    settings_payload,
+    caplog,
+):
+
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+
+    ui_modules = {
+        'settings': {
+            'label': 'Settings',
+            'url': '/static/settings.html',
+        },
+    }
+
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'ui': ui_modules,
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+    mocker.patch.object(
+        WebApp,
+        'get_application',
+        return_value=MyExtension,
+    )
+
+    data_to_send = [
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**settings_payload),
+        ).dict(),
+        Message(message_type=MessageType.SHUTDOWN).dict(),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
+        data_to_send,
+        ['receive', 'send', 'send'],
+    )
+
+    config = ConfigHelper(secure=False)
+    ext_handler = WebApp(config)
+
+    async with ws_server(handler):
+        worker = WebWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(value=0),
+            mocker.MagicMock(value=0),
+        )
+        exception = ConnectionClosedOK(
+            rcvd=mocker.MagicMock(reason='Somereason'),
+            sent=mocker.MagicMock(),
+        )
+        worker.receive = mocker.MagicMock(side_effect=exception)
+        with caplog.at_level(logging.WARNING):
+            asyncio.create_task(worker.start())
+            await asyncio.sleep(1)
+        assert worker.run_event.is_set() is False
+        assert 'The WS connection has been closed, reason: Somereason' in caplog.text

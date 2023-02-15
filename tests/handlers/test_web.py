@@ -1,11 +1,21 @@
 import os
 
 import pytest
-from fastapi import Depends, Header
-from fastapi.routing import APIRouter
-from starlette.middleware.base import BaseHTTPMiddleware
+from connect.client import (
+    ClientError,
+    ConnectClient,
+)
+from fastapi import (
+    Depends,
+    Header,
+)
+from fastapi.routing import (
+    APIRouter,
+)
+from starlette.middleware.base import (
+    BaseHTTPMiddleware,
+)
 
-from connect.client import ClientError, ConnectClient
 from connect.eaas.core.decorators import (
     account_settings_page,
     admin_pages,
@@ -13,11 +23,23 @@ from connect.eaas.core.decorators import (
     module_pages,
     web_app,
 )
-from connect.eaas.core.extension import WebApplicationBase
-from connect.eaas.core.inject.synchronous import get_installation, get_installation_client
-from connect.eaas.core.utils import client_error_exception_handler
-from connect.eaas.runner.config import ConfigHelper
-from connect.eaas.runner.handlers.web import _OpenApiCORSMiddleware, WebApp
+from connect.eaas.core.extension import (
+    WebApplicationBase,
+)
+from connect.eaas.core.inject.synchronous import (
+    get_installation,
+    get_installation_client,
+)
+from connect.eaas.core.utils import (
+    client_error_exception_handler,
+)
+from connect.eaas.runner.config import (
+    ConfigHelper,
+)
+from connect.eaas.runner.handlers.web import (
+    WebApp,
+    _OpenApiCORSMiddleware,
+)
 
 
 def test_get_webapp_class(mocker, settings_payload):

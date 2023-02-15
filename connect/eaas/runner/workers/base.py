@@ -8,12 +8,19 @@ import inspect
 import json
 import logging
 import time
-from abc import ABC, abstractmethod
-from asyncio.exceptions import TimeoutError
+from abc import (
+    ABC,
+    abstractmethod,
+)
+from asyncio.exceptions import (
+    TimeoutError,
+)
 
 import backoff
 import websockets
-from devtools import pformat
+from devtools import (
+    pformat,
+)
 from websockets.exceptions import (
     ConnectionClosedError,
     ConnectionClosedOK,
@@ -36,7 +43,9 @@ from connect.eaas.runner.exceptions import (
     MaintenanceError,
     StopBackoffError,
 )
-from connect.eaas.runner.helpers import to_ordinal
+from connect.eaas.runner.helpers import (
+    to_ordinal,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -169,8 +178,10 @@ class WorkerBase(ABC):
                     if not message:
                         continue
                     await self.process_message(message)
-            except (ConnectionClosedOK, StopBackoffError):
+            except (ConnectionClosedOK, StopBackoffError) as exc:
                 self.stop()
+                if isinstance(exc, ConnectionClosedOK):
+                    logger.warning(f'The WS connection has been closed, reason: {exc.reason}')
                 continue
             except (CommunicationError, MaintenanceError):
                 logger.error(f'{self}: max connection attemps reached, exit!')
