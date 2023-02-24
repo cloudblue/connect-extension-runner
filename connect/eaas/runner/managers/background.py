@@ -7,15 +7,11 @@ import asyncio
 import logging
 import time
 import traceback
-from string import (
-    Template,
-)
 
 from connect.client import (
     AsyncConnectClient,
 )
 from connect.client.models import (
-    AsyncCollection,
     AsyncResource,
 )
 
@@ -27,7 +23,7 @@ from connect.eaas.core.proto import (
     TaskOutput,
 )
 from connect.eaas.core.responses import (
-    ProcessingResponse,
+    BackgroundResponse,
 )
 from connect.eaas.runner.managers.base import (
     TasksManagerBase,
@@ -41,6 +37,11 @@ class BackgroundTasksManager(TasksManagerBase):
 
     def get_method_name(self, task_data, argument):
         return self.handler.events[task_data.input.event_type]['method']
+
+    def send_skip_response(self, data, output):
+        future = asyncio.Future()
+        future.set_result(BackgroundResponse.skip(output))
+        asyncio.create_task(self.enqueue_result(data, future))
 
     async def get_argument(self, task_data):
         """
@@ -56,28 +57,14 @@ class BackgroundTasksManager(TasksManagerBase):
                 default_headers=self.config.get_user_agent(),
             )
 
-        definition = self.config.event_definitions[task_data.input.event_type]
-        supported_statuses = self.handler.events[task_data.input.event_type]['statuses']
-        rql_filter = Template(definition.api_collection_filter).substitute(
-            {
-                '_statuses_': f'({",".join(supported_statuses)})',
-                '_object_id_': task_data.input.object_id,
-            },
+        object_exists = await self.filter_collection_by_event_definition(
+            client,
+            task_data,
         )
-
-        collection = AsyncCollection(client, definition.api_collection_endpoint)
-        if await collection.filter(rql_filter).count() == 0:
-            logger.info(
-                f'Send skip response for {task_data.options.task_id} since '
-                'the current request status is not supported.',
-            )
-            self.send_skip_response(
-                task_data,
-                'The request status does not match the '
-                f'supported statuses: {",".join(supported_statuses)}.',
-            )
+        if not object_exists:
             return
 
+        definition = self.config.event_definitions[task_data.input.event_type]
         url = definition.api_resource_endpoint.format(pk=task_data.input.object_id)
         resource = AsyncResource(client, url)
 
@@ -112,8 +99,3 @@ class BackgroundTasksManager(TasksManagerBase):
             result_message.output.message = traceback.format_exc()[:4000]
 
         return result_message
-
-    def send_skip_response(self, data, output):
-        future = asyncio.Future()
-        future.set_result(ProcessingResponse.skip(output))
-        asyncio.create_task(self.enqueue_result(data, future))

@@ -109,7 +109,7 @@ def test_get_method_multi_account(mocker, settings_payload, extension_cls):
     config.update_dynamic_config(dyn_config)
     mocker.patch('connect.eaas.runner.handlers.base.logging.getLogger')
     test_random_bytes = os.urandom(8)
-    mocker.patch('connect.eaas.runner.handlers.events.os.urandom', return_value=test_random_bytes)
+    mocker.patch('connect.eaas.runner.handlers.base.os.urandom', return_value=test_random_bytes)
     ext_class = extension_cls('test_method')
     mocker.patch.object(ext_class, 'get_descriptor')
     mocker.patch.object(

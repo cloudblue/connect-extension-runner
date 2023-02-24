@@ -1,15 +1,6 @@
 import inspect
 import logging
-import os
 
-from connect.client import (
-    AsyncConnectClient,
-    ConnectClient,
-)
-
-from connect.eaas.core.logging import (
-    RequestLogger,
-)
 from connect.eaas.core.models import (
     Context,
 )
@@ -94,40 +85,6 @@ class EventsApp(ApplicationHandlerBase):
         ext = app_class(*args, **kwargs)
 
         return getattr(ext, method_name, None)
-
-    def _create_client(self, event_type, task_id, method_name, api_key, connect_correlation_id):
-        """
-        Get an instance of the Connect Openapi Client. If the extension is asyncrhonous
-        it returns an instance of the AsyncConnectClient otherwise the ConnectClient.
-        """
-        method = getattr(self.get_application(), method_name)
-
-        Client = ConnectClient if not inspect.iscoroutinefunction(method) else AsyncConnectClient
-
-        default_headers = {
-            'EAAS_EXT_ID': self._config.service_id,
-            'EAAS_TASK_ID': task_id,
-            'EAAS_TASK_TYPE': event_type,
-        }
-
-        default_headers.update(self._config.get_user_agent())
-
-        if connect_correlation_id:
-            operation_id = connect_correlation_id[3:34]
-            span_id = os.urandom(8).hex()
-            correlation_id = f'00-{operation_id}-{span_id}-01'
-            default_headers['ext-traceparent'] = correlation_id
-
-        return Client(
-            api_key,
-            endpoint=self._config.get_api_url(),
-            use_specs=False,
-            max_retries=3,
-            logger=RequestLogger(
-                self.get_logger(extra={'task_id': task_id}),
-            ),
-            default_headers=default_headers,
-        )
 
     def get_events(self):
         if 'capabilities' in self.get_descriptor():

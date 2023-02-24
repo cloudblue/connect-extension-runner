@@ -16,10 +16,19 @@ from asyncio.futures import (
 from concurrent.futures import (
     ThreadPoolExecutor,
 )
+from string import (
+    Template,
+)
+from typing import (
+    Union,
+)
 
 from connect.client import (
     AsyncConnectClient,
     ClientError,
+)
+from connect.client.models import (
+    AsyncCollection,
 )
 
 from connect.eaas.runner.config import (
@@ -27,6 +36,9 @@ from connect.eaas.runner.config import (
 )
 from connect.eaas.runner.handlers.events import (
     EventsApp,
+)
+from connect.eaas.runner.handlers.transformations import (
+    TfnApp,
 )
 
 
@@ -37,7 +49,7 @@ class TasksManagerBase(ABC):
     """
     Base class for Tasks managers.
     """
-    def __init__(self, config: ConfigHelper, handler: EventsApp, enqueue):
+    def __init__(self, config: ConfigHelper, handler: Union[EventsApp, TfnApp], enqueue):
         self.config = config
         self.handler = handler
         self.enqueue = enqueue
@@ -50,6 +62,34 @@ class TasksManagerBase(ABC):
             default_headers=self.config.get_user_agent(),
         )
         self.running_tasks = 0
+
+    async def filter_collection_by_event_definition(self, client, task_data):
+        definition = self.config.event_definitions[task_data.input.event_type]
+        supported_statuses = []
+        template_args = {'_object_id_': task_data.input.object_id}
+        if 'events' in self.handler.get_features():
+            supported_statuses = self.handler.events[task_data.input.event_type]['statuses']
+            template_args['_statuses_'] = f'({",".join(supported_statuses)})'
+
+        rql_filter = Template(definition.api_collection_filter).substitute(
+            template_args,
+        )
+
+        collection = AsyncCollection(client, definition.api_collection_endpoint)
+
+        count = await collection.filter(rql_filter).count()
+        if count == 0:
+            logger.info(
+                f'Send skip response for {task_data.options.task_id} since '
+                'the current request status is not supported.',
+            )
+            self.send_skip_response(
+                task_data,
+                'The request status does not match the '
+                f'supported statuses: {",".join(supported_statuses)}.',
+            )
+
+        return count
 
     async def submit(self, task_data):
         """

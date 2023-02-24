@@ -100,6 +100,35 @@ def settings_payload():
     }
 
 
+@pytest.fixture(scope='session')
+def tfn_settings_payload():
+    return {
+        'variables': [{'name': 'conf1', 'value': 'val1', 'secure': False}],
+        'environment_type': 'development',
+        'logging': {
+            'logging_api_key': None,
+            'log_level': 'DEBUG',
+            'runner_log_level': 'INFO',
+            'meta': {
+                'account_id': 'account_id',
+                'account_name': 'account_name',
+                'service_id': 'service_id',
+                'products': ['product_id'],
+                'hub_id': 'HB-0000',
+            },
+        },
+        'event_definitions': [
+            {
+                'event_type': 'transformation_request',
+                'api_collection_endpoint': 'collection',
+                'api_resource_endpoint': 'collection/{pk}',
+                'api_collection_filter': 'and(eq(id,${_object_id_}),eq(status,pending))',
+            },
+        ],
+        'model_type': 'setup_response',
+    }
+
+
 @pytest.fixture
 def task_payload():
     def _task_payload(
