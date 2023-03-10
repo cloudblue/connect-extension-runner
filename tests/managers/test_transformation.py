@@ -75,6 +75,19 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
                     'name': None,
                 },
             },
+            'transformation': {
+                'columns': {
+                    'input': [
+                        {'name': 'id', 'type': 'str'},
+                        {'name': 'count', 'type': 'int', 'precision': 2},
+                    ],
+                    'output': [
+                        {'name': 'id', 'type': 'str'},
+                        {'name': 'count', 'type': 'int', 'description': 'Product count'},
+                    ],
+                },
+                'settings': {},
+            },
             'stats': {
                 'total': 3,
                 'processed': 0,
@@ -197,6 +210,18 @@ async def test_submit_with_error_in_tfn(
                 'output': {
                     'id': None,
                     'name': None,
+                },
+            },
+            'transformation': {
+                'columns': {
+                    'input': [
+                        {'name': 'id', 'type': 'str'},
+                        {'name': 'count', 'type': 'int', 'precision': 2},
+                    ],
+                    'output': [
+                        {'name': 'id', 'type': 'str'},
+                        {'name': 'count', 'type': 'int', 'description': 'Product count'},
+                    ],
                 },
             },
             'stats': {

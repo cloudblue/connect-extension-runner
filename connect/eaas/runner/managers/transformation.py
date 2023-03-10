@@ -154,6 +154,7 @@ class TransformationTasksManager(TasksManagerBase):
             output_file.name,
             write_queue,
             tfn_request['stats']['total'],
+            tfn_request['transformation']['columns']['output'],
             task_data,
             loop,
         )
@@ -198,7 +199,7 @@ class TransformationTasksManager(TasksManagerBase):
 
     def read_excel(self, filename, queue, loop):
         wb = load_workbook(filename=filename, read_only=True)
-        ws = wb.worksheets[0]
+        ws = wb['Data']
         for idx, row in enumerate(ws.rows, start=1):
             asyncio.run_coroutine_threadsafe(
                 queue.put((idx, row)),
@@ -249,9 +250,18 @@ class TransformationTasksManager(TasksManagerBase):
             loop,
         )
 
-    def write_excel(self, filename, queue, total_rows, task_data, loop):
+    def write_excel(self, filename, queue, total_rows, output_columns, task_data, loop):
         wb = Workbook()
-        ws = wb.active
+
+        ws_columns = wb.active
+        ws_columns.title = 'Columns'
+        ws_columns.append(['Name', 'Type', 'Nullable', 'Description', 'Precision'])
+        column_keys = ['name', 'type', 'nullable', 'description', 'precision']
+        for column in output_columns:
+            row = [column.get(key) for key in column_keys]
+            ws_columns.append(row)
+
+        ws = wb.create_sheet('Data')
 
         rows_processed = 0
         delta = 1 if total_rows <= 10 else round(total_rows / 10)

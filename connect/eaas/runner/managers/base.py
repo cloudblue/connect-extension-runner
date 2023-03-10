@@ -31,6 +31,9 @@ from connect.client.models import (
     AsyncCollection,
 )
 
+from connect.eaas.core.enums import (
+    TaskCategory,
+)
 from connect.eaas.runner.config import (
     ConfigHelper,
 )
@@ -114,13 +117,18 @@ class TasksManagerBase(ABC):
             if task_data.options.installation_id:
                 installation = await self.get_installation(task_data)
             method_name = self.get_method_name(task_data, argument)
+            kwargs = {
+                'installation': installation,
+                'api_key': task_data.options.api_key,
+                'connect_correlation_id': task_data.options.connect_correlation_id,
+            }
+            if task_data.options.task_category == TaskCategory.TRANSFORMATION:
+                kwargs['transformation_request'] = argument
             method = self.handler.get_method(
                 task_data.input.event_type,
                 task_data.options.task_id,
                 method_name,
-                installation=installation,
-                api_key=task_data.options.api_key,
-                connect_correlation_id=task_data.options.connect_correlation_id,
+                **kwargs,
             )
             if not method:
                 async with self.lock:
