@@ -165,13 +165,17 @@ class TransformationTasksManager(TasksManagerBase):
             tfn_request['stats']['total'],
         ))
 
+        tasks = [reader_task, writer_task, processor_task]
         try:
-            await asyncio.gather(reader_task, writer_task, processor_task)
+            await asyncio.gather(*tasks)
         except Exception as e:
             logger.error(
                 f'Error during processing transformation '
                 f'for {task_data.options.task_id}: {e}',
             )
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
             output_file.close()
             return TransformationResponse.fail(output=str(e))
 
@@ -214,9 +218,7 @@ class TransformationTasksManager(TasksManagerBase):
         while rows_processed < total_rows:
             row_idx, row = await read_queue.get()
 
-            if row_idx == 1:
-                await write_queue.put((row_idx, row))
-            elif inspect.iscoroutinefunction(method):
+            if inspect.iscoroutinefunction(method):
                 tasks.append(asyncio.create_task(self.async_process_row(
                     method,
                     row_idx,
@@ -237,13 +239,25 @@ class TransformationTasksManager(TasksManagerBase):
 
             rows_processed += 1
 
-        await asyncio.gather(*tasks)
+        try:
+            await asyncio.gather(*tasks)
+        except Exception as e:
+            logger.error('Error during applying transformation to row.')
+            for task in tasks:
+                task.cancel()
+            raise e
 
     async def async_process_row(self, method, row_idx, row, write_queue):
+        if row_idx == 1:
+            return
+
         transformed_row = await method(row)
         await write_queue.put((row_idx, transformed_row))
 
     def sync_process_row(self, method, row_idx, row, write_queue, loop):
+        if row_idx == 1:
+            return
+
         transformed_row = method(row)
         asyncio.run_coroutine_threadsafe(
             write_queue.put((row_idx, transformed_row)),
@@ -254,16 +268,17 @@ class TransformationTasksManager(TasksManagerBase):
         wb = Workbook()
 
         ws_columns = wb.active
+        ws = wb.create_sheet('Data')
         ws_columns.title = 'Columns'
         ws_columns.append(['Name', 'Type', 'Nullable', 'Description', 'Precision'])
         column_keys = ['name', 'type', 'nullable', 'description', 'precision']
-        for column in output_columns:
+        for col_idx, column in enumerate(output_columns, start=1):
             row = [column.get(key) for key in column_keys]
             ws_columns.append(row)
-
-        ws = wb.create_sheet('Data')
+            ws.cell(row=1, column=col_idx, value=column.get('name'))
 
         rows_processed = 0
+        total_rows -= 1
         delta = 1 if total_rows <= 10 else round(total_rows / 10)
 
         while rows_processed < total_rows:
@@ -271,7 +286,9 @@ class TransformationTasksManager(TasksManagerBase):
                 queue.get(),
                 loop,
             )
-            row_idx, row = future.result()
+            row_idx, row = future.result(
+                timeout=self.config.env['transformation_write_queue_timeout'],
+            )
             for cell_idx, cell in enumerate(row, start=1):
                 ws.cell(row=row_idx, column=cell_idx, value=cell.value)
             rows_processed += 1

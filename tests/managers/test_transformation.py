@@ -43,6 +43,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
             'interactive_task_max_execution_time': 120,
             'scheduled_task_max_execution_time': 43200,
             'transformation_task_max_execution_time': 300,
+            'transformation_write_queue_timeout': 600,
         },
     )
 
@@ -89,7 +90,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
                 'settings': {},
             },
             'stats': {
-                'total': 3,
+                'total': 7,
                 'processed': 0,
             },
         },
@@ -161,12 +162,12 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
     assert result == task
 
     requests = httpx_mock.get_requests()
-    assert len(requests) == 6
+    assert len(requests) == 9
 
 
 @pytest.mark.asyncio
-async def test_submit_with_error_in_tfn(
-        mocker, tfn_settings_payload, responses, httpx_mock, unused_port,
+async def test_submit_with_error_in_tfn_function(
+    mocker, tfn_settings_payload, responses, httpx_mock, unused_port,
 ):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -180,6 +181,7 @@ async def test_submit_with_error_in_tfn(
             'interactive_task_max_execution_time': 120,
             'scheduled_task_max_execution_time': 43200,
             'transformation_task_max_execution_time': 300,
+            'transformation_write_queue_timeout': 0.2,
         },
     )
 
@@ -220,12 +222,11 @@ async def test_submit_with_error_in_tfn(
                     ],
                     'output': [
                         {'name': 'id', 'type': 'str'},
-                        {'name': 'count', 'type': 'int', 'description': 'Product count'},
                     ],
                 },
             },
             'stats': {
-                'total': 3,
+                'total': 7,
                 'processed': 0,
             },
         },
@@ -263,8 +264,9 @@ async def test_submit_with_error_in_tfn(
         )
         async def transform_it(self, row):
             for cell in row:
-                if '2' in str(cell.value):
+                if '5' in str(cell.value):
                     raise ValueError('Ooops')
+            return row
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocked_time = mocker.patch('connect.eaas.runner.managers.transformation.time')
@@ -325,7 +327,7 @@ async def test_build_response_exception(mocker, task_payload):
 
 @pytest.mark.asyncio
 async def test_send_skip_response(
-        mocker, task_payload, unused_port, tfn_settings_payload, httpx_mock,
+    mocker, task_payload, unused_port, tfn_settings_payload, httpx_mock,
 ):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
