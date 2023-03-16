@@ -1,6 +1,8 @@
 import asyncio
 import inspect
+import json
 import logging
+import os
 import time
 import traceback
 from tempfile import (
@@ -32,6 +34,7 @@ from connect.eaas.core.responses import (
 from connect.eaas.runner.constants import (
     DOWNLOAD_CHUNK_SIZE,
     TRANSFORMATION_TASK_MAX_PARALLEL_LINES,
+    UPLOAD_CHUNK_SIZE,
 )
 from connect.eaas.runner.managers.base import (
     TasksManagerBase,
@@ -121,7 +124,7 @@ class TransformationTasksManager(TasksManagerBase):
                 result_message.output.message = result.output
         except Exception as e:
             self.log_exception(task_data, e)
-            result_message.output = TaskOutput(result=ResultType.RETRY)
+            result_message.output = TaskOutput(result=ResultType.FAIL)
             result_message.output.message = traceback.format_exc()[:4000]
 
         return result_message
@@ -131,6 +134,7 @@ class TransformationTasksManager(TasksManagerBase):
             self.executor,
             self.download_excel,
             tfn_request,
+            task_data.options.api_key,
         )
         output_file = NamedTemporaryFile(
             suffix=f'.{tfn_request["files"]["input"]["name"].split(".")[-1]}',
@@ -153,7 +157,7 @@ class TransformationTasksManager(TasksManagerBase):
             self.write_excel,
             output_file.name,
             write_queue,
-            tfn_request['stats']['total'],
+            tfn_request['stats']['rows']['total'],
             tfn_request['transformation']['columns']['output'],
             task_data,
             loop,
@@ -162,7 +166,7 @@ class TransformationTasksManager(TasksManagerBase):
             read_queue,
             write_queue,
             method,
-            tfn_request['stats']['total'],
+            tfn_request['stats']['rows']['total'],
         ))
 
         tasks = [reader_task, writer_task, processor_task]
@@ -176,22 +180,26 @@ class TransformationTasksManager(TasksManagerBase):
             for task in tasks:
                 if not task.done():
                     task.cancel()
+            input_file.close()
             output_file.close()
+            client = self.get_client(task_data)
+            await client('billing').requests[task_data.input.object_id]('fail').post()
             return TransformationResponse.fail(output=str(e))
 
-        await self.send_output_file(task_data, output_file)
+        await self.send_output_file(task_data, tfn_request['batch']['id'], output_file)
+        input_file.close()
         output_file.close()
         return TransformationResponse.done()
 
-    def download_excel(self, tfn_request):
+    def download_excel(self, tfn_request, api_key):
         input_file_name = tfn_request['files']['input']['name']
         input_file = NamedTemporaryFile(suffix=f'.{input_file_name.split(".")[-1]}')
 
         with requests.get(
-            url=f'{self.config.get_api_url()}{input_file_name}',
+            url=f'{self.config.get_api_address()}{input_file_name}',
             stream=True,
             headers={
-                'API_KEY': self.config.api_key,
+                'Authorization': api_key,
                 **self.config.get_user_agent(),
             },
         ) as response:
@@ -204,9 +212,19 @@ class TransformationTasksManager(TasksManagerBase):
     def read_excel(self, filename, queue, loop):
         wb = load_workbook(filename=filename, read_only=True)
         ws = wb['Data']
+        lookup_columns = {}
+
         for idx, row in enumerate(ws.rows, start=1):
+            if idx == 1:
+                for col_idx, col_value in enumerate(row, start=1):
+                    lookup_columns[col_idx] = col_value.value
+                continue
+
+            row_data = {}
+            for col_idx, col_value in enumerate(row, start=1):
+                row_data[lookup_columns[col_idx]] = col_value.value
             asyncio.run_coroutine_threadsafe(
-                queue.put((idx, row)),
+                queue.put((idx, row_data)),
                 loop,
             )
 
@@ -215,7 +233,7 @@ class TransformationTasksManager(TasksManagerBase):
     async def process_rows(self, read_queue, write_queue, method, total_rows):
         rows_processed = 0
         tasks = []
-        while rows_processed < total_rows:
+        while rows_processed < total_rows - 1:
             row_idx, row = await read_queue.get()
 
             if inspect.iscoroutinefunction(method):
@@ -248,16 +266,10 @@ class TransformationTasksManager(TasksManagerBase):
             raise e
 
     async def async_process_row(self, method, row_idx, row, write_queue):
-        if row_idx == 1:
-            return
-
         transformed_row = await method(row)
         await write_queue.put((row_idx, transformed_row))
 
     def sync_process_row(self, method, row_idx, row, write_queue, loop):
-        if row_idx == 1:
-            return
-
         transformed_row = method(row)
         asyncio.run_coroutine_threadsafe(
             write_queue.put((row_idx, transformed_row)),
@@ -272,9 +284,11 @@ class TransformationTasksManager(TasksManagerBase):
         ws_columns.title = 'Columns'
         ws_columns.append(['Name', 'Type', 'Nullable', 'Description', 'Precision'])
         column_keys = ['name', 'type', 'nullable', 'description', 'precision']
+        lookup_columns = {}
         for col_idx, column in enumerate(output_columns, start=1):
             row = [column.get(key) for key in column_keys]
             ws_columns.append(row)
+            lookup_columns[column.get('name')] = col_idx
             ws.cell(row=1, column=col_idx, value=column.get('name'))
 
         rows_processed = 0
@@ -289,8 +303,8 @@ class TransformationTasksManager(TasksManagerBase):
             row_idx, row = future.result(
                 timeout=self.config.env['transformation_write_queue_timeout'],
             )
-            for cell_idx, cell in enumerate(row, start=1):
-                ws.cell(row=row_idx, column=cell_idx, value=cell.value)
+            for name, value in row.items():
+                ws.cell(row=row_idx, column=lookup_columns[name], value=value)
             rows_processed += 1
             if rows_processed % delta == 0 or rows_processed == total_rows:
                 asyncio.run_coroutine_threadsafe(
@@ -306,16 +320,36 @@ class TransformationTasksManager(TasksManagerBase):
             payload={'rows_processed': rows_processed},
         )
 
-    async def send_output_file(self, task_data, output_file):
+    async def send_output_file(self, task_data, batch_id, output_file):
         client = self.get_client(task_data)
-        output_file.seek(0)
-        await client('billing').requests[task_data.input.object_id].update(
-            data=output_file.read(),
-            headers={
-                'Content-Type': 'application/octet-stream',
-                'Content-Disposition': f'attachment; filename="{output_file.name}"',
-                **self.config.get_user_agent(),
-            },
+
+        fileobj = open(output_file.name, 'rb')
+        fileobj.seek(0, os.SEEK_END)
+        file_size = fileobj.tell()
+        fileobj.seek(0)
+
+        filename = f'{task_data.input.object_id}-out.{output_file.name.split(".")[-1]}'
+        headers = {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Content-Length': str(file_size),
+        }
+
+        async def chunks_iterator():    # pragma: no cover
+            while data := fileobj.read(UPLOAD_CHUNK_SIZE):
+                yield data
+
+        media_file = await client.ns('media').ns('folders').collection(
+            'streams_batches',
+        )[batch_id].action(
+            'files',
+        ).post(
+            content=chunks_iterator(),
+            headers=headers,
         )
 
-        output_file.close()
+        media_file_id = json.loads(media_file)['id']
+        await client('billing').requests[task_data.input.object_id].update(
+            payload={'files': {'output': {'id': media_file_id}}},
+        )
+        await client('billing').requests[task_data.input.object_id]('process').post()

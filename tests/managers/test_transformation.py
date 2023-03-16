@@ -47,8 +47,10 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
         },
     )
 
-    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+    api_address = f'https://127.0.0.1:{unused_port}'
+    api_url = f'{api_address}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
+    mocker.patch.object(ConfigHelper, 'get_api_address', return_value=api_address)
 
     config = ConfigHelper()
     config.update_dynamic_config(SetupResponse(**tfn_settings_payload))
@@ -76,22 +78,26 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
                     'name': None,
                 },
             },
+            'batch': {'id': 'TRB-0001'},
             'transformation': {
                 'columns': {
                     'input': [
                         {'name': 'id', 'type': 'str'},
-                        {'name': 'count', 'type': 'int', 'precision': 2},
+                        {'name': 'price', 'type': 'str', 'nullable': True},
+                        {'name': 'sub_id', 'type': 'str', 'precision': 2},
+                        {'name': 'delivered', 'type': 'bool', 'precision': 2},
+                        {'name': 'purchase_time', 'type': 'str', 'precision': 2},
                     ],
                     'output': [
                         {'name': 'id', 'type': 'str'},
-                        {'name': 'count', 'type': 'int', 'description': 'Product count'},
                     ],
                 },
-                'settings': {},
             },
             'stats': {
-                'total': 7,
-                'processed': 0,
+                'rows': {
+                    'total': 7,
+                    'processed': 0,
+                },
             },
         },
     )
@@ -102,10 +108,23 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
         status_code=200,
     )
 
+    httpx_mock.add_response(
+        method='POST',
+        url=f'{api_url}/billing/requests/TFR-000/process',
+        status_code=201,
+    )
+
+    httpx_mock.add_response(
+        method='POST',
+        url=f'{api_url}/media/folders/streams_batches/TRB-0001/files',
+        status_code=201,
+        content=b'{"id": "MFL-001"}',
+    )
+
     with open('tests/test_data/input_file_example.xlsx', 'rb') as input_file:
         responses.add(
             responses.GET,
-            f'{api_url}/path/to/input.xlsx',
+            f'{api_address}/path/to/input.xlsx',
             body=input_file.read(),
             status=200,
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -127,7 +146,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
             edit_dialog_ui='/static/my_settings.html',
         )
         def transform_it(self, row):
-            return row
+            return {'id': row['id']}
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocked_time = mocker.patch('connect.eaas.runner.managers.transformation.time')
@@ -162,7 +181,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
     assert result == task
 
     requests = httpx_mock.get_requests()
-    assert len(requests) == 9
+    assert len(requests) == 11
 
 
 @pytest.mark.asyncio
@@ -185,8 +204,10 @@ async def test_submit_with_error_in_tfn_function(
         },
     )
 
-    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+    api_address = f'https://127.0.0.1:{unused_port}'
+    api_url = f'{api_address}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
+    mocker.patch.object(ConfigHelper, 'get_api_address', return_value=api_address)
 
     config = ConfigHelper()
     config.update_dynamic_config(SetupResponse(**tfn_settings_payload))
@@ -207,7 +228,7 @@ async def test_submit_with_error_in_tfn_function(
             'files': {
                 'input': {
                     'id': 'MFL-0001',
-                    'name': '/path/to/input.xlsx',
+                    'name': '/public/v1/path/to/input.xlsx',
                 },
                 'output': {
                     'id': None,
@@ -218,16 +239,22 @@ async def test_submit_with_error_in_tfn_function(
                 'columns': {
                     'input': [
                         {'name': 'id', 'type': 'str'},
-                        {'name': 'count', 'type': 'int', 'precision': 2},
+                        {'name': 'price', 'type': 'str', 'nullable': True},
+                        {'name': 'sub_id', 'type': 'str', 'precision': 2},
+                        {'name': 'delivered', 'type': 'bool', 'precision': 2},
+                        {'name': 'purchase_time', 'type': 'str', 'precision': 2},
                     ],
                     'output': [
                         {'name': 'id', 'type': 'str'},
+                        {'name': 'price', 'type': 'str', 'nullable': True},
                     ],
                 },
             },
             'stats': {
-                'total': 7,
-                'processed': 0,
+                'rows': {
+                    'total': 7,
+                    'processed': 0,
+                },
             },
         },
     )
@@ -238,10 +265,16 @@ async def test_submit_with_error_in_tfn_function(
         status_code=200,
     )
 
+    httpx_mock.add_response(
+        method='POST',
+        url=f'{api_url}/billing/requests/TFR-000/fail',
+        status_code=200,
+    )
+
     with open('tests/test_data/input_file_example.xlsx', 'rb') as input_file:
         responses.add(
             responses.GET,
-            f'{api_url}/path/to/input.xlsx',
+            f'{api_address}/public/v1/path/to/input.xlsx',
             body=input_file.read(),
             status=200,
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -263,10 +296,13 @@ async def test_submit_with_error_in_tfn_function(
             edit_dialog_ui='/static/my_settings.html',
         )
         async def transform_it(self, row):
-            for cell in row:
-                if '5' in str(cell.value):
-                    raise ValueError('Ooops')
-            return row
+            print(row)
+            if row['id'] == 6:
+                raise ValueError('Ooops')
+            return {
+                'id': row['id'],
+                'price': row['price'],
+            }
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocked_time = mocker.patch('connect.eaas.runner.managers.transformation.time')
@@ -320,7 +356,7 @@ async def test_build_response_exception(mocker, task_payload):
     response = await manager.build_response(task, future)
 
     assert response.options.task_id == task.options.task_id
-    assert response.output.result == ResultType.RETRY
+    assert response.output.result == ResultType.FAIL
     assert 'Ooops' in response.output.message
     manager.log_exception.assert_called_once()
 
