@@ -130,6 +130,9 @@ class ConfigHelper:
     def get_api_url(self):
         return f'https://{self.env["api_address"]}/public/v1'
 
+    def get_api_address(self):
+        return f'https://{self.env["api_address"]}'
+
     def get_user_agent(self):
         version = get_version()
         pimpl = platform.python_implementation()

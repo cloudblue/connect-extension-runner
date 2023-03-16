@@ -268,14 +268,14 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
 name = "connect-eaas-core"
-version = "27.5"
+version = "27.6"
 description = "Connect Eaas Core"
 category = "main"
 optional = false
 python-versions = ">=3.8,<4"
 files = [
-    {file = "connect_eaas_core-27.5-py3-none-any.whl", hash = "sha256:a3112e0b34dff5f6ec7c15d5306538e9486331d66ed18aa418daaabc3d8371e8"},
-    {file = "connect_eaas_core-27.5.tar.gz", hash = "sha256:c68b56ad0711799c9f226000f28c0f5e62a2a94e7d5b169fc42c736df73fca74"},
+    {file = "connect_eaas_core-27.6-py3-none-any.whl", hash = "sha256:3bdd1940ab3ba60f3b4d41e7e9012faefdc8720afd301b68e27eb4836430737d"},
+    {file = "connect_eaas_core-27.6.tar.gz", hash = "sha256:fa35821c3df8ac00518e5d44b1e96529d60bd1588ee07f5e4644bce017ebe716"},
 ]
 
 [package.dependencies]
@@ -412,6 +412,18 @@ executing = ">=0.8.0,<1.0.0"
 
 [package.extras]
 pygments = ["pygments (>=2.2.0)"]
+
+[[package]]
+name = "et-xmlfile"
+version = "1.1.0"
+description = "An implementation of lxml.xmlfile for the standard library"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "et_xmlfile-1.1.0-py3-none-any.whl", hash = "sha256:a2ba85d1d6a74ef63837eed693bcb89c3f752169b0e3e7ae5b16ca5e1b3deada"},
+    {file = "et_xmlfile-1.1.0.tar.gz", hash = "sha256:8eb9e2bc2f8c97e37a2dc85a09ecdcdec9d8a396530a6d5a33b30b9a92da0c5c"},
+]
 
 [[package]]
 name = "exceptiongroup"
@@ -926,6 +938,21 @@ files = [
     {file = "mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"},
     {file = "mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba"},
 ]
+
+[[package]]
+name = "openpyxl"
+version = "3.1.1"
+description = "A Python library to read/write Excel 2010 xlsx/xlsm files"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "openpyxl-3.1.1-py2.py3-none-any.whl", hash = "sha256:a0266e033e65f33ee697254b66116a5793c15fc92daf64711080000df4cfe0a8"},
+    {file = "openpyxl-3.1.1.tar.gz", hash = "sha256:f06d44e2c973781068bce5ecf860a09bcdb1c7f5ce1facd5e9aa82c92c93ae72"},
+]
+
+[package.dependencies]
+et-xmlfile = "*"
 
 [[package]]
 name = "packaging"
@@ -1677,4 +1704,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<4"
-content-hash = "7b55a73794c2eeebc741a2ca7ba4bdc5d17c40ba2e022dae5b50a6dcbb1f6afe"
+content-hash = "46823cd5b7630d156da3ca5d99371812755470c66d96bc7120c3dc154bfcc6ae"
