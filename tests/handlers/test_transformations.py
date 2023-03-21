@@ -58,6 +58,7 @@ def test_properties(mocker):
         'description': 'The my transformation',
         'edit_dialog_ui': '/static/my_settings.html',
         'method': 'my_transformation',
+        'manual': False,
     }
 
     assert handler.config == config
