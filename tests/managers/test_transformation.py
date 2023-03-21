@@ -181,7 +181,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
     assert result == task
 
     requests = httpx_mock.get_requests()
-    assert len(requests) == 11
+    assert len(requests) == 12
 
 
 @pytest.mark.asyncio
