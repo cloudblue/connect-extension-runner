@@ -51,6 +51,7 @@ from connect.eaas.runner.constants import (
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     ORDINAL_SUFFIX,
     PYPI_EXTENSION_RUNNER_URL,
+    ROW_TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
     TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
     TRANSFORMATION_WRITE_QUEUE_TIMEOUT,
@@ -115,6 +116,12 @@ def get_environment():
         'transformation_task_max_execution_time': int(os.getenv(
             'TRANSFORMATION_TASK_MAX_EXECUTION_TIME', TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
         )),
+        'row_transformation_task_max_execution_time': int(
+            os.getenv(
+                'ROW_TRANSFORMATION_TASK_MAX_EXECUTION_TIME',
+                ROW_TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
+            ),
+        ),
         'transformation_write_queue_timeout': int(os.getenv(
             'TRANSFORMATION_WRITE_QUEUE_TIMEOUT', TRANSFORMATION_WRITE_QUEUE_TIMEOUT,
         )),

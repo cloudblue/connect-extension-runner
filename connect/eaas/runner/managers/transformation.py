@@ -114,11 +114,12 @@ class TransformationTasksManager(TasksManagerBase):
 
     async def build_response(self, task_data, future):
         result_message = Task(**task_data.dict())
+        timeout = self.config.get_timeout('transformation')
         try:
             begin_ts = time.monotonic()
             result = await asyncio.wait_for(
                 future,
-                timeout=self.config.get_timeout('transformation'),
+                timeout=timeout,
             )
             result_message.output = TaskOutput(result=result.status)
             result_message.output.runtime = time.monotonic() - begin_ts
@@ -130,11 +131,29 @@ class TransformationTasksManager(TasksManagerBase):
             if result.status in (ResultType.SKIP, ResultType.FAIL):
                 result_message.output.message = result.output
         except Exception as e:
+            cause = (
+                str(e) if not isinstance(e, asyncio.TimeoutError)
+                else 'timed out after {timeout} s'
+            )
             self.log_exception(task_data, e)
+            await self._fail_task(task_data, cause)
             result_message.output = TaskOutput(result=ResultType.FAIL)
             result_message.output.message = traceback.format_exc()[:4000]
 
         return result_message
+
+    async def _fail_task(self, task_data, message):
+        try:
+            client = self.get_client(task_data)
+            await client('billing').requests[task_data.input.object_id]('fail').post()
+            await client.conversations[task_data.input.object_id].messages.create(
+                payload={
+                    'type': 'message',
+                    'text': f'Transformation request processing failed: {message}.',
+                },
+            )
+        except Exception:
+            logger.exception(f'Cannot fail the transformation request {task_data.input.object_id}')
 
     async def process_transformation(self, task_data, tfn_request, method):
         semaphore = asyncio.Semaphore(TRANSFORMATION_TASK_MAX_PARALLEL_LINES)
@@ -193,6 +212,12 @@ class TransformationTasksManager(TasksManagerBase):
             output_file.close()
             client = self.get_client(task_data)
             await client('billing').requests[task_data.input.object_id]('fail').post()
+            await client.conversations[task_data.input.object_id].messages.create(
+                payload={
+                    'type': 'message',
+                    'text': f'Transformation request processing failed: {str(e)}',
+                },
+            )
             return TransformationResponse.fail(output=str(e))
 
         await self.send_output_file(task_data, tfn_request['batch']['id'], output_file)
@@ -246,25 +271,39 @@ class TransformationTasksManager(TasksManagerBase):
             await semaphore.acquire()
             row_idx, row = await read_queue.get()
             if inspect.iscoroutinefunction(method):
-                tasks.append(asyncio.create_task(self.async_process_row(
-                    semaphore,
-                    method,
-                    row_idx,
-                    row,
-                    result_store,
-                )))
+                tasks.append(
+                    asyncio.create_task(
+                        asyncio.wait_for(
+                            self.async_process_row(
+                                semaphore,
+                                method,
+                                row_idx,
+                                row,
+                                result_store,
+                            ),
+                            self.config.get_timeout('row_transformation'),
+                        ),
+                    ),
+                )
             else:
                 loop = asyncio.get_running_loop()
-                tasks.append(loop.run_in_executor(
-                    self.executor,
-                    self.sync_process_row,
-                    semaphore,
-                    method,
-                    row_idx,
-                    row,
-                    result_store,
-                    loop,
-                ))
+                tasks.append(
+                    asyncio.create_task(
+                        asyncio.wait_for(
+                            loop.run_in_executor(
+                                self.executor,
+                                self.sync_process_row,
+                                semaphore,
+                                method,
+                                row_idx,
+                                row,
+                                result_store,
+                                loop,
+                            ),
+                            self.config.get_timeout('row_transformation'),
+                        ),
+                    ),
+                )
 
             rows_processed += 1
 
@@ -321,7 +360,6 @@ class TransformationTasksManager(TasksManagerBase):
             row = [row_data.get(col_name) for col_name in column_names]
 
             ws.append(row)
-            logger.debug(f'Row {idx} of {total_rows + 1} written!')
             rows_processed += 1
             if rows_processed % delta == 0 or rows_processed == total_rows:
                 asyncio.run_coroutine_threadsafe(
