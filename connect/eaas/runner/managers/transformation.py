@@ -346,8 +346,8 @@ class TransformationTasksManager(TasksManagerBase):
     def write_excel(self, filename, result_store, total_rows, output_columns, task_data, loop):
         wb = Workbook(write_only=True)
 
-        ws_columns = wb.create_sheet('Columns')
         ws = wb.create_sheet('Data')
+        ws_columns = wb.create_sheet('Columns')
         ws_columns.title = 'Columns'
         ws_columns.append(['Name', 'Type', 'Nullable', 'Description', 'Precision'])
         column_keys = ['name', 'type', 'nullable', 'description', 'precision']
