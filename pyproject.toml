@@ -39,6 +39,7 @@ pyfiglet = "^0.8.post1"
 devtools = "^0.9.0"
 watchfiles = "^0.17.0"
 openpyxl = "^3.0.10"
+lxml = "^4.9.2"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.2.1"

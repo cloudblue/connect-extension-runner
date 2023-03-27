@@ -50,6 +50,10 @@ from connect.eaas.runner.managers.utils import (
 logger = logging.getLogger(__name__)
 
 
+class RowTransformationError(Exception):
+    pass
+
+
 class TransformationTasksManager(TasksManagerBase):
     """
     Class for Transformations managers.
@@ -310,23 +314,34 @@ class TransformationTasksManager(TasksManagerBase):
         try:
             await asyncio.gather(*tasks)
         except Exception as e:
-            logger.error('Error during applying transformation to row.')
+            logger.exception('Error during applying transformations.')
             for task in tasks:
                 task.cancel()
             raise e
 
     async def async_process_row(self, semaphore, method, row_idx, row, result_store):
-        transformed_row = await method(row)
-        await result_store.put(row_idx, transformed_row)
-        semaphore.release()
-
-    def sync_process_row(self, semaphore, method, row_idx, row, result_store, loop):
-        async def store_results(transformed_row):
+        try:
+            transformed_row = await method(row)
             await result_store.put(row_idx, transformed_row)
+        except Exception as e:
+            raise RowTransformationError(
+                f'Error applying transformation function {method.__name__} '
+                f'to row #{row_idx}: {str(e)}.',
+            ) from e
+        finally:
             semaphore.release()
 
-        transformed_row = method(row)
-        asyncio.run_coroutine_threadsafe(store_results(transformed_row), loop)
+    def sync_process_row(self, semaphore, method, row_idx, row, result_store, loop):
+        try:
+            transformed_row = method(row)
+            asyncio.run_coroutine_threadsafe(result_store.put(row_idx, transformed_row), loop)
+        except Exception as e:
+            raise RowTransformationError(
+                f'Error applying transformation function {method.__name__} '
+                f'to row #{row_idx}: {str(e)}.',
+            ) from e
+        finally:
+            semaphore.release()
 
     def write_excel(self, filename, result_store, total_rows, output_columns, task_data, loop):
         wb = Workbook(write_only=True)
