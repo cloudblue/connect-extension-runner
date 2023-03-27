@@ -39,6 +39,7 @@ from connect.eaas.runner.config import (
 from connect.eaas.runner.handlers.web import (
     WebApp,
     _OpenApiCORSMiddleware,
+    _ProxyHeadersMiddleware,
 )
 
 
@@ -203,13 +204,15 @@ def test_get_asgi_application(mocker, static_root):
     assert mocked_fastapi.add_middleware.mock_calls[0].args[0] == _OpenApiCORSMiddleware
     assert mocked_fastapi.add_middleware.mock_calls[0].kwargs['allow_origins'] == ['*']
 
-    assert mocked_fastapi.add_middleware.mock_calls[1].args[0] == BaseHTTPMiddleware
-    assert mocked_fastapi.add_middleware.mock_calls[1].kwargs['dispatch'] == middleware_fn
+    assert mocked_fastapi.add_middleware.mock_calls[1].args[0] == _ProxyHeadersMiddleware
 
-    assert mocked_fastapi.add_middleware.mock_calls[2].args[0] == MiddlewareClass
+    assert mocked_fastapi.add_middleware.mock_calls[2].args[0] == BaseHTTPMiddleware
+    assert mocked_fastapi.add_middleware.mock_calls[2].kwargs['dispatch'] == middleware_fn
 
     assert mocked_fastapi.add_middleware.mock_calls[3].args[0] == MiddlewareClass
-    assert mocked_fastapi.add_middleware.mock_calls[3].kwargs['arg1'] == 'val1'
+
+    assert mocked_fastapi.add_middleware.mock_calls[4].args[0] == MiddlewareClass
+    assert mocked_fastapi.add_middleware.mock_calls[4].kwargs['arg1'] == 'val1'
 
     if static_root:
         mocked_static_files.assert_called_once_with(directory=static_root)
