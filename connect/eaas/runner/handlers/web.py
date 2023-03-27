@@ -48,6 +48,22 @@ class _OpenApiCORSMiddleware(CORSMiddleware):
         await super().__call__(scope, receive, send)  # pragma: no cover
 
 
+class _ProxyHeadersMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] == 'http':  # pragma: no branch
+            headers = dict(scope['headers'])
+            if b'x-forwarded-host' in headers:
+                headers[b'host'] = headers[b'x-forwarded-host']
+                scope['headers'] = list(headers.items())
+            if b'x-forwarded-proto' in headers:
+                scope['scheme'] = headers[b'x-forwarded-proto'].decode('ascii')
+
+        await self.app(scope, receive, send)
+
+
 class WebApp(ApplicationHandlerBase):
     """
     Handle the lifecycle of an extension.
@@ -137,6 +153,8 @@ class WebApp(ApplicationHandlerBase):
             _OpenApiCORSMiddleware,
             allow_origins=['*'],
         )
+        app.add_middleware(_ProxyHeadersMiddleware)
+
         if hasattr(self.get_application(), 'get_middlewares'):
             self.setup_middlewares(app, self.get_application().get_middlewares() or [])
 
