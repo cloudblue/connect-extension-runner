@@ -97,6 +97,7 @@ def settings_payload():
             for evt_type in BACKGROUND_EVENT_TYPES
         ],
         'model_type': 'setup_response',
+        'proxied_connect_api': [],
     }
 
 

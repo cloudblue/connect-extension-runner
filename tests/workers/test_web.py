@@ -64,6 +64,8 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
         },
     }
 
+    proxied_connect_api = ['/public/v1/endpoint']
+
     @account_settings_page('Settings', '/static/settings.html')
     class MyExtension(WebApplicationBase):
         @classmethod
@@ -75,6 +77,10 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
                 'readme_url': 'https://read.me',
                 'changelog_url': 'https://change.log',
             }
+
+        @classmethod
+        def get_proxied_connect_api(cls):
+            return proxied_connect_api
 
     mocker.patch.object(
         WebApp,
@@ -120,6 +126,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
                 'changelog_url': 'https://change.log',
             },
             runner_version='24.1',
+            proxied_connect_api=proxied_connect_api,
         ),
     )
 
@@ -265,6 +272,7 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
                     'changelog_url': 'https://change.log',
                 },
                 runner_version='24.1',
+                proxied_connect_api=[],
             ),
         ),
     )
@@ -421,6 +429,7 @@ async def test_http_call_redirect(mocker, ws_server, unused_port, settings_paylo
                     'changelog_url': 'https://change.log',
                 },
                 runner_version='24.1',
+                proxied_connect_api=[],
             ),
         ),
     )
@@ -564,6 +573,7 @@ async def test_http_call_exception(mocker, ws_server, unused_port, settings_payl
                     'changelog_url': 'https://change.log',
                 },
                 runner_version='24.1',
+                proxied_connect_api=[],
             ),
         ),
     )
@@ -784,6 +794,7 @@ async def test_trigger_lifecycle_events_sync(mocker, ws_server, unused_port, set
                 'changelog_url': 'https://change.log',
             },
             runner_version='24.1',
+            proxied_connect_api=[],
         ),
     )
 
@@ -894,6 +905,7 @@ async def test_trigger_lifecycle_events_async(mocker, ws_server, unused_port, se
                 'changelog_url': 'https://change.log',
             },
             runner_version='24.1',
+            proxied_connect_api=[],
         ),
     )
 
