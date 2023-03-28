@@ -104,6 +104,10 @@ def test_properties(mocker):
                 },
             }
 
+        @classmethod
+        def get_proxied_connect_api(cls):
+            return ['/abc']
+
     mocker.patch.object(
         WebApp,
         'load_application',
@@ -126,6 +130,7 @@ def test_properties(mocker):
     assert handler.icon == descriptor['icon']
     assert handler.audience == descriptor['audience']
     assert handler.should_start is True
+    assert handler.proxied_connect_api == ['/abc']
 
 
 @pytest.mark.parametrize('static_root', ('static', None))

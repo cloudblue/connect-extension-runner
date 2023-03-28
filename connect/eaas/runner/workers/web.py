@@ -60,6 +60,7 @@ class WebWorker(WorkerBase):
                 icon=self.handler.icon,
                 audience=self.handler.audience,
                 runner_version=get_version(),
+                proxied_connect_api=self.handler.proxied_connect_api,
             ),
         )
         logger.debug(f'Sending setup request: {pformat(msg)}')

@@ -81,6 +81,10 @@ class WebApp(ApplicationHandlerBase):
         return self.get_application().get_ui_modules()
 
     @property
+    def proxied_connect_api(self):
+        return self.get_application().get_proxied_connect_api()
+
+    @property
     def app(self):
         if not self._app:
             self._app = self.get_asgi_application()
