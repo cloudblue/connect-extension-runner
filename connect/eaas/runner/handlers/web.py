@@ -165,6 +165,7 @@ class WebApp(ApplicationHandlerBase):
         auth, no_auth = self.get_application().get_routers()
         app.include_router(auth, prefix='/api')
         app.include_router(no_auth, prefix='/guest')
+        app.include_router(no_auth, prefix='/unauthorized')
         app.openapi = functools.partial(self.get_api_schema, app)
         static_root = self.get_application().get_static_root()
         if static_root:
