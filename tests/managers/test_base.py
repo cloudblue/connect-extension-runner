@@ -2,10 +2,10 @@ import asyncio
 import logging
 
 import pytest
+
 from connect.client import (
     ClientError,
 )
-
 from connect.eaas.core.proto import (
     SetupResponse,
     Task,

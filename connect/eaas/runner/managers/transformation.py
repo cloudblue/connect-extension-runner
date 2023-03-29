@@ -10,17 +10,17 @@ from tempfile import (
 )
 
 import requests
+from openpyxl import (
+    Workbook,
+    load_workbook,
+)
+
 from connect.client import (
     AsyncConnectClient,
 )
 from connect.client.models import (
     AsyncResource,
 )
-from openpyxl import (
-    Workbook,
-    load_workbook,
-)
-
 from connect.eaas.core.enums import (
     ResultType,
 )

@@ -2,9 +2,6 @@ import functools
 import inspect
 import logging
 
-from connect.client import (
-    ClientError,
-)
 from fastapi import (
     FastAPI,
 )
@@ -22,6 +19,9 @@ from starlette.middleware.base import (
     BaseHTTPMiddleware,
 )
 
+from connect.client import (
+    ClientError,
+)
 from connect.eaas.core.decorators import (
     router as root_router,
 )
@@ -165,6 +165,7 @@ class WebApp(ApplicationHandlerBase):
         auth, no_auth = self.get_application().get_routers()
         app.include_router(auth, prefix='/api')
         app.include_router(no_auth, prefix='/guest')
+        app.include_router(no_auth, prefix='/unauthorized')
         app.openapi = functools.partial(self.get_api_schema, app)
         static_root = self.get_application().get_static_root()
         if static_root:

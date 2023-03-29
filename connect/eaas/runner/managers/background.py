@@ -14,7 +14,6 @@ from connect.client import (
 from connect.client.models import (
     AsyncResource,
 )
-
 from connect.eaas.core.enums import (
     ResultType,
 )
