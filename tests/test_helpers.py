@@ -8,9 +8,6 @@ import os
 import subprocess
 
 import pytest
-from connect.client import (
-    ConnectClient,
-)
 from freezegun import (
     freeze_time,
 )
@@ -21,6 +18,9 @@ from rich.table import (
     Table,
 )
 
+from connect.client import (
+    ConnectClient,
+)
 from connect.eaas.core.validation.models import (
     ValidationItem,
     ValidationResult,

@@ -6,10 +6,10 @@
 import logging
 
 import anvil.server
+
 from connect.client import (
     ConnectClient,
 )
-
 from connect.eaas.core.logging import (
     RequestLogger,
 )

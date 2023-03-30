@@ -12,7 +12,6 @@ from connect.client import (
     AsyncConnectClient,
     ConnectClient,
 )
-
 from connect.eaas.core.logging import (
     ExtensionLogHandler,
     RequestLogger,

@@ -1,10 +1,6 @@
 import os
 
 import pytest
-from connect.client import (
-    ClientError,
-    ConnectClient,
-)
 from fastapi import (
     Depends,
     Header,
@@ -16,11 +12,16 @@ from starlette.middleware.base import (
     BaseHTTPMiddleware,
 )
 
+from connect.client import (
+    ClientError,
+    ConnectClient,
+)
 from connect.eaas.core.decorators import (
     account_settings_page,
     admin_pages,
     guest,
     module_pages,
+    unauthorized,
     web_app,
 )
 from connect.eaas.core.extension import (
@@ -321,8 +322,13 @@ def test_get_features(mocker):
         def example_auth(self):
             return
 
-        @router.get('/no_auth')
+        @router.get('/no_auth_deprecated')
         @guest()
+        def example_no_auth_deprecated(self):
+            return
+
+        @router.get('/no_auth')
+        @unauthorized()
         def example_no_auth(self):
             return
 
@@ -344,6 +350,11 @@ def test_get_features(mocker):
                 },
             ],
             'no_auth': [
+                {
+                    'method': 'GET',
+                    'path': '/no_auth_deprecated',
+                    'summary': 'Example No Auth Deprecated',
+                },
                 {
                     'method': 'GET',
                     'path': '/no_auth',

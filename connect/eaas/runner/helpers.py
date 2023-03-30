@@ -18,10 +18,6 @@ from uuid import (
 )
 
 import requests
-from connect.client import (
-    ClientError,
-    ConnectClient,
-)
 from rich import (
     box,
 )
@@ -38,6 +34,10 @@ from rich.table import (
     Table,
 )
 
+from connect.client import (
+    ClientError,
+    ConnectClient,
+)
 from connect.eaas.core.validation.models import (
     ValidationItem,
     ValidationResult,

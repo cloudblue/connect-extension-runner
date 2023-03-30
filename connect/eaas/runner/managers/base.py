@@ -30,7 +30,6 @@ from connect.client import (
 from connect.client.models import (
     AsyncCollection,
 )
-
 from connect.eaas.core.enums import (
     TaskCategory,
 )

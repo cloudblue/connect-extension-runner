@@ -31,8 +31,7 @@ websockets = "10.*"
 connect-openapi-client = ">=25.16"
 logzio-python-handler = "^3.0.0"
 backoff = "^1.11.1"
-uvloop = "^0.16.0"
-connect-eaas-core = ">=27.8,<28"
+connect-eaas-core = ">=27.9,<28"
 httpx = "^0.23.0"
 rich = "^12.5.1"
 pyfiglet = "^0.8.post1"
@@ -40,6 +39,7 @@ devtools = "^0.9.0"
 watchfiles = "^0.17.0"
 openpyxl = "^3.0.10"
 lxml = "^4.9.2"
+uvloop = "^0.17.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.2.1"
@@ -107,6 +107,7 @@ asyncio_mode = "strict"
 [tool.isort]
 src_paths = "*"
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+known_first_party = ["connect"]
 group_by_package = true
 multi_line_output = 3
 force_grid_wrap = 1
