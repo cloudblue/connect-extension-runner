@@ -372,7 +372,10 @@ class TransformationTasksManager(TasksManagerBase):
             row_data = future.result(
                 timeout=self.config.env['transformation_write_queue_timeout'],
             )
-            row = [row_data.get(col_name) for col_name in column_names]
+            row = []
+            for col_name in column_names:
+                value = row_data.get(col_name)
+                row.append(value if value is not None else '#N/A')
 
             ws.append(row)
             rows_processed += 1
