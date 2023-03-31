@@ -1,13 +1,5 @@
 FROM python:3.10-slim
 
-ENV NODE_VERSION=16.17.1
-
-RUN apt-get update; \
-    apt-get install -y git curl tmux; \
-    apt-get autoremove -y; \
-    apt-get clean -y; \
-    rm -rf /var/lib/apt/lists/*
-
 ENV NODE_VERSION 18.15.0
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
@@ -58,6 +50,14 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     # smoke tests
     && node --version \
     && npm --version
+
+
+RUN apt-get update; \
+    apt-get install -y git curl tmux ca-certificates; \
+    apt-get autoremove -y; \
+    apt-get clean -y; \
+    rm -rf /var/lib/apt/lists/*
+
 
 ARG RUNNER_VERSION
 
