@@ -258,7 +258,8 @@ class TransformationTasksManager(TasksManagerBase):
                     lookup_columns[col_idx] = col_value.value
                 continue
 
-            row_data = {}
+            row_data = {col_name: None for col_name in lookup_columns.values()}
+
             for col_idx, col_value in enumerate(row, start=1):
                 row_data[lookup_columns[col_idx]] = col_value.value
             asyncio.run_coroutine_threadsafe(
