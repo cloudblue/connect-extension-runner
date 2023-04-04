@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2023 Ingram Micro. All Rights Reserved.
+#
+
 import functools
 import inspect
 import logging
@@ -147,11 +151,15 @@ class WebApp(ApplicationHandlerBase):
         return endpoints
 
     def get_asgi_application(self):
+        exception_handlers = {ClientError: client_error_exception_handler}
+        if hasattr(self.get_application(), 'get_exception_handlers'):
+            exception_handlers = self.get_application().get_exception_handlers(
+                exception_handlers,
+            )
+
         app = FastAPI(
             openapi_url='/openapi/spec.json',
-            exception_handlers={
-                ClientError: client_error_exception_handler,
-            },
+            exception_handlers=exception_handlers,
         )
         app.add_middleware(
             _OpenApiCORSMiddleware,

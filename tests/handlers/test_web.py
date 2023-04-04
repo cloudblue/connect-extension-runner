@@ -173,6 +173,11 @@ def test_get_asgi_application(mocker, static_root):
                 (MiddlewareClass, {'arg1': 'val1'}),
             ]
 
+        @classmethod
+        def get_exception_handlers(cls, exception_handlers):
+            exception_handlers[ValueError] = 1
+            return exception_handlers
+
     mocker.patch.object(
         WebApp,
         'load_application',
@@ -199,6 +204,7 @@ def test_get_asgi_application(mocker, static_root):
         openapi_url='/openapi/spec.json',
         exception_handlers={
             ClientError: client_error_exception_handler,
+            ValueError: 1,
         },
     )
 
