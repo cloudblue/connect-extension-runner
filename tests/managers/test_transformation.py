@@ -110,6 +110,12 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
         status_code=200,
     )
 
+    responses.add(
+        responses.PUT,
+        f'{api_url}/billing/requests/TFR-000',
+        status=200,
+    )
+
     httpx_mock.add_response(
         method='POST',
         url=f'{api_url}/billing/requests/TFR-000/process',
@@ -162,6 +168,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.TRANSFORMATION,
+            'api_key': 'ApiKey SU-000:xxxx',
         },
         input={
             'event_type': 'transformation_request',
@@ -182,7 +189,9 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
     assert result == task
 
     requests = httpx_mock.get_requests()
-    assert len(requests) == 12
+    assert len(requests) == 5
+
+    assert len(responses.calls) == 8
 
 
 @pytest.mark.asyncio
@@ -262,12 +271,6 @@ async def test_submit_with_error_in_tfn_function(
     )
 
     httpx_mock.add_response(
-        method='PUT',
-        url=f'{api_url}/billing/requests/TFR-000',
-        status_code=200,
-    )
-
-    httpx_mock.add_response(
         method='POST',
         url=f'{api_url}/billing/requests/TFR-000/fail',
         status_code=200,
@@ -324,6 +327,7 @@ async def test_submit_with_error_in_tfn_function(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.TRANSFORMATION,
+            'api_key': 'ApiKey SU-000:xxxx',
         },
         input={
             'event_type': 'transformation_request',
@@ -422,12 +426,6 @@ async def test_submit_with_error_in_tfn_function_sync(
     )
 
     httpx_mock.add_response(
-        method='PUT',
-        url=f'{api_url}/billing/requests/TFR-000',
-        status_code=200,
-    )
-
-    httpx_mock.add_response(
         method='POST',
         url=f'{api_url}/billing/requests/TFR-000/fail',
         status_code=200,
@@ -484,6 +482,7 @@ async def test_submit_with_error_in_tfn_function_sync(
         options={
             'task_id': 'TQ-000',
             'task_category': TaskCategory.TRANSFORMATION,
+            'api_key': 'ApiKey SU-000:xxxxx',
         },
         input={
             'event_type': 'transformation_request',

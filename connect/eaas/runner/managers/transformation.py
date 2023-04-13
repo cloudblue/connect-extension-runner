@@ -17,6 +17,7 @@ from openpyxl import (
 
 from connect.client import (
     AsyncConnectClient,
+    ConnectClient,
 )
 from connect.client.models import (
     AsyncResource,
@@ -70,6 +71,15 @@ class TransformationTasksManager(TasksManagerBase):
             )
 
         return self.client
+
+    def get_sync_client(self, task_data):
+        return ConnectClient(
+            task_data.options.api_key,
+            endpoint=self.config.get_api_url(),
+            use_specs=False,
+            default_headers=self.config.get_user_agent(),
+            logger=RequestLogger(logger),
+        )
 
     def send_skip_response(self, data, output):
         future = asyncio.Future()
@@ -381,10 +391,7 @@ class TransformationTasksManager(TasksManagerBase):
             ws.append(row)
             rows_processed += 1
             if rows_processed % delta == 0 or rows_processed == total_rows:
-                asyncio.run_coroutine_threadsafe(
-                    self.send_stat_update(task_data, rows_processed, total_rows),
-                    loop,
-                )
+                self.send_stat_update(task_data, rows_processed, total_rows)
                 logger.debug(
                     f'{task_data.input.object_id} processed {rows_processed}'
                     f' of {total_rows} rows',
@@ -392,9 +399,9 @@ class TransformationTasksManager(TasksManagerBase):
 
         wb.save(filename)
 
-    async def send_stat_update(self, task_data, rows_processed, total_rows):
-        client = self.get_client(task_data)
-        await client('billing').requests[task_data.input.object_id].update(
+    def send_stat_update(self, task_data, rows_processed, total_rows):
+        client = self.get_sync_client(task_data)
+        client('billing').requests[task_data.input.object_id].update(
             payload={'stats': {'rows': {'total': total_rows, 'processed': rows_processed}}},
         )
 
