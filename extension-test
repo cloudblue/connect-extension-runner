@@ -1,42 +1,86 @@
 #!/bin/bash
 
-C_RESET='\033[0m'
-C_I_BLUE='\033[0;94m'
-C_I_GREEN='\033[0;92m'
-C_I_RED='\033[0;91m'
+readonly C_RESET='\033[0m'
+readonly C_I_BLUE='\033[0;94m'
+readonly C_I_GREEN='\033[0;92m'
+readonly C_I_RED='\033[0;91m'
 
-echo -e "${C_I_BLUE}Running python linter...${C_RESET}"
+readonly MODE_FULL="full"
+readonly MODE_BACKEND="backend"
+readonly MODE_FRONTEND="frontend"
 
-poetry run -q flake8
+MODE=$MODE_FULL
 
-if [ $? -ne 0 ]; then
-    echo -e "${C_I_RED}Python linting failed${C_RESET} \xf0\x9f\x98\xb1"
-    exit 1
+usage() {
+  echo "Usage: $0 [ -m MODE ]" 1>&2
+}
+
+exit_abnormal() {
+  usage
+  exit 1
+}
+
+while getopts ":m:" options; do
+  case "${options}" in
+    m)
+      MODE=${OPTARG}
+
+      case $MODE in
+          $MODE_FULL|$MODE_BACKEND|$MODE_FRONTEND)
+            ;;
+          *)
+            echo "Error: MODE must be one of (${MODE_FULL},${MODE_BACKEND},${MODE_FRONTEND})."
+            exit_abnormal
+            ;;
+      esac
+
+      ;;
+    :)
+      echo "Error: -${OPTARG} requires an argument."
+      exit_abnormal
+      ;;
+    *)
+      exit_abnormal
+      ;;
+  esac
+done
+
+if [[ $MODE = $MODE_BACKEND || $MODE = $MODE_FULL ]]; then
+  echo -e "${C_I_BLUE}Running python linter...${C_RESET}"
+
+  poetry run -q flake8
+
+  if [ $? -ne 0 ]; then
+      echo -e "${C_I_RED}Python linting failed${C_RESET} \xf0\x9f\x98\xb1"
+      exit 1
+  fi
+
+
+  echo -e "${C_I_BLUE}Running python tests suite...${C_RESET}"
+
+  poetry run -q pytest
+
+  if [ $? -ne 0 ]; then
+      echo -e "${C_I_RED}Python tests failed${C_RESET} \xf0\x9f\x98\xb1"
+      exit 1
+  fi
 fi
 
-
-echo -e "${C_I_BLUE}Running python tests suite...${C_RESET}"
-
-poetry run -q pytest
-
-if [ $? -ne 0 ]; then
-    echo -e "${C_I_RED}Python tests failed${C_RESET} \xf0\x9f\x98\xb1"
-    exit 1
-fi
-
-if [ -f "package.json" ]; then
-    echo -e "${C_I_BLUE}Running JS linter...${C_RESET}"
-    npm run lint
-    if [ $? -ne 0 ]; then
-        echo -e "${C_I_RED}JS linting failed${C_RESET} \xf0\x9f\x98\xb1"
-        exit 1
-    fi
-    echo -e "${C_I_BLUE}Running JS tests suite...${C_RESET}"
-    npm run test
-    if [ $? -ne 0 ]; then
-        echo -e "${C_I_RED}JS tests failed${C_RESET} \xf0\x9f\x98\xb1"
-        exit 1
-    fi
+if [[ $MODE = $MODE_FRONTEND || $MODE = $MODE_FULL ]]; then
+  if [ -f "package.json" ]; then
+      echo -e "${C_I_BLUE}Running JS linter...${C_RESET}"
+      npm run lint
+      if [ $? -ne 0 ]; then
+          echo -e "${C_I_RED}JS linting failed${C_RESET} \xf0\x9f\x98\xb1"
+          exit 1
+      fi
+      echo -e "${C_I_BLUE}Running JS tests suite...${C_RESET}"
+      npm run test
+      if [ $? -ne 0 ]; then
+          echo -e "${C_I_RED}JS tests failed${C_RESET} \xf0\x9f\x98\xb1"
+          exit 1
+      fi
+  fi
 fi
 
 echo -e "${C_I_GREEN}Testing completed succesfully${C_RESET} \xf0\x9f\x8d\xba \xf0\x9f\xa5\xb3"
