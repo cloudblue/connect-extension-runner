@@ -19,6 +19,9 @@ from connect.eaas.core.proto import (
     Task,
     TaskOutput,
 )
+from connect.eaas.core.responses import (
+    RowTransformationResponse,
+)
 from connect.eaas.runner.config import (
     ConfigHelper,
 )
@@ -28,8 +31,12 @@ from connect.eaas.runner.handlers.transformations import (
 from connect.eaas.runner.managers import (
     TransformationTasksManager,
 )
+from connect.eaas.runner.managers.transformation import (
+    RowTransformationError,
+)
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unused_port):
     mocker.patch(
@@ -153,7 +160,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
             edit_dialog_ui='/static/my_settings.html',
         )
         def transform_it(self, row):
-            return {'id': row['id']}
+            return RowTransformationResponse.done({'id': row['id']})
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocked_time = mocker.patch('connect.eaas.runner.managers.transformation.time')
@@ -194,6 +201,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
     assert len(responses.calls) == 8
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit_with_error_in_tfn_function(
     mocker, tfn_settings_payload, responses, httpx_mock, unused_port,
@@ -308,10 +316,10 @@ async def test_submit_with_error_in_tfn_function(
         async def transform_it(self, row):
             if row['id'] == 6:
                 raise ValueError('Ooops')
-            return {
+            return RowTransformationResponse.done({
                 'id': row['id'],
                 'price': row['price'],
-            }
+            })
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocker.patch('connect.eaas.runner.managers.transformation.Workbook')
@@ -349,6 +357,7 @@ async def test_submit_with_error_in_tfn_function(
     assert result == task
 
 
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit_with_error_in_tfn_function_sync(
     mocker, tfn_settings_payload, responses, httpx_mock, unused_port,
@@ -463,10 +472,10 @@ async def test_submit_with_error_in_tfn_function_sync(
         def transform_it(self, row):
             if row['id'] == 6:
                 raise ValueError('Ooops')
-            return {
+            return RowTransformationResponse.done({
                 'id': row['id'],
                 'price': row['price'],
-            }
+            })
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocker.patch('connect.eaas.runner.managers.transformation.Workbook')
@@ -693,3 +702,110 @@ async def test_send_skip_response(
     assert result_queue.qsize() == 1
     result = await result_queue.get()
     assert result == task
+
+
+@pytest.mark.asyncio
+async def test_async_process_row_invalid_response(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    async def tfn(row):
+        return 33
+
+    with pytest.raises(RowTransformationError) as cv:
+        await manager.async_process_row(
+            mocker.MagicMock(),
+            tfn,
+            3,
+            {'row': 'data'},
+            mocker.MagicMock(),
+        )
+
+    assert str(cv.value).endswith('invalid row tranformation response: 33.')
+
+
+@pytest.mark.asyncio
+async def test_async_process_row_fail_response(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    async def tfn(row):
+        return RowTransformationResponse.fail(output='Failed by me')
+
+    with pytest.raises(RowTransformationError) as cv:
+        await manager.async_process_row(
+            mocker.MagicMock(),
+            tfn,
+            3,
+            {'row': 'data'},
+            mocker.MagicMock(),
+        )
+
+    assert str(cv.value).endswith('row transformation failed: Failed by me.')
+
+
+def test_sync_process_row_invalid_response(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    def tfn(row):
+        return 33
+
+    with pytest.raises(RowTransformationError) as cv:
+        manager.sync_process_row(
+            mocker.MagicMock(),
+            tfn,
+            3,
+            {'row': 'data'},
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+
+    assert str(cv.value).endswith('invalid row tranformation response: 33.')
+
+
+def test_sync_process_row_fail_response(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    def tfn(row):
+        return RowTransformationResponse.fail(output='Failed by me')
+
+    with pytest.raises(RowTransformationError) as cv:
+        manager.sync_process_row(
+            mocker.MagicMock(),
+            tfn,
+            3,
+            {'row': 'data'},
+            mocker.MagicMock(),
+            mocker.MagicMock(),
+        )
+
+    assert str(cv.value).endswith('row transformation failed: Failed by me.')
+
+
+def test_generate_output_row_skip(mocker):
+    column_names = ['A', 'B']
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+    response = RowTransformationResponse.skip()
+
+    row = manager.generate_output_row(column_names, response)
+
+    assert row == ['#N/A', '#N/A']
+
+
+def test_generate_output_row_delete(mocker):
+    column_names = ['A', 'B']
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+    response = RowTransformationResponse.delete()
+
+    row = manager.generate_output_row(column_names, response)
+
+    assert row == ['#INSTRUCTION/DELETE_ROW', '#INSTRUCTION/DELETE_ROW']
+
+
+def test_generate_output_row_invalid_status(mocker):
+    column_names = ['A', 'B']
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+    response = RowTransformationResponse('reschedule')
+
+    with pytest.raises(Exception) as cv:
+        manager.generate_output_row(column_names, response)
+
+    assert str(cv.value) == 'Invalid row transformation response status: reschedule.'

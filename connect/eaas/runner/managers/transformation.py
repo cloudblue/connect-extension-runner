@@ -33,6 +33,7 @@ from connect.eaas.core.proto import (
     TaskOutput,
 )
 from connect.eaas.core.responses import (
+    RowTransformationResponse,
     TransformationResponse,
 )
 from connect.eaas.runner.constants import (
@@ -332,8 +333,12 @@ class TransformationTasksManager(TasksManagerBase):
 
     async def async_process_row(self, semaphore, method, row_idx, row, result_store):
         try:
-            transformed_row = await method(row)
-            await result_store.put(row_idx, transformed_row)
+            response = await method(row)
+            if not isinstance(response, RowTransformationResponse):
+                raise RowTransformationError(f'invalid row tranformation response: {response}')
+            if response.status == ResultType.FAIL:
+                raise RowTransformationError(f'row transformation failed: {response.output}')
+            await result_store.put(row_idx, response)
         except Exception as e:
             raise RowTransformationError(
                 f'Error applying transformation function {method.__name__} '
@@ -344,8 +349,12 @@ class TransformationTasksManager(TasksManagerBase):
 
     def sync_process_row(self, semaphore, method, row_idx, row, result_store, loop):
         try:
-            transformed_row = method(row)
-            asyncio.run_coroutine_threadsafe(result_store.put(row_idx, transformed_row), loop)
+            response = method(row)
+            if not isinstance(response, RowTransformationResponse):
+                raise RowTransformationError(f'invalid row tranformation response: {response}')
+            if response.status == ResultType.FAIL:
+                raise RowTransformationError(f'row transformation failed: {response.output}')
+            asyncio.run_coroutine_threadsafe(result_store.put(row_idx, response), loop)
         except Exception as e:
             raise RowTransformationError(
                 f'Error applying transformation function {method.__name__} '
@@ -380,15 +389,11 @@ class TransformationTasksManager(TasksManagerBase):
                 result_store.get(idx),
                 loop,
             )
-            row_data = future.result(
+            response = future.result(
                 timeout=self.config.env['transformation_write_queue_timeout'],
             )
-            row = []
-            for col_name in column_names:
-                value = row_data.get(col_name)
-                row.append(value if value is not None else '#N/A')
 
-            ws.append(row)
+            ws.append(self.generate_output_row(column_names, response))
             rows_processed += 1
             if rows_processed % delta == 0 or rows_processed == total_rows:
                 self.send_stat_update(task_data, rows_processed, total_rows)
@@ -398,6 +403,22 @@ class TransformationTasksManager(TasksManagerBase):
                 )
 
         wb.save(filename)
+
+    def generate_output_row(self, column_names, response):
+        row = []
+        for col_name in column_names:
+            if response.status == ResultType.SUCCESS:
+                value = response.transformed_row.get(col_name)
+                row.append(value if value is not None else '#N/A')
+            elif response.status == ResultType.SKIP:
+                row.append('#N/A')
+            elif response.status == ResultType.DELETE:
+                row.append('#INSTRUCTION/DELETE_ROW')
+            else:
+                raise RowTransformationError(
+                    f'Invalid row transformation response status: {response.status}.',
+                )
+        return row
 
     def send_stat_update(self, task_data, rows_processed, total_rows):
         client = self.get_sync_client(task_data)
