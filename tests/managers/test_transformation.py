@@ -25,6 +25,9 @@ from connect.eaas.core.responses import (
 from connect.eaas.runner.config import (
     ConfigHelper,
 )
+from connect.eaas.runner.constants import (
+    ROW_DELETED_MARKER,
+)
 from connect.eaas.runner.handlers.transformations import (
     TfnApp,
 )
@@ -778,6 +781,48 @@ def test_sync_process_row_fail_response(mocker):
         )
 
     assert str(cv.value).endswith('row transformation failed: Failed by me.')
+
+
+def test_sync_process_row_deleted_row(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    tfn = mocker.MagicMock()
+    tfn.__name__ = 'my_func'
+
+    result_store = mocker.AsyncMock()
+
+    manager.sync_process_row(
+        mocker.MagicMock(),
+        tfn,
+        3,
+        {'row': ROW_DELETED_MARKER},
+        result_store,
+        mocker.MagicMock(),
+    )
+
+    assert result_store.put.mock_calls[0].args[1].status == ResultType.DELETE
+    tfn.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_async_process_row_deleted_row(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    tfn = mocker.AsyncMock()
+    tfn.__name__ = 'my_func'
+
+    result_store = mocker.AsyncMock()
+
+    await manager.async_process_row(
+        mocker.MagicMock(),
+        tfn,
+        3,
+        {'row': ROW_DELETED_MARKER},
+        result_store,
+    )
+
+    assert result_store.put.mock_calls[0].args[1].status == ResultType.DELETE
+    tfn.assert_not_awaited()
 
 
 def test_generate_output_row_skip(mocker):
