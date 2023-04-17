@@ -154,3 +154,6 @@ LEVEL_TO_FONT_COLOR = {
     'WARNING': ('bloody', 'YELLOW'),
     'ERROR': ('bloody', 'RED'),
 }
+
+EXCEL_NULL_MARKER = '#N/A'
+ROW_DELETED_MARKER = '#INSTRUCTION/DELETE_ROW'

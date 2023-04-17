@@ -38,6 +38,8 @@ from connect.eaas.core.responses import (
 )
 from connect.eaas.runner.constants import (
     DOWNLOAD_CHUNK_SIZE,
+    EXCEL_NULL_MARKER,
+    ROW_DELETED_MARKER,
     TRANSFORMATION_TASK_MAX_PARALLEL_LINES,
     UPLOAD_CHUNK_SIZE,
 )
@@ -333,6 +335,9 @@ class TransformationTasksManager(TasksManagerBase):
 
     async def async_process_row(self, semaphore, method, row_idx, row, result_store):
         try:
+            if ROW_DELETED_MARKER in list(row.values()):
+                await result_store.put(row_idx, RowTransformationResponse.delete())
+                return
             response = await method(row)
             if not isinstance(response, RowTransformationResponse):
                 raise RowTransformationError(f'invalid row tranformation response: {response}')
@@ -349,6 +354,11 @@ class TransformationTasksManager(TasksManagerBase):
 
     def sync_process_row(self, semaphore, method, row_idx, row, result_store, loop):
         try:
+            if ROW_DELETED_MARKER in list(row.values()):
+                asyncio.run_coroutine_threadsafe(
+                    result_store.put(row_idx, RowTransformationResponse.delete()), loop,
+                )
+                return
             response = method(row)
             if not isinstance(response, RowTransformationResponse):
                 raise RowTransformationError(f'invalid row tranformation response: {response}')
@@ -409,11 +419,11 @@ class TransformationTasksManager(TasksManagerBase):
         for col_name in column_names:
             if response.status == ResultType.SUCCESS:
                 value = response.transformed_row.get(col_name)
-                row.append(value if value is not None else '#N/A')
+                row.append(value if value is not None else EXCEL_NULL_MARKER)
             elif response.status == ResultType.SKIP:
-                row.append('#N/A')
+                row.append(EXCEL_NULL_MARKER)
             elif response.status == ResultType.DELETE:
-                row.append('#INSTRUCTION/DELETE_ROW')
+                row.append(ROW_DELETED_MARKER)
             else:
                 raise RowTransformationError(
                     f'Invalid row transformation response status: {response.status}.',
