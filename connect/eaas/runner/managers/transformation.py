@@ -75,6 +75,11 @@ class TransformationTasksManager(TasksManagerBase):
 
         return self.client
 
+    def get_extension_logger(self, task_data):
+        return self.handler.get_logger(
+            extra={'task_id': task_data.options.task_id},
+        )
+
     def get_sync_client(self, task_data):
         return ConnectClient(
             task_data.options.api_key,
@@ -173,12 +178,14 @@ class TransformationTasksManager(TasksManagerBase):
             logger.exception(f'Cannot fail the transformation request {task_data.input.object_id}')
 
     async def process_transformation(self, task_data, tfn_request, method):
+        extension_logger = self.get_extension_logger(task_data)
         semaphore = asyncio.Semaphore(TRANSFORMATION_TASK_MAX_PARALLEL_LINES)
         input_file = await asyncio.get_running_loop().run_in_executor(
             self.executor,
             self.download_excel,
             tfn_request,
             task_data.options.api_key,
+            extension_logger,
         )
         output_file = NamedTemporaryFile(
             suffix=f'.{tfn_request["files"]["input"]["name"].split(".")[-1]}',
@@ -192,8 +199,10 @@ class TransformationTasksManager(TasksManagerBase):
         reader_task = loop.run_in_executor(
             self.executor,
             self.read_excel,
+            tfn_request,
             input_file,
             read_queue,
+            extension_logger,
             loop,
         )
         writer_task = loop.run_in_executor(
@@ -204,6 +213,7 @@ class TransformationTasksManager(TasksManagerBase):
             tfn_request['stats']['rows']['total'],
             tfn_request['transformation']['columns']['output'],
             task_data,
+            extension_logger,
             loop,
         )
         processor_task = asyncio.create_task(self.process_rows(
@@ -211,7 +221,8 @@ class TransformationTasksManager(TasksManagerBase):
             read_queue,
             result_store,
             method,
-            tfn_request['stats']['rows']['total'],
+            tfn_request,
+            extension_logger,
         ))
 
         tasks = [reader_task, writer_task, processor_task]
@@ -237,15 +248,20 @@ class TransformationTasksManager(TasksManagerBase):
             )
             return TransformationResponse.fail(output=str(e))
 
-        await self.send_output_file(task_data, tfn_request['batch']['id'], output_file)
+        await self.send_output_file(
+            task_data, tfn_request['batch']['id'], output_file, extension_logger,
+        )
         input_file.close()
         output_file.close()
         return TransformationResponse.done()
 
-    def download_excel(self, tfn_request, api_key):
+    def download_excel(self, tfn_request, api_key, logger):
         input_file_name = tfn_request['files']['input']['name']
         input_file = NamedTemporaryFile(suffix=f'.{input_file_name.split(".")[-1]}')
-
+        logger.info(
+            f'Downloading input file for {tfn_request["id"]} '
+            f'from {self.config.get_api_address()}{input_file_name}',
+        )
         with requests.get(
             url=f'{self.config.get_api_address()}{input_file_name}',
             stream=True,
@@ -255,16 +271,27 @@ class TransformationTasksManager(TasksManagerBase):
             },
         ) as response:
             response.raise_for_status()
+            content_length = response.headers.get('Content-Length')
+            progress = 0
             for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
                 input_file.write(chunk)
-
+                progress += len(chunk)
+                logger.debug(
+                    f'Input file download progress for {tfn_request["id"]}:'
+                    f' {progress}/{content_length} bytes',
+                )
+        logger.info(
+            f'Input file for {tfn_request["id"]} '
+            f'from {self.config.get_api_address()}{input_file_name} downloaded',
+        )
         return input_file
 
-    def read_excel(self, filename, queue, loop):
+    def read_excel(self, tfn_request, filename, queue, logger, loop):
         wb = load_workbook(filename=filename, read_only=True)
         ws = wb['Data']
         lookup_columns = {}
-
+        total_rows = tfn_request['stats']['rows']['total']
+        delta = 1 if total_rows <= 10 else round(total_rows / 10)
         for idx, row in enumerate(ws.rows, start=1):
             if idx == 1:
                 for col_idx, col_value in enumerate(row, start=1):
@@ -279,12 +306,20 @@ class TransformationTasksManager(TasksManagerBase):
                 queue.put((idx, row_data)),
                 loop,
             )
+            if idx % delta == 0 or idx == total_rows:
+                logger.info(
+                    f'Input file read progress for {tfn_request["id"]}:'
+                    f' {idx}/{total_rows} rows',
+                )
 
+        logger.info(f'Input file read complete for {tfn_request["id"]}')
         wb.close()
 
-    async def process_rows(self, semaphore, read_queue, result_store, method, total_rows):
+    async def process_rows(self, semaphore, read_queue, result_store, method, tfn_request, logger):
         rows_processed = 0
         tasks = []
+        total_rows = tfn_request['stats']['rows']['total']
+        delta = 1 if total_rows <= 10 else round(total_rows / 10)
         while rows_processed < total_rows:
             await semaphore.acquire()
             row_idx, row = await read_queue.get()
@@ -324,8 +359,14 @@ class TransformationTasksManager(TasksManagerBase):
                 )
 
             rows_processed += 1
+            if rows_processed % delta == 0 or rows_processed == total_rows:
+                logger.info(
+                    f'Starting transformation tasks for {tfn_request["id"]}:'
+                    f' {rows_processed}/{total_rows} started',
+                )
 
         try:
+            logger.debug('gathering transformation tasks...')
             await asyncio.gather(*tasks)
         except Exception as e:
             logger.exception('Error during applying transformations.')
@@ -373,7 +414,9 @@ class TransformationTasksManager(TasksManagerBase):
         finally:
             semaphore.release()
 
-    def write_excel(self, filename, result_store, total_rows, output_columns, task_data, loop):
+    def write_excel(
+        self, filename, result_store, total_rows, output_columns, task_data, logger, loop,
+    ):
         wb = Workbook(write_only=True)
 
         ws = wb.create_sheet('Data')
@@ -407,9 +450,9 @@ class TransformationTasksManager(TasksManagerBase):
             rows_processed += 1
             if rows_processed % delta == 0 or rows_processed == total_rows:
                 self.send_stat_update(task_data, rows_processed, total_rows)
-                logger.debug(
-                    f'{task_data.input.object_id} processed {rows_processed}'
-                    f' of {total_rows} rows',
+                logger.info(
+                    f'Writing to output file for {task_data.input.object_id}: {rows_processed}/'
+                    f'{total_rows} written',
                 )
 
         wb.save(filename)
@@ -436,7 +479,7 @@ class TransformationTasksManager(TasksManagerBase):
             payload={'stats': {'rows': {'total': total_rows, 'processed': rows_processed}}},
         )
 
-    async def send_output_file(self, task_data, batch_id, output_file):
+    async def send_output_file(self, task_data, batch_id, output_file, logger):
         client = self.get_client(task_data)
 
         fileobj = open(output_file.name, 'rb')
@@ -452,8 +495,14 @@ class TransformationTasksManager(TasksManagerBase):
         }
 
         async def chunks_iterator():    # pragma: no cover
+            progress = 0
             while data := fileobj.read(UPLOAD_CHUNK_SIZE):
                 yield data
+                progress += len(data)
+                logger.debug(
+                    f'Output file upload progress for {task_data.input.object_id}:'
+                    f' {progress}/{file_size} bytes',
+                )
 
         media_file = await client.ns('media').ns('folders').collection(
             'streams_batches',
@@ -463,7 +512,9 @@ class TransformationTasksManager(TasksManagerBase):
             content=chunks_iterator(),
             headers=headers,
         )
-
+        logger.info(
+            f'Output file upload completed for {task_data.input.object_id}',
+        )
         media_file_id = json.loads(media_file)['id']
         await client('billing').requests[task_data.input.object_id].update(
             payload={'files': {'output': {'id': media_file_id}}},
