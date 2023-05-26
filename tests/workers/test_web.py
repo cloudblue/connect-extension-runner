@@ -9,6 +9,7 @@ from websockets.exceptions import (
 
 from connect.eaas.core.decorators import (
     account_settings_page,
+    customer_pages,
     router,
     web_app,
 )
@@ -157,6 +158,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
             reply_to='reply_to',
             api_key='api_key',
             installation_id='installation_id',
+            tier_account_id='tier_account_id',
             connect_correlation_id='connect_correlation_id',
             user_id='user_id',
             account_id='account_id',
@@ -191,9 +193,25 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
             'label': 'Settings',
             'url': '/static/settings.html',
         },
+        'customer': [
+            {
+                'label': 'Customer Home Page',
+                'url': '/static/customer.html',
+                'icon': '/static/icon.png',
+            },
+        ],
     }
 
     @account_settings_page('Settings', '/static/settings.html')
+    @customer_pages(
+        [
+            {
+                'label': 'Customer Home Page',
+                'url': '/static/customer.html',
+                'icon': '/static/icon.png',
+            },
+        ],
+    )
     @web_app(router)
     class MyExtension(WebApplicationBase):
         @classmethod
@@ -311,6 +329,7 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
             reply_to='reply_to',
             api_key='api_key',
             installation_id='installation_id',
+            tier_account_id='tier_account_id',
             connect_correlation_id='connect_correlation_id',
             user_id='user_id',
             account_id='account_id',
@@ -995,3 +1014,250 @@ async def test_close_connection_with_reason(
             await asyncio.sleep(1)
         assert worker.run_event.is_set() is False
         assert 'The WS connection has been closed, reason: Somereason' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_proper_internal_headers(mocker, ws_server, unused_port, settings_payload):
+
+    task_options = WebTaskOptions(
+        correlation_id='correlation_id',
+        reply_to='reply_to',
+        api_key='api_key',
+        installation_id='installation_id',
+        tier_account_id='tier_account_id',
+        connect_correlation_id='connect_correlation_id',
+        user_id='user_id',
+        account_id='account_id',
+        account_role='account_role',
+        call_type='user',
+        call_source='ui',
+    )
+
+    setup_response = copy.deepcopy(settings_payload)
+    setup_response['logging']['logging_api_key'] = 'logging_api_key'
+    setup_response['logging']['log_level'] = None
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+
+    @account_settings_page('Settings', '/static/settings.html')
+    @web_app(router)
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+        @classmethod
+        def get_static_root(cls):
+            return None
+
+        @router.get('/test/url')
+        def test_url(self):
+            return {'test': 'ok'}
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
+
+    web_task = WebTask(
+        options=task_options,
+        request=HttpRequest(
+            method='GET',
+            url='/api/test/url',
+            headers={},
+        ),
+    )
+
+    data_to_send = [
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**setup_response),
+        ).dict(),
+        Message(
+            version=2,
+            message_type=MessageType.WEB_TASK,
+            data=web_task,
+        ).dict(),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
+        data_to_send,
+        ['receive', 'send', 'send', 'receive'],
+    )
+
+    config = ConfigHelper(secure=False)
+    ext_handler = WebApp(config)
+
+    worker = None
+    async with ws_server(handler):
+        worker = WebWorker(ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        mocker.patch.object(
+            worker.config,
+            'get_user_agent',
+            lambda: {'User-Agent': 'useragent'},
+        )
+        assert worker.get_internal_headers(task=web_task) == {
+            'X-Connect-Api-Gateway-Url': f'https://127.0.0.1:{unused_port}/public/v1',
+            'X-Connect-User-Agent': 'useragent',
+            'X-Connect-Extension-Id': 'service_id',
+            'X-Connect-Environment-Id': 'ENV-000-0001',
+            'X-Connect-Environment-Type': 'development',
+            'X-Connect-Logging-Level': 'WARNING',
+            'X-Connect-Config': '{"conf1": "val1"}',
+            'X-Connect-Installation-Api-Key': 'api_key',
+            'X-Connect-Installation-Id': 'installation_id',
+            'X-Connect-Tier-Account-Id': 'tier_account_id',
+            'X-Connect-Correlation-Id': 'connect_correlation_id',
+            'X-Connect-User-Id': 'user_id',
+            'X-Connect-Account-Id': 'account_id',
+            'X-Connect-Account-Role': 'account_role',
+            'X-Connect-Call-Type': 'user',
+            'X-Connect-Call-Source': 'ui',
+            'X-Connect-Logging-Api-Key': 'logging_api_key',
+            'X-Connect-Logging-Metadata': (
+                '{"api_address": "127.0.0.1:' + f'{unused_port}", "service_id": "service_id", '
+                '"environment_id": "ENV-000-0001", "environment_type": "development", '
+                '"instance_id": "INS-000-0002", "account_id": "account_id", "account_name": '
+                '"account_name"}'
+            ),
+        }
+        worker.stop()
+        await task
+
+
+@pytest.mark.asyncio
+async def test_optional_internal_headers(mocker, ws_server, unused_port, settings_payload):
+
+    task_options = WebTaskOptions(
+        correlation_id='correlation_id',
+        reply_to='reply_to',
+        tier_account_id='tier_account_id',
+        connect_correlation_id='connect_correlation_id',
+        user_id='user_id',
+        account_id='account_id',
+        account_role='account_role',
+        call_type='user',
+        call_source='ui',
+    )
+
+    setup_response = copy.deepcopy(settings_payload)
+    setup_response['logging']['logging_api_key'] = None
+    setup_response['logging']['log_level'] = None
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+
+    @account_settings_page('Settings', '/static/settings.html')
+    @web_app(router)
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+        @classmethod
+        def get_static_root(cls):
+            return None
+
+        @router.get('/test/url')
+        def test_url(self):
+            return {'test': 'ok'}
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
+
+    web_task = WebTask(
+        options=task_options,
+        request=HttpRequest(
+            method='GET',
+            url='/api/test/url',
+            headers={},
+        ),
+    )
+
+    data_to_send = [
+        Message(
+            version=2,
+            message_type=MessageType.SETUP_RESPONSE,
+            data=SetupResponse(**setup_response),
+        ).dict(),
+        Message(
+            version=2,
+            message_type=MessageType.WEB_TASK,
+            data=web_task,
+        ).dict(),
+    ]
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
+        data_to_send,
+        ['receive', 'send', 'send', 'receive'],
+    )
+
+    config = ConfigHelper(secure=False)
+    ext_handler = WebApp(config)
+
+    worker = None
+    async with ws_server(handler):
+        worker = WebWorker(ext_handler, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        mocker.patch.object(worker.config, 'get_user_agent', lambda: {'User-Agent': 'useragent'})
+        assert worker.get_internal_headers(task=web_task) == {
+            'X-Connect-Api-Gateway-Url': f'https://127.0.0.1:{unused_port}/public/v1',
+            'X-Connect-User-Agent': 'useragent',
+            'X-Connect-Extension-Id': 'service_id',
+            'X-Connect-Environment-Id': 'ENV-000-0001',
+            'X-Connect-Environment-Type': 'development',
+            'X-Connect-Logging-Level': 'WARNING',
+            'X-Connect-Config': '{"conf1": "val1"}',
+            'X-Connect-Tier-Account-Id': 'tier_account_id',
+            'X-Connect-Correlation-Id': 'connect_correlation_id',
+            'X-Connect-User-Id': 'user_id',
+            'X-Connect-Account-Id': 'account_id',
+            'X-Connect-Account-Role': 'account_role',
+            'X-Connect-Call-Type': 'user',
+            'X-Connect-Call-Source': 'ui',
+        }
+        worker.stop()
+        await task

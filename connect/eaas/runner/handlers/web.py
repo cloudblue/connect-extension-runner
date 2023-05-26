@@ -132,6 +132,15 @@ class WebApp(ApplicationHandlerBase):
                 'url': admin['url'],
                 'integration_point': 'Installations Admin',
             })
+
+        for customer in self.ui_modules.get('customer', []):
+            components.append({
+                'name': customer['label'],
+                'url': customer['url'],
+                'icon': customer['icon'],
+                'integration_point': 'Customer Home Page',
+            })
+
         return components
 
     def get_endpoints(self):

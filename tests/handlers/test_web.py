@@ -19,6 +19,7 @@ from connect.client import (
 from connect.eaas.core.decorators import (
     account_settings_page,
     admin_pages,
+    customer_pages,
     guest,
     module_pages,
     unauthorized,
@@ -304,6 +305,15 @@ def test_get_features(mocker):
     @web_app(router)
     @account_settings_page('Settings', '/static/settings.html')
     @admin_pages([{'label': 'Admin', 'url': '/static/admin.html'}])
+    @customer_pages(
+        [
+            {
+                'label': 'Customer home page',
+                'url': '/static/customer.html',
+                'icon': '/static/icon.png',
+            },
+        ],
+    )
     @module_pages(
         'Main',
         '/static/index.html',
@@ -389,5 +399,35 @@ def test_get_features(mocker):
                 'url': '/static/admin.html',
                 'name': 'Admin',
             },
+            {
+                'integration_point': 'Customer Home Page',
+                'url': '/static/customer.html',
+                'name': 'Customer home page',
+                'icon': '/static/icon.png',
+            },
         ],
+    }
+
+
+def test_empty_extension(mocker):
+    config = ConfigHelper()
+
+    router = APIRouter()
+    mocker.patch('connect.eaas.core.extension.router', router)
+
+    @web_app(router)
+    class MyExtension(WebApplicationBase):
+        pass
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    handler = WebApp(config)
+
+    assert handler.features == {
+        'endpoints': {'auth': [], 'no_auth': []},
+        'ui_modules': [],
     }
