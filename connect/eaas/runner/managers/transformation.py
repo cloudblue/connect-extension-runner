@@ -5,6 +5,9 @@ import logging
 import os
 import time
 import traceback
+from copy import (
+    copy,
+)
 from tempfile import (
     NamedTemporaryFile,
 )
@@ -13,6 +16,12 @@ import requests
 from openpyxl import (
     Workbook,
     load_workbook,
+)
+from openpyxl.cell import (
+    WriteOnlyCell,
+)
+from openpyxl.styles.named_styles import (
+    NamedStyle,
 )
 
 from connect.client import (
@@ -229,7 +238,7 @@ class TransformationTasksManager(TasksManagerBase):
         try:
             await asyncio.gather(*tasks)
         except Exception as e:
-            logger.error(
+            logger.exception(
                 f'Error during processing transformation '
                 f'for {task_data.options.task_id}: {e}',
             )
@@ -299,11 +308,18 @@ class TransformationTasksManager(TasksManagerBase):
                 continue
 
             row_data = {col_name: None for col_name in lookup_columns.values()}
+            row_styles = copy(row_data)
 
             for col_idx, col_value in enumerate(row, start=1):
                 row_data[lookup_columns[col_idx]] = col_value.value
+                style = NamedStyle()
+                style.font = col_value.font
+                style.fill = col_value.fill
+                style.border = col_value.border
+                style.number_format = col_value.number_format
+                row_styles[lookup_columns[col_idx]] = style
             asyncio.run_coroutine_threadsafe(
-                queue.put((idx, row_data)),
+                queue.put((idx, row_data, row_styles)),
                 loop,
             )
             if idx % delta == 0 or idx == total_rows:
@@ -322,7 +338,7 @@ class TransformationTasksManager(TasksManagerBase):
         delta = 1 if total_rows <= 10 else round(total_rows / 10)
         while rows_processed < total_rows:
             await semaphore.acquire()
-            row_idx, row = await read_queue.get()
+            row_idx, row, row_styles = await read_queue.get()
             if inspect.iscoroutinefunction(method):
                 tasks.append(
                     asyncio.create_task(
@@ -332,6 +348,7 @@ class TransformationTasksManager(TasksManagerBase):
                                 method,
                                 row_idx,
                                 row,
+                                row_styles,
                                 result_store,
                             ),
                             self.config.get_timeout('row_transformation'),
@@ -350,6 +367,7 @@ class TransformationTasksManager(TasksManagerBase):
                                 method,
                                 row_idx,
                                 row,
+                                row_styles,
                                 result_store,
                                 loop,
                             ),
@@ -374,12 +392,15 @@ class TransformationTasksManager(TasksManagerBase):
                 task.cancel()
             raise e
 
-    async def async_process_row(self, semaphore, method, row_idx, row, result_store):
+    async def async_process_row(self, semaphore, method, row_idx, row, row_styles, result_store):
         try:
             if ROW_DELETED_MARKER in list(row.values()):
                 await result_store.put(row_idx, RowTransformationResponse.delete())
                 return
-            response = await method(row)
+            kwargs = {}
+            if 'row_styles' in inspect.signature(method).parameters:
+                kwargs['row_styles'] = row_styles
+            response = await method(row, **kwargs)
             if not isinstance(response, RowTransformationResponse):
                 raise RowTransformationError(f'invalid row tranformation response: {response}')
             if response.status == ResultType.FAIL:
@@ -393,14 +414,17 @@ class TransformationTasksManager(TasksManagerBase):
         finally:
             semaphore.release()
 
-    def sync_process_row(self, semaphore, method, row_idx, row, result_store, loop):
+    def sync_process_row(self, semaphore, method, row_idx, row, row_styles, result_store, loop):
         try:
             if ROW_DELETED_MARKER in list(row.values()):
                 asyncio.run_coroutine_threadsafe(
                     result_store.put(row_idx, RowTransformationResponse.delete()), loop,
                 )
                 return
-            response = method(row)
+            kwargs = {}
+            if 'row_styles' in inspect.signature(method).parameters:
+                kwargs['row_styles'] = row_styles
+            response = method(row, **kwargs)
             if not isinstance(response, RowTransformationResponse):
                 raise RowTransformationError(f'invalid row tranformation response: {response}')
             if response.status == ResultType.FAIL:
@@ -421,7 +445,6 @@ class TransformationTasksManager(TasksManagerBase):
 
         ws = wb.create_sheet('Data')
         ws_columns = wb.create_sheet('Columns')
-        ws_columns.title = 'Columns'
         ws_columns.append(['Name', 'Type', 'Nullable', 'Description', 'Precision'])
         column_keys = ['name', 'type', 'nullable', 'description', 'precision']
 
@@ -446,7 +469,7 @@ class TransformationTasksManager(TasksManagerBase):
                 timeout=self.config.env['transformation_write_queue_timeout'],
             )
 
-            ws.append(self.generate_output_row(column_names, response))
+            ws.append(self.generate_output_row(ws, column_names, response))
             rows_processed += 1
             if rows_processed % delta == 0 or rows_processed == total_rows:
                 self.send_stat_update(task_data, rows_processed, total_rows)
@@ -457,12 +480,18 @@ class TransformationTasksManager(TasksManagerBase):
 
         wb.save(filename)
 
-    def generate_output_row(self, column_names, response):
+    def generate_output_row(self, ws, column_names, response):
         row = []
         for col_name in column_names:
             if response.status == ResultType.SUCCESS:
                 value = response.transformed_row.get(col_name)
-                row.append(value if value is not None else EXCEL_NULL_MARKER)
+                cell = WriteOnlyCell(ws=ws, value=value if value is not None else EXCEL_NULL_MARKER)
+                style = response.transformed_row_styles.get(col_name, NamedStyle())
+                cell.number_format = style.number_format
+                cell.font = style.font
+                cell.fill = style.fill
+                cell.border = style.border
+                row.append(cell)
             elif response.status == ResultType.SKIP:
                 row.append(EXCEL_NULL_MARKER)
             elif response.status == ResultType.DELETE:
