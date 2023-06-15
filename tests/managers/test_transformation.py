@@ -720,6 +720,7 @@ async def test_async_process_row_invalid_response(mocker):
             tfn,
             3,
             {'row': 'data'},
+            {},
             mocker.MagicMock(),
         )
 
@@ -739,10 +740,37 @@ async def test_async_process_row_fail_response(mocker):
             tfn,
             3,
             {'row': 'data'},
+            {},
             mocker.MagicMock(),
         )
 
     assert str(cv.value).endswith('row transformation failed: Failed by me.')
+
+
+@pytest.mark.asyncio
+async def test_async_process_row_new_version(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    response = RowTransformationResponse.done(
+        {'row': 'row'},
+        {'row': 'style'},
+    )
+
+    async def tfn(row, row_styles):
+        return response
+
+    result_store_mock = mocker.MagicMock()
+    result_store_mock.put = mocker.AsyncMock()
+
+    await manager.async_process_row(
+        mocker.MagicMock(),
+        tfn,
+        3,
+        {'row': 'data'},
+        {'row': 'style'},
+        result_store_mock,
+    )
+    result_store_mock.put.assert_called_with(3, response)
 
 
 def test_sync_process_row_invalid_response(mocker):
@@ -757,6 +785,7 @@ def test_sync_process_row_invalid_response(mocker):
             tfn,
             3,
             {'row': 'data'},
+            {},
             mocker.MagicMock(),
             mocker.MagicMock(),
         )
@@ -776,6 +805,7 @@ def test_sync_process_row_fail_response(mocker):
             tfn,
             3,
             {'row': 'data'},
+            {},
             mocker.MagicMock(),
             mocker.MagicMock(),
         )
@@ -796,12 +826,40 @@ def test_sync_process_row_deleted_row(mocker):
         tfn,
         3,
         {'row': ROW_DELETED_MARKER},
+        {},
         result_store,
         mocker.MagicMock(),
     )
 
     assert result_store.put.mock_calls[0].args[1].status == ResultType.DELETE
     tfn.assert_not_called()
+
+
+def test_sync_process_row_new_version(mocker):
+    mocker.patch('asyncio.run_coroutine_threadsafe')
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    response = RowTransformationResponse.done(
+        {'row': 'row'},
+        {'row': 'style'},
+    )
+
+    def tfn(row, row_styles):
+        return response
+
+    result_store_mock = mocker.MagicMock()
+    result_store_mock.put = mocker.MagicMock()
+
+    manager.sync_process_row(
+        mocker.MagicMock(),
+        tfn,
+        3,
+        {'row': 'data'},
+        {'row': 'style'},
+        result_store_mock,
+        mocker.MagicMock(),
+    )
+    result_store_mock.put.assert_called_with(3, response)
 
 
 @pytest.mark.asyncio
@@ -818,6 +876,7 @@ async def test_async_process_row_deleted_row(mocker):
         tfn,
         3,
         {'row': ROW_DELETED_MARKER},
+        {},
         result_store,
     )
 
@@ -830,7 +889,7 @@ def test_generate_output_row_skip(mocker):
     manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
     response = RowTransformationResponse.skip()
 
-    row = manager.generate_output_row(column_names, response)
+    row = manager.generate_output_row(mocker.MagicMock(), column_names, response)
 
     assert row == ['#N/A', '#N/A']
 
@@ -840,7 +899,7 @@ def test_generate_output_row_delete(mocker):
     manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
     response = RowTransformationResponse.delete()
 
-    row = manager.generate_output_row(column_names, response)
+    row = manager.generate_output_row(mocker.MagicMock(), column_names, response)
 
     assert row == ['#INSTRUCTION/DELETE_ROW', '#INSTRUCTION/DELETE_ROW']
 
@@ -851,6 +910,6 @@ def test_generate_output_row_invalid_status(mocker):
     response = RowTransformationResponse('reschedule')
 
     with pytest.raises(Exception) as cv:
-        manager.generate_output_row(column_names, response)
+        manager.generate_output_row(mocker.MagicMock(), column_names, response)
 
     assert str(cv.value) == 'Invalid row transformation response status: reschedule.'
