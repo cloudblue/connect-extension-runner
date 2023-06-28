@@ -39,9 +39,12 @@ from connect.eaas.runner.managers.transformation import (
 )
 
 
+@pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
-async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unused_port):
+async def test_submit(
+    mocker, tfn_settings_payload, responses, httpx_mock, unused_port, task_type_prefix,
+):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
         return_value={
@@ -116,19 +119,19 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
 
     httpx_mock.add_response(
         method='PUT',
-        url=f'{api_url}/billing/requests/TFR-000',
+        url=f'{api_url}/{task_type_prefix}/requests/TFR-000',
         status_code=200,
     )
 
     responses.add(
         responses.PUT,
-        f'{api_url}/billing/requests/TFR-000',
+        f'{api_url}/{task_type_prefix}/requests/TFR-000',
         status=200,
     )
 
     httpx_mock.add_response(
         method='POST',
-        url=f'{api_url}/billing/requests/TFR-000/process',
+        url=f'{api_url}/{task_type_prefix}/requests/TFR-000/process',
         status_code=201,
     )
 
@@ -181,7 +184,7 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
             'api_key': 'ApiKey SU-000:xxxx',
         },
         input={
-            'event_type': 'transformation_request',
+            'event_type': f'{task_type_prefix}_transformation_request',
             'object_id': 'TFR-000',
             'data': {'method': 'transform_it'},
         },
@@ -204,10 +207,11 @@ async def test_submit(mocker, tfn_settings_payload, responses, httpx_mock, unuse
     assert len(responses.calls) == 8
 
 
+@pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit_with_error_in_tfn_function(
-    mocker, tfn_settings_payload, responses, httpx_mock, unused_port,
+    mocker, tfn_settings_payload, responses, httpx_mock, unused_port, task_type_prefix,
 ):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -283,7 +287,7 @@ async def test_submit_with_error_in_tfn_function(
 
     httpx_mock.add_response(
         method='POST',
-        url=f'{api_url}/billing/requests/TFR-000/fail',
+        url=f'{api_url}/{task_type_prefix}/requests/TFR-000/fail',
         status_code=200,
     )
 
@@ -341,7 +345,7 @@ async def test_submit_with_error_in_tfn_function(
             'api_key': 'ApiKey SU-000:xxxx',
         },
         input={
-            'event_type': 'transformation_request',
+            'event_type': f'{task_type_prefix}_transformation_request',
             'object_id': 'TFR-000',
             'data': {'method': 'transform_it'},
         },
@@ -360,10 +364,11 @@ async def test_submit_with_error_in_tfn_function(
     assert result == task
 
 
+@pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit_with_error_in_tfn_function_sync(
-    mocker, tfn_settings_payload, responses, httpx_mock, unused_port,
+    mocker, tfn_settings_payload, responses, httpx_mock, unused_port, task_type_prefix,
 ):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -439,7 +444,7 @@ async def test_submit_with_error_in_tfn_function_sync(
 
     httpx_mock.add_response(
         method='POST',
-        url=f'{api_url}/billing/requests/TFR-000/fail',
+        url=f'{api_url}/{task_type_prefix}/requests/TFR-000/fail',
         status_code=200,
     )
 
@@ -497,7 +502,7 @@ async def test_submit_with_error_in_tfn_function_sync(
             'api_key': 'ApiKey SU-000:xxxxx',
         },
         input={
-            'event_type': 'transformation_request',
+            'event_type': f'{task_type_prefix}_transformation_request',
             'object_id': 'TFR-000',
             'data': {'method': 'transform_it'},
         },
@@ -516,61 +521,10 @@ async def test_submit_with_error_in_tfn_function_sync(
     assert result == task
 
 
+@pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.asyncio
-async def test_build_response_exception(mocker, task_payload, httpx_mock, unused_port):
-    mocker.patch(
-        'connect.eaas.runner.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-            'transformation_write_queue_timeout': 0.2,
-            'row_transformation_task_max_execution_time': 60,
-        },
-    )
-    api_address = f'https://127.0.0.1:{unused_port}'
-    api_url = f'{api_address}/public/v1'
-    httpx_mock.add_response(
-        method='POST',
-        url=f'{api_url}/billing/requests/TFR-000/fail',
-        status_code=200,
-    )
-
-    httpx_mock.add_response(
-        method='POST',
-        url=f'{api_url}/conversations/TFR-000/messages',
-        status_code=201,
-    )
-    config = ConfigHelper()
-    manager = TransformationTasksManager(config, None, None)
-    manager.log_exception = mocker.MagicMock()
-
-    task = Task(
-        **task_payload(
-            TaskCategory.TRANSFORMATION,
-            'transformation_request',
-            'TFR-000',
-        ),
-    )
-    future = asyncio.Future()
-    future.set_exception(Exception('Ooops'))
-    response = await manager.build_response(task, future)
-
-    assert response.options.task_id == task.options.task_id
-    assert response.output.result == ResultType.FAIL
-    assert 'Ooops' in response.output.message
-    manager.log_exception.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_build_response_exception_fail_failing_trans_req(
-    mocker, task_payload, httpx_mock, unused_port, caplog,
+async def test_build_response_exception(
+    mocker, task_payload, httpx_mock, unused_port, task_type_prefix,
 ):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -592,7 +546,62 @@ async def test_build_response_exception_fail_failing_trans_req(
     api_url = f'{api_address}/public/v1'
     httpx_mock.add_response(
         method='POST',
-        url=f'{api_url}/billing/requests/TFR-000/fail',
+        url=f'{api_url}/{task_type_prefix}/requests/TFR-000/fail',
+        status_code=200,
+    )
+
+    httpx_mock.add_response(
+        method='POST',
+        url=f'{api_url}/conversations/TFR-000/messages',
+        status_code=201,
+    )
+    config = ConfigHelper()
+    manager = TransformationTasksManager(config, None, None)
+    manager.log_exception = mocker.MagicMock()
+
+    task = Task(
+        **task_payload(
+            TaskCategory.TRANSFORMATION,
+            f'{task_type_prefix}_transformation_request',
+            'TFR-000',
+        ),
+    )
+    future = asyncio.Future()
+    future.set_exception(Exception('Ooops'))
+    response = await manager.build_response(task, future)
+
+    assert response.options.task_id == task.options.task_id
+    assert response.output.result == ResultType.FAIL
+    assert 'Ooops' in response.output.message
+    manager.log_exception.assert_called_once()
+
+
+@pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
+@pytest.mark.asyncio
+async def test_build_response_exception_fail_failing_trans_req(
+    mocker, task_payload, httpx_mock, unused_port, caplog, task_type_prefix,
+):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'transformation_task_max_execution_time': 300,
+            'transformation_write_queue_timeout': 0.2,
+            'row_transformation_task_max_execution_time': 60,
+        },
+    )
+    api_address = f'https://127.0.0.1:{unused_port}'
+    api_url = f'{api_address}/public/v1'
+    httpx_mock.add_response(
+        method='POST',
+        url=f'{api_url}/{task_type_prefix}/requests/TFR-000/fail',
         status_code=200,
     )
 
@@ -608,7 +617,7 @@ async def test_build_response_exception_fail_failing_trans_req(
     task = Task(
         **task_payload(
             TaskCategory.TRANSFORMATION,
-            'transformation_request',
+            f'{task_type_prefix}_transformation_request',
             'TFR-000',
         ),
     )
@@ -624,9 +633,10 @@ async def test_build_response_exception_fail_failing_trans_req(
     assert 'Cannot fail the transformation request' in caplog.text
 
 
+@pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.asyncio
 async def test_send_skip_response(
-    mocker, task_payload, unused_port, tfn_settings_payload, httpx_mock,
+    mocker, task_payload, unused_port, tfn_settings_payload, httpx_mock, task_type_prefix,
 ):
     mocker.patch(
         'connect.eaas.runner.config.get_environment',
@@ -688,7 +698,7 @@ async def test_send_skip_response(
             'task_category': TaskCategory.TRANSFORMATION,
         },
         input={
-            'event_type': 'transformation_request',
+            'event_type': f'{task_type_prefix}_transformation_request',
             'object_id': 'TFR-000',
             'data': {'method': 'transform_it'},
         },
