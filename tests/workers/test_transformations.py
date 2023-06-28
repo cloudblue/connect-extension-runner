@@ -312,8 +312,11 @@ def test_start_tfnapp_worker_process(mocker):
     handler_class_mock.assert_called_once_with(config_mock)
 
 
+@pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.asyncio
-async def test_task(mocker, ws_server, unused_port, httpx_mock, tfn_settings_payload):
+async def test_task(
+    mocker, ws_server, unused_port, httpx_mock, tfn_settings_payload, task_type_prefix,
+):
 
     task_data = {'id': 'TRF-000', 'method': 'process_it', 'status': 'pending'}
 
@@ -388,7 +391,7 @@ async def test_task(mocker, ws_server, unused_port, httpx_mock, tfn_settings_pay
                     'task_category': TaskCategory.TRANSFORMATION,
                 },
                 input={
-                    'event_type': 'transformation_request',
+                    'event_type': f'{task_type_prefix}_transformation_request',
                     'object_id': 'TRF-000',
                     'data': {'method': 'transform_it'},
                 },
@@ -432,7 +435,7 @@ async def test_task(mocker, ws_server, unused_port, httpx_mock, tfn_settings_pay
                     'task_category': TaskCategory.TRANSFORMATION,
                 },
                 input={
-                    'event_type': 'transformation_request',
+                    'event_type': f'{task_type_prefix}_transformation_request',
                     'object_id': 'TRF-000',
                     'data': {'method': 'transform_it'},
                 },

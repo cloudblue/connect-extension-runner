@@ -176,7 +176,8 @@ class TransformationTasksManager(TasksManagerBase):
     async def _fail_task(self, task_data, message):
         try:
             client = self.get_client(task_data)
-            await client('billing').requests[task_data.input.object_id]('fail').post()
+            ns, _ = task_data.input.event_type.split('_', 1)
+            await client(ns).requests[task_data.input.object_id]('fail').post()
             await client.conversations[task_data.input.object_id].messages.create(
                 payload={
                     'type': 'message',
@@ -248,7 +249,8 @@ class TransformationTasksManager(TasksManagerBase):
             input_file.close()
             output_file.close()
             client = self.get_client(task_data)
-            await client('billing').requests[task_data.input.object_id]('fail').post()
+            ns, _ = task_data.input.event_type.split('_', 1)
+            await client(ns).requests[task_data.input.object_id]('fail').post()
             await client.conversations[task_data.input.object_id].messages.create(
                 payload={
                     'type': 'message',
@@ -504,7 +506,8 @@ class TransformationTasksManager(TasksManagerBase):
 
     def send_stat_update(self, task_data, rows_processed, total_rows):
         client = self.get_sync_client(task_data)
-        client('billing').requests[task_data.input.object_id].update(
+        ns, _ = task_data.input.event_type.split('_', 1)
+        client(ns).requests[task_data.input.object_id].update(
             payload={'stats': {'rows': {'total': total_rows, 'processed': rows_processed}}},
         )
 
@@ -545,7 +548,8 @@ class TransformationTasksManager(TasksManagerBase):
             f'Output file upload completed for {task_data.input.object_id}',
         )
         media_file_id = json.loads(media_file)['id']
-        await client('billing').requests[task_data.input.object_id].update(
+        ns, _ = task_data.input.event_type.split('_', 1)
+        await client(ns).requests[task_data.input.object_id].update(
             payload={'files': {'output': {'id': media_file_id}}},
         )
-        await client('billing').requests[task_data.input.object_id]('process').post()
+        await client(ns).requests[task_data.input.object_id]('process').post()

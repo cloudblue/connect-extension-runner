@@ -120,7 +120,13 @@ def tfn_settings_payload():
         },
         'event_definitions': [
             {
-                'event_type': 'transformation_request',
+                'event_type': 'billing_transformation_request',
+                'api_collection_endpoint': 'collection',
+                'api_resource_endpoint': 'collection/{pk}',
+                'api_collection_filter': 'and(eq(id,${_object_id_}),eq(status,pending))',
+            },
+            {
+                'event_type': 'pricing_transformation_request',
                 'api_collection_endpoint': 'collection',
                 'api_resource_endpoint': 'collection/{pk}',
                 'api_collection_filter': 'and(eq(id,${_object_id_}),eq(status,pending))',
