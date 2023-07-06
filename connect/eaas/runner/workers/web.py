@@ -134,6 +134,9 @@ class WebWorker(WorkerBase):
         if task.options.installation_id:
             headers['X-Connect-Installation-Id'] = task.options.installation_id
 
+        if task.options.tier_account_id:
+            headers['X-Connect-Tier-Account-Id'] = task.options.tier_account_id
+
         if task.options.connect_correlation_id:
             headers['X-Connect-Correlation-Id'] = task.options.connect_correlation_id
 
