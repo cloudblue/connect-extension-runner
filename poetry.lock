@@ -247,13 +247,13 @@ test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
 name = "connect-eaas-core"
-version = "28.7"
+version = "28.9"
 description = "Connect Eaas Core"
 optional = false
 python-versions = ">=3.8,<4"
 files = [
-    {file = "connect_eaas_core-28.7-py3-none-any.whl", hash = "sha256:d439f661a94fb5787cf0f7c8a7443072a847805b47656524a2fa27645d0a3943"},
-    {file = "connect_eaas_core-28.7.tar.gz", hash = "sha256:a81b6dccdf978eda684463d0f2b6512311a45a76998c9577111c89adb0d9df59"},
+    {file = "connect_eaas_core-28.9-py3-none-any.whl", hash = "sha256:85ac5cfc369a4f428a558b54c37b5bd5bd6cba4bdbc959558e3710e9aa99d2c5"},
+    {file = "connect_eaas_core-28.9.tar.gz", hash = "sha256:38151b14bebc811e4a04d71e5a6c18eb6b039197cdcbd56c3c2f8d1af5cd3473"},
 ]
 
 [package.dependencies]
@@ -1725,4 +1725,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<4"
-content-hash = "828580ad7db4fa3899a7d8769f86935e18658b9c25b40605d2709c398e3a15e1"
+content-hash = "cd34880f370eb0d087453ee40cef63dfbcfe54edffc6fbd85aa5f1792f820c47"
