@@ -403,7 +403,6 @@ def test_get_features(mocker):
                 'integration_point': 'Customer Home Page',
                 'url': '/static/customer.html',
                 'name': 'Customer home page',
-                'icon': '/static/icon.png',
             },
         ],
     }

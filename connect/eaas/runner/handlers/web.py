@@ -137,7 +137,6 @@ class WebApp(ApplicationHandlerBase):
             components.append({
                 'name': customer['label'],
                 'url': customer['url'],
-                'icon': customer['icon'],
                 'integration_point': 'Customer Home Page',
             })
 
