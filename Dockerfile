@@ -53,7 +53,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
 
 
 RUN apt-get update; \
-    apt-get install -y git curl tmux ca-certificates; \
+    apt-get install -y git curl tmux ca-certificates libsqlite3-dev; \
     apt-get autoremove -y; \
     apt-get clean -y; \
     rm -rf /var/lib/apt/lists/*

@@ -41,6 +41,7 @@ openpyxl = ">=3.0.0,<4"
 lxml = "^4.9.2"
 uvloop = "^0.17.0"
 urllib3 = "<2"
+python-socks = {extras = ["asyncio"], version = "^2.3.0"}
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.2.1"

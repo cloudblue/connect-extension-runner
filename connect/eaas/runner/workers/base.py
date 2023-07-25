@@ -21,6 +21,9 @@ import websockets
 from devtools import (
     pformat,
 )
+from python_socks.async_.asyncio import (
+    Proxy,
+)
 from websockets.exceptions import (
     ConnectionClosedError,
     ConnectionClosedOK,
@@ -114,6 +117,7 @@ class WorkerBase(ABC):
                             ping_interval=60,
                             ping_timeout=60,
                             max_queue=128,
+                            **await self.get_proxy_config(),
                         )
                         await (await self.ws.ping())
                         await self.do_handshake()
@@ -138,6 +142,19 @@ class WorkerBase(ABC):
                         raise CommunicationError()
 
         await _connect()
+
+    async def get_proxy_config(self):
+        if not self.config.proxy:
+            return {}
+        proxy = Proxy.from_url(self.config.proxy)
+        sock = await proxy.connect(
+            dest_host=self.config.ws_address,
+            dest_port=self.config.ws_port,
+        )
+        return {
+            'sock': sock,
+            'server_hostname': self.config.ws_address,
+        }
 
     async def do_handshake(self):
         setup_request = self.get_setup_request()

@@ -4,6 +4,9 @@ import logging
 import time
 
 import pytest
+from python_socks.async_.asyncio import (
+    Proxy,
+)
 from websockets.exceptions import (
     ConnectionClosedError,
     InvalidStatusCode,
@@ -2077,3 +2080,80 @@ def test_start_background_worker_process(mocker):
 
     mocked_configure_logger.assert_called_once_with(True, False)
     start_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ('secure', 'ws_url', 'ws_port', 'env_name'),
+    (
+        (False, 'ws://my.ws.addr', 80, 'ws_proxy'),
+        (True, 'wss://my.ws.addr', 443, 'wss_proxy'),
+    ),
+)
+async def test_ensure_connection_with_proxy(mocker, secure, ws_url, ws_port, env_name):
+    mocker.patch.object(
+        EventsApp,
+        'load_application',
+    )
+
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': 'my.ws.addr',
+            'api_address': 'my.ws.addr',
+            env_name: 'http://my.proxy.addr:3128',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+        },
+    )
+
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', .1)
+
+    mocked_sock = mocker.MagicMock()
+
+    mocked_proxy = mocker.MagicMock()
+    mocked_proxy.connect = mocker.AsyncMock(return_value=mocked_sock)
+
+    mocked_fromurl = mocker.patch.object(Proxy, 'from_url', return_value=mocked_proxy)
+
+    connect_mock = mocker.patch(
+        'connect.eaas.runner.workers.base.websockets.connect',
+        mocker.AsyncMock(),
+    )
+
+    config = ConfigHelper(secure=secure)
+    ext_handler = EventsApp(config)
+
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
+    worker.run_event.set()
+    worker.get_url = lambda: ws_url
+
+    await worker.ensure_connection()
+
+    mocked_fromurl.assert_called_once_with('http://my.proxy.addr:3128')
+
+    mocked_proxy.connect.assert_awaited_once_with(
+        dest_host='my.ws.addr',
+        dest_port=ws_port,
+    )
+
+    connect_mock.assert_awaited_once_with(
+        ws_url,
+        extra_headers=(('Authorization', 'SU-000:XXXX'),),
+        ping_interval=60,
+        ping_timeout=60,
+        max_queue=128,
+        sock=mocked_sock,
+        server_hostname='my.ws.addr',
+    )
