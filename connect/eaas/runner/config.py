@@ -99,6 +99,18 @@ class ConfigHelper:
             for definition in (self.dyn_config.event_definitions or [])
         }
 
+    @property
+    def proxy(self):
+        return self.env.get('wss_proxy') if self.secure else self.env.get('ws_proxy')
+
+    @property
+    def ws_address(self):
+        return self.env["ws_address"]
+
+    @property
+    def ws_port(self):
+        return 443 if self.secure else 80
+
     def get_events_ws_url(self):
         proto = 'wss' if self.secure else 'ws'
         return (
