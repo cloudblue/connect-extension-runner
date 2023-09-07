@@ -48,6 +48,7 @@ from connect.eaas.core.responses import (
 from connect.eaas.runner.constants import (
     DOWNLOAD_CHUNK_SIZE,
     EXCEL_NULL_MARKER,
+    REPORT_EVERY_ROW_MAX,
     ROW_DELETED_MARKER,
     TRANSFORMATION_TASK_MAX_PARALLEL_LINES,
     UPLOAD_CHUNK_SIZE,
@@ -320,6 +321,7 @@ class TransformationTasksManager(TasksManagerBase):
                 style.border = col_value.border
                 style.number_format = col_value.number_format
                 row_styles[lookup_columns[col_idx]] = style
+
             asyncio.run_coroutine_threadsafe(
                 queue.put((idx, row_data, row_styles)),
                 loop,
@@ -460,7 +462,10 @@ class TransformationTasksManager(TasksManagerBase):
         ws.append(column_names)
 
         rows_processed = 0
-        delta = 1 if total_rows <= 10 else round(total_rows / 10)
+        delta = min(
+            1 if total_rows <= 10 else round(total_rows / 10),
+            REPORT_EVERY_ROW_MAX,
+        )
 
         for idx in range(2, total_rows + 2):
             future = asyncio.run_coroutine_threadsafe(
