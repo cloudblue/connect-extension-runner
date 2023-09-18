@@ -28,7 +28,7 @@ cextrun = 'connect.eaas.runner.main:main'
 [tool.poetry.dependencies]
 python = ">=3.8,<4"
 websockets = "10.*"
-connect-openapi-client = ">=28.0"
+connect-openapi-client = ">=28.1"
 logzio-python-handler = "^3.1.1"
 backoff = "^2.2.1"
 connect-eaas-core = ">=28.12,<29"
