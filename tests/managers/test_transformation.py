@@ -40,28 +40,18 @@ from connect.eaas.runner.managers.transformation import (
 
 
 @pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
+@pytest.mark.parametrize('max_parallel_lines', (1, 20))
 @pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit(
-    mocker, tfn_settings_payload, responses, httpx_mock, unused_port, task_type_prefix,
+    mocker, default_env, tfn_settings_payload, responses,
+    httpx_mock, unused_port, task_type_prefix,
+    max_parallel_lines,
 ):
     mocker.patch(
-        'connect.eaas.runner.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-            'transformation_write_queue_timeout': 600,
-            'row_transformation_task_max_execution_time': 60,
-        },
+        'connect.eaas.runner.managers.transformation.TRANSFORMATION_TASK_MAX_PARALLEL_LINES',
+        max_parallel_lines,
     )
-
     api_address = f'https://127.0.0.1:{unused_port}'
     api_url = f'{api_address}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
@@ -191,7 +181,7 @@ async def test_submit(
     )
 
     await manager.submit(task)
-    await asyncio.sleep(1)
+    await asyncio.sleep(.5)
 
     task.output = TaskOutput(
         result=ResultType.SUCCESS,
@@ -208,28 +198,18 @@ async def test_submit(
 
 
 @pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
+@pytest.mark.parametrize('max_parallel_lines', (1, 20))
 @pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit_with_error_in_tfn_function(
-    mocker, tfn_settings_payload, responses, httpx_mock, unused_port, task_type_prefix,
+    mocker, default_env, tfn_settings_payload, responses,
+    httpx_mock, unused_port, task_type_prefix,
+    max_parallel_lines,
 ):
     mocker.patch(
-        'connect.eaas.runner.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-            'transformation_write_queue_timeout': 0.2,
-            'row_transformation_task_max_execution_time': 60,
-        },
+        'connect.eaas.runner.managers.transformation.TRANSFORMATION_TASK_MAX_PARALLEL_LINES',
+        max_parallel_lines,
     )
-
     api_address = f'https://127.0.0.1:{unused_port}'
     api_url = f'{api_address}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
@@ -329,13 +309,13 @@ async def test_submit_with_error_in_tfn_function(
             })
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
-    mocker.patch('connect.eaas.runner.managers.transformation.Workbook')
     mocked_time = mocker.patch('connect.eaas.runner.managers.transformation.time')
-    mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = TfnApp(config)
 
     result_queue = asyncio.Queue()
+    mocker.patch.object(TransformationTasksManager, 'send_stat_update')
+    mocker.patch.object(TransformationTasksManager, 'write_excel')
     manager = TransformationTasksManager(config, handler, result_queue.put)
 
     task = Task(
@@ -352,7 +332,7 @@ async def test_submit_with_error_in_tfn_function(
     )
 
     await manager.submit(task)
-    await asyncio.sleep(1)
+    await asyncio.sleep(.5)
 
     task.output = TaskOutput(
         result=ResultType.FAIL,
@@ -368,25 +348,9 @@ async def test_submit_with_error_in_tfn_function(
 @pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_submit_with_error_in_tfn_function_sync(
-    mocker, tfn_settings_payload, responses, httpx_mock, unused_port, task_type_prefix,
+    mocker, default_env, tfn_settings_payload, responses,
+    httpx_mock, unused_port, task_type_prefix,
 ):
-    mocker.patch(
-        'connect.eaas.runner.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-            'transformation_write_queue_timeout': 0.2,
-            'row_transformation_task_max_execution_time': 60,
-        },
-    )
-
     api_address = f'https://127.0.0.1:{unused_port}'
     api_url = f'{api_address}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
@@ -486,9 +450,9 @@ async def test_submit_with_error_in_tfn_function_sync(
             })
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
-    mocker.patch('connect.eaas.runner.managers.transformation.Workbook')
+    mocker.patch.object(TransformationTasksManager, 'send_stat_update')
+    mocker.patch.object(TransformationTasksManager, 'write_excel')
     mocked_time = mocker.patch('connect.eaas.runner.managers.transformation.time')
-    mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = TfnApp(config)
 
@@ -509,7 +473,7 @@ async def test_submit_with_error_in_tfn_function_sync(
     )
 
     await manager.submit(task)
-    await asyncio.sleep(1)
+    await asyncio.sleep(.5)
 
     task.output = TaskOutput(
         result=ResultType.FAIL,
@@ -524,24 +488,8 @@ async def test_submit_with_error_in_tfn_function_sync(
 @pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.asyncio
 async def test_build_response_exception(
-    mocker, task_payload, httpx_mock, unused_port, task_type_prefix,
+    mocker, default_env, task_payload, httpx_mock, unused_port, task_type_prefix,
 ):
-    mocker.patch(
-        'connect.eaas.runner.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-            'transformation_write_queue_timeout': 0.2,
-            'row_transformation_task_max_execution_time': 60,
-        },
-    )
     api_address = f'https://127.0.0.1:{unused_port}'
     api_url = f'{api_address}/public/v1'
     httpx_mock.add_response(
@@ -579,24 +527,8 @@ async def test_build_response_exception(
 @pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.asyncio
 async def test_build_response_exception_fail_failing_trans_req(
-    mocker, task_payload, httpx_mock, unused_port, caplog, task_type_prefix,
+    mocker, default_env, task_payload, httpx_mock, unused_port, caplog, task_type_prefix,
 ):
-    mocker.patch(
-        'connect.eaas.runner.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-            'transformation_write_queue_timeout': 0.2,
-            'row_transformation_task_max_execution_time': 60,
-        },
-    )
     api_address = f'https://127.0.0.1:{unused_port}'
     api_url = f'{api_address}/public/v1'
     httpx_mock.add_response(
@@ -636,23 +568,8 @@ async def test_build_response_exception_fail_failing_trans_req(
 @pytest.mark.parametrize('task_type_prefix', ('billing', 'pricing'))
 @pytest.mark.asyncio
 async def test_send_skip_response(
-    mocker, task_payload, unused_port, tfn_settings_payload, httpx_mock, task_type_prefix,
+    mocker, default_env, unused_port, tfn_settings_payload, httpx_mock, task_type_prefix,
 ):
-    mocker.patch(
-        'connect.eaas.runner.config.get_environment',
-        return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-        },
-    )
-
     api_url = f'https://127.0.0.1:{unused_port}/public/v1'
     mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
 
@@ -685,7 +602,6 @@ async def test_send_skip_response(
 
     mocker.patch.object(TfnApp, 'load_application', return_value=MyExtension)
     mocked_time = mocker.patch('connect.eaas.runner.managers.transformation.time')
-    mocked_time.sleep = time.sleep
     mocked_time.monotonic.side_effect = (1.0, 2.0)
     handler = TfnApp(config)
 
@@ -705,7 +621,7 @@ async def test_send_skip_response(
     )
 
     await manager.submit(task)
-    await asyncio.sleep(1)
+    await asyncio.sleep(.5)
 
     task.output = TaskOutput(
         result=ResultType.SKIP,
@@ -718,48 +634,44 @@ async def test_send_skip_response(
 
 
 @pytest.mark.asyncio
-async def test_async_process_row_invalid_response(mocker):
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+async def test_transform_row_invalid_response(mocker, default_env):
+    manager = TransformationTasksManager(ConfigHelper(), mocker.MagicMock(), mocker.MagicMock())
 
     async def tfn(row):
         return 33
 
     with pytest.raises(RowTransformationError) as cv:
-        await manager.async_process_row(
-            mocker.MagicMock(),
+        await manager.transform_row(
             tfn,
             3,
             {'row': 'data'},
             {},
-            mocker.MagicMock(),
         )
 
     assert str(cv.value).endswith('invalid row tranformation response: 33.')
 
 
 @pytest.mark.asyncio
-async def test_async_process_row_fail_response(mocker):
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+async def test_transform_row_fail_response(mocker, default_env):
+    manager = TransformationTasksManager(ConfigHelper(), mocker.MagicMock(), mocker.MagicMock())
 
     async def tfn(row):
         return RowTransformationResponse.fail(output='Failed by me')
 
     with pytest.raises(RowTransformationError) as cv:
-        await manager.async_process_row(
-            mocker.MagicMock(),
+        await manager.transform_row(
             tfn,
             3,
             {'row': 'data'},
             {},
-            mocker.MagicMock(),
         )
 
     assert str(cv.value).endswith('row transformation failed: Failed by me.')
 
 
 @pytest.mark.asyncio
-async def test_async_process_row_new_version(mocker):
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+async def test_transform_row_new_version(mocker, default_env):
+    manager = TransformationTasksManager(ConfigHelper(), mocker.MagicMock(), mocker.MagicMock())
 
     response = RowTransformationResponse.done(
         {'row': 'row'},
@@ -772,125 +684,29 @@ async def test_async_process_row_new_version(mocker):
     result_store_mock = mocker.MagicMock()
     result_store_mock.put = mocker.AsyncMock()
 
-    await manager.async_process_row(
-        mocker.MagicMock(),
+    assert await manager.transform_row(
         tfn,
         3,
         {'row': 'data'},
         {'row': 'style'},
-        result_store_mock,
-    )
-    result_store_mock.put.assert_called_with(3, response)
-
-
-def test_sync_process_row_invalid_response(mocker):
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
-
-    def tfn(row):
-        return 33
-
-    with pytest.raises(RowTransformationError) as cv:
-        manager.sync_process_row(
-            mocker.MagicMock(),
-            tfn,
-            3,
-            {'row': 'data'},
-            {},
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-        )
-
-    assert str(cv.value).endswith('invalid row tranformation response: 33.')
-
-
-def test_sync_process_row_fail_response(mocker):
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
-
-    def tfn(row):
-        return RowTransformationResponse.fail(output='Failed by me')
-
-    with pytest.raises(RowTransformationError) as cv:
-        manager.sync_process_row(
-            mocker.MagicMock(),
-            tfn,
-            3,
-            {'row': 'data'},
-            {},
-            mocker.MagicMock(),
-            mocker.MagicMock(),
-        )
-
-    assert str(cv.value).endswith('row transformation failed: Failed by me.')
-
-
-def test_sync_process_row_deleted_row(mocker):
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
-
-    tfn = mocker.MagicMock()
-    tfn.__name__ = 'my_func'
-
-    result_store = mocker.AsyncMock()
-
-    manager.sync_process_row(
-        mocker.MagicMock(),
-        tfn,
-        3,
-        {'row': ROW_DELETED_MARKER},
-        {},
-        result_store,
-        mocker.MagicMock(),
-    )
-
-    assert result_store.put.mock_calls[0].args[1].status == ResultType.DELETE
-    tfn.assert_not_called()
-
-
-def test_sync_process_row_new_version(mocker):
-    mocker.patch('asyncio.run_coroutine_threadsafe')
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
-
-    response = RowTransformationResponse.done(
-        {'row': 'row'},
-        {'row': 'style'},
-    )
-
-    def tfn(row, row_styles):
-        return response
-
-    result_store_mock = mocker.MagicMock()
-    result_store_mock.put = mocker.MagicMock()
-
-    manager.sync_process_row(
-        mocker.MagicMock(),
-        tfn,
-        3,
-        {'row': 'data'},
-        {'row': 'style'},
-        result_store_mock,
-        mocker.MagicMock(),
-    )
-    result_store_mock.put.assert_called_with(3, response)
+    ) == response
 
 
 @pytest.mark.asyncio
-async def test_async_process_row_deleted_row(mocker):
-    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+async def test_transform_row_deleted_row(mocker, default_env):
+    manager = TransformationTasksManager(ConfigHelper(), mocker.MagicMock(), mocker.MagicMock())
 
     tfn = mocker.AsyncMock()
     tfn.__name__ = 'my_func'
 
-    result_store = mocker.AsyncMock()
-
-    await manager.async_process_row(
-        mocker.MagicMock(),
+    result = await manager.transform_row(
         tfn,
         3,
         {'row': ROW_DELETED_MARKER},
         {},
-        result_store,
     )
 
-    assert result_store.put.mock_calls[0].args[1].status == ResultType.DELETE
+    assert result.status == ResultType.DELETE
     tfn.assert_not_awaited()
 
 

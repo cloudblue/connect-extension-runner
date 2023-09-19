@@ -165,3 +165,23 @@ def task_payload():
 def responses():
     with sentry_responses.RequestsMock() as rsps:
         yield rsps
+
+
+@pytest.fixture
+def default_env(mocker, unused_port):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'transformation_task_max_execution_time': 300,
+            'transformation_write_queue_timeout': 600,
+            'row_transformation_task_max_execution_time': 60,
+        },
+    )
