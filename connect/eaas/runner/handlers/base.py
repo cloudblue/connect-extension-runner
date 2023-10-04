@@ -14,10 +14,12 @@ from connect.client import (
 )
 from connect.eaas.core.logging import (
     ExtensionLogHandler,
-    RequestLogger,
 )
 from connect.eaas.runner.helpers import (
     iter_entry_points,
+)
+from connect.eaas.runner.logging import (
+    RequestLogger,
 )
 
 
