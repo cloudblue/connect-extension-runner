@@ -1261,3 +1261,19 @@ async def test_optional_internal_headers(mocker, ws_server, unused_port, setting
         }
         worker.stop()
         await task
+
+
+def test_prettify(mocker):
+    logger = logging.getLogger('connect.eaas.runner')
+    worker = WebWorker(
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
+
+    logger.setLevel(logging.DEBUG)
+    assert worker.prettify('message') == "'message'"
+
+    logger.setLevel(logging.INFO)
+    assert worker.prettify('message') == '<...>'
