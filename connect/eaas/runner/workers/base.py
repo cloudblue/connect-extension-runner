@@ -303,7 +303,7 @@ class WorkerBase(ABC):
     async def send_shutdown(self):
         try:
             msg = Message(version=2, message_type=MessageType.SHUTDOWN)
-            logger.debug(f'Sending message: {pformat(msg)}')
+            logger.debug(f'Sending message: {self.prettify(msg)}')
             await self.send(msg.serialize())
         except ConnectionClosedError:
             pass
@@ -330,6 +330,11 @@ class WorkerBase(ABC):
     @abstractmethod
     async def process_message(self, data):
         raise NotImplementedError()
+
+    def prettify(self, msg):
+        if logger.isEnabledFor(logging.DEBUG):
+            return pformat(msg)
+        return '<...>'
 
     def _backoff_shutdown(self, _):
         if not self.run_event.is_set():

@@ -11,9 +11,6 @@ import logging
 import signal
 
 import httpx
-from devtools import (
-    pformat,
-)
 
 from connect.eaas.core.proto import (
     HttpRequest,
@@ -63,7 +60,7 @@ class WebWorker(WorkerBase):
                 proxied_connect_api=self.handler.proxied_connect_api,
             ),
         )
-        logger.debug(f'Sending setup request: {pformat(msg)}')
+        logger.debug(f'Sending setup request: {self.prettify(msg)}')
         return msg.dict()
 
     async def stopping(self):
@@ -71,7 +68,7 @@ class WebWorker(WorkerBase):
 
     async def process_message(self, data):
         message = Message.deserialize(data)
-        logger.debug(f'Received message: {pformat(message)}')
+        logger.debug(f'Received message: {self.prettify(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
             await self.process_setup_response(message.data)
         elif message.message_type == MessageType.WEB_TASK:
@@ -184,7 +181,7 @@ class WebWorker(WorkerBase):
             message_type=MessageType.WEB_TASK,
             data=task_response,
         )
-        logger.debug(f'Sending message: {pformat(message)}')
+        logger.debug(f'Sending message: {self.prettify(message)}')
         return message.serialize()
 
 

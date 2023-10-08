@@ -35,9 +35,6 @@ from connect.client.models import (
 from connect.eaas.core.enums import (
     ResultType,
 )
-from connect.eaas.core.logging import (
-    RequestLogger,
-)
 from connect.eaas.core.proto import (
     Task,
     TaskOutput,
@@ -53,6 +50,9 @@ from connect.eaas.runner.constants import (
     ROW_DELETED_MARKER,
     TRANSFORMATION_TASK_MAX_PARALLEL_LINES,
     UPLOAD_CHUNK_SIZE,
+)
+from connect.eaas.runner.logging import (
+    RequestLogger,
 )
 from connect.eaas.runner.managers.base import (
     TasksManagerBase,
@@ -163,7 +163,7 @@ class TransformationTasksManager(TasksManagerBase):
         except Exception as e:
             cause = (
                 str(e) if not isinstance(e, asyncio.TimeoutError)
-                else 'timed out after {timeout} s'
+                else f'timed out after {timeout} s'
             )
             self.log_exception(task_data, e)
             await self._fail_task(task_data, cause)
@@ -251,7 +251,10 @@ class TransformationTasksManager(TasksManagerBase):
             await client.conversations[task_data.input.object_id].messages.create(
                 payload={
                     'type': 'message',
-                    'text': f'Transformation request processing failed: {str(e) or "timed out"}',
+                    'text': (
+                        'Transformation request processing failed: '
+                        f'{self.format_exception_message(e)}'
+                    ),
                 },
             )
             return TransformationResponse.fail(output=str(e))
@@ -381,7 +384,6 @@ class TransformationTasksManager(TasksManagerBase):
     async def transform_row(self, method, row_idx, row, row_styles):
         try:
             if ROW_DELETED_MARKER in list(row.values()):
-                # await result_store.put((row_idx, RowTransformationResponse.delete()))
                 return RowTransformationResponse.delete()
             kwargs = {}
             if 'row_styles' in inspect.signature(method).parameters:
@@ -394,9 +396,10 @@ class TransformationTasksManager(TasksManagerBase):
                     self.executor,
                     functools.partial(method, row, **kwargs),
                 )
+            timeout = self.config.get_timeout('row_transformation')
             response = await asyncio.wait_for(
                 awaitable,
-                timeout=self.config.get_timeout('row_transformation'),
+                timeout=timeout,
             )
             if not isinstance(response, RowTransformationResponse):
                 raise RowTransformationError(f'invalid row tranformation response: {response}')
@@ -404,9 +407,13 @@ class TransformationTasksManager(TasksManagerBase):
                 raise RowTransformationError(f'row transformation failed: {response.output}')
             return response
         except Exception as e:
+            cause = (
+                str(e) if not isinstance(e, asyncio.TimeoutError)
+                else f'timed out after {timeout} s'
+            )
             raise RowTransformationError(
                 f'Error applying transformation function {method.__name__} '
-                f'to row #{row_idx}: {str(e)}.',
+                f'to row #{row_idx}: {cause}.',
             ) from e
 
     def write_excel(
@@ -525,3 +532,11 @@ class TransformationTasksManager(TasksManagerBase):
             payload={'files': {'output': {'id': media_file_id}}},
         )
         await client(ns).requests[task_data.input.object_id]('process').post()
+
+    def format_exception_message(self, e):
+        if isinstance(e, asyncio.CancelledError):
+            return 'cancelled'
+        elif isinstance(e, asyncio.TimeoutError):
+            return 'timed out'
+        else:
+            return str(e) or repr(e)
