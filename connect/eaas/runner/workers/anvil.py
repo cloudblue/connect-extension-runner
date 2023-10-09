@@ -7,10 +7,6 @@ import asyncio
 import logging
 import signal
 
-from devtools import (
-    pformat,
-)
-
 from connect.eaas.core.proto import (
     Message,
     MessageType,
@@ -54,7 +50,7 @@ class AnvilWorker(WorkerBase):
                 runner_version=get_version(),
             ),
         )
-        logger.debug(f'Sending setup request: {pformat(msg)}')
+        logger.debug(f'Sending setup request: {self.prettify(msg)}')
         return msg.dict()
 
     async def stopping(self):
@@ -62,7 +58,7 @@ class AnvilWorker(WorkerBase):
 
     async def process_message(self, data):
         message = Message.deserialize(data)
-        logger.debug(f'Received message: {pformat(message)}')
+        logger.debug(f'Received message: {self.prettify(message)}')
         if message.message_type == MessageType.SETUP_RESPONSE:
             await self.process_setup_response(message.data)
             self.handler.start()

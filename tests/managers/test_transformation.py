@@ -739,3 +739,23 @@ def test_generate_output_row_invalid_status(mocker):
         manager.generate_output_row(mocker.MagicMock(), column_names, response)
 
     assert str(cv.value) == 'Invalid row transformation response status: reschedule.'
+
+
+def test_format_exception_msg(mocker):
+    manager = TransformationTasksManager(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+
+    assert manager.format_exception_message(
+        asyncio.CancelledError(asyncio.Future()),
+    ) == 'cancelled'
+
+    assert manager.format_exception_message(
+        asyncio.TimeoutError(20),
+    ) == 'timed out'
+
+    assert manager.format_exception_message(
+        Exception('hello'),
+    ) == 'hello'
+
+    assert manager.format_exception_message(
+        Exception(),
+    ) == 'Exception()'
