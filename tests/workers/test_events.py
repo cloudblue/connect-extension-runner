@@ -2154,6 +2154,7 @@ async def test_ensure_connection_with_proxy(mocker, secure, ws_url, ws_port, env
         ping_interval=60,
         ping_timeout=60,
         max_queue=128,
+        max_size=2**21,
         sock=mocked_sock,
         server_hostname='my.ws.addr',
     )

@@ -117,6 +117,7 @@ class WorkerBase(ABC):
                             ping_interval=60,
                             ping_timeout=60,
                             max_queue=128,
+                            max_size=2**21,
                             **await self.get_proxy_config(),
                         )
                         await (await self.ws.ping())
