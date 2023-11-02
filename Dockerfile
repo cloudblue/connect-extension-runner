@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-ENV NODE_VERSION 18.15.0
+ENV NODE_VERSION 20.9.0
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     && case "${dpkgArch##*-}" in \
@@ -62,7 +62,7 @@ RUN apt-get update; \
 ARG RUNNER_VERSION
 
 RUN pip install -U pip && pip install poetry && mkdir -p /root/.config/pypoetry \
-    && echo "[virtualenvs]" > /root/.config/pypoetry/config.toml \ 
+    && echo "[virtualenvs]" > /root/.config/pypoetry/config.toml \
     && echo "create = false" >> /root/.config/pypoetry/config.toml
 
 COPY ./connect /install_temp/connect
