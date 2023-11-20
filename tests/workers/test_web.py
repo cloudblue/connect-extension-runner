@@ -1277,3 +1277,125 @@ def test_prettify(mocker):
 
     logger.setLevel(logging.INFO)
     assert worker.prettify('message') == '<...>'
+
+
+@pytest.mark.asyncio
+async def test_invoke_django_setup_hook(mocker, ws_server, unused_port, settings_payload):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+
+    ui_modules = {
+        'settings': {
+            'label': 'Settings',
+            'url': '/static/settings.html',
+        },
+    }
+
+    @account_settings_page('Settings', '/static/settings.html')
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'name': 'name',
+                'description': 'description',
+                'version': '0.1.2',
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+        @classmethod
+        def get_django_secret_key_variable(cls):
+            return 'DJANGO_SECRET_KEY'
+
+        @classmethod
+        def get_django_settings(cls, logger, config):
+            pass
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    mocked_enforce_override = mocker.patch(
+        'connect.eaas.runner.workers.base.enforce_and_override_django_settings',
+    )
+
+    mocked_dj_settings = mocker.patch.object(
+        MyExtension,
+        'get_django_settings',
+        return_value={'SETTING', 'VALUE'},
+    )
+    mocked_dj_settings.__self__ = MyExtension
+
+    mocked_inspect = mocker.patch('connect.eaas.runner.workers.base.inspect')
+    mocked_inspect.ismethod.return_value = True
+    mocked_inspect.iscoroutinefunction.return_value = False
+
+    mocker.patch('connect.eaas.runner.workers.web.get_version', return_value='24.1')
+
+    data_to_send = Message(
+        version=2,
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(**settings_payload),
+    ).dict()
+
+    handler = WSHandler(
+        '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp',
+        data_to_send,
+        ['receive', 'send'],
+    )
+    worker = None
+
+    config = ConfigHelper(secure=False)
+    ext_handler = WebApp(config)
+    ext_handler._django_settings_module = 'dj.settings'
+
+    async with ws_server(handler):
+        worker = WebWorker(
+            ext_handler,
+            mocker.MagicMock(),
+            mocker.MagicMock(value=0),
+            mocker.MagicMock(value=0),
+        )
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.5)
+        worker.stop()
+        await task
+
+    msg = Message(
+        version=2,
+        message_type=MessageType.SETUP_REQUEST,
+        data=SetupRequest(
+            event_subscriptions=None,
+            ui_modules=ui_modules,
+            variables=[],
+            schedulables=None,
+            repository={
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            },
+            runner_version='24.1',
+            proxied_connect_api=[],
+        ),
+    )
+
+    handler.assert_received(msg.dict())
+    mocked_dj_settings.assert_called_once()
+    mocked_enforce_override.assert_called_once_with(
+        config,
+        'DJANGO_SECRET_KEY',
+        {'SETTING', 'VALUE'},
+    )

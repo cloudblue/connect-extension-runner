@@ -47,6 +47,7 @@ from connect.eaas.runner.exceptions import (
     StopBackoffError,
 )
 from connect.eaas.runner.helpers import (
+    enforce_and_override_django_settings,
     to_ordinal,
 )
 
@@ -195,7 +196,11 @@ class WorkerBase(ABC):
                     message = await self.receive()
                     if not message:
                         continue
+                    if self.handler.django_settings_module:
+                        await self.close_django_old_connections()
                     await self.process_message(message)
+                    if self.handler.django_settings_module:
+                        await self.close_django_old_connections()
             except (ConnectionClosedOK, StopBackoffError) as exc:
                 self.stop()
                 if isinstance(exc, ConnectionClosedOK):
@@ -239,6 +244,12 @@ class WorkerBase(ABC):
         reconfigured, then restart the tasks manager.
         """
         self.config.update_dynamic_config(data)
+        if self.handler.django_settings_module:
+            enforce_and_override_django_settings(
+                self.config,
+                self.handler.django_secret_key_variable,
+                await self.invoke_hook('get_django_settings'),
+            )
         await self.trigger_event('on_startup')
         logger.info('Extension configuration has been updated.')
 
@@ -253,19 +264,29 @@ class WorkerBase(ABC):
                     return
                 self.on_shutdown_fired.value = 1
 
+        await self.invoke_hook(event)
+
+    async def close_django_old_connections(self):
+        from django.db import close_old_connections  # noqa: I001
+        return await asyncio.get_event_loop().run_in_executor(
+            None,
+            close_old_connections,
+        )
+
+    async def invoke_hook(self, hook_name):
         application = self.handler.get_application()
-        event_handler = getattr(application, event, None)
+        hook = getattr(application, hook_name, None)
         if (
-            event_handler
-            and inspect.ismethod(event_handler)
-            and event_handler.__self__ is application
+            hook
+            and inspect.ismethod(hook)
+            and hook.__self__ is application
         ):
-            if inspect.iscoroutinefunction(event_handler):
-                await event_handler(self.handler.get_logger(), self.config.variables)
+            if inspect.iscoroutinefunction(hook):
+                return await hook(self.handler.get_logger(), self.config.variables)
             else:
-                await asyncio.get_event_loop().run_in_executor(
+                return await asyncio.get_event_loop().run_in_executor(
                     None,
-                    event_handler,
+                    hook,
                     self.handler.get_logger(),
                     self.config.variables,
                 )

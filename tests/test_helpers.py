@@ -7,7 +7,11 @@ import logging
 import os
 import subprocess
 
+import django.conf
 import pytest
+from django.core.exceptions import (
+    ImproperlyConfigured,
+)
 from freezegun import (
     freeze_time,
 )
@@ -27,11 +31,15 @@ from connect.eaas.core.validation.models import (
 )
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    DJANGO_ENFORCED_SETTINGS,
+    DJANGO_NON_OVERRIDEABLE_SETTINGS,
+    DJANGO_REQUIRED_OVERRIDE_SETTINGS,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
 from connect.eaas.runner.helpers import (
     check_runner_version,
+    enforce_and_override_django_settings,
     get_anvilapp_detail_table,
     get_client,
     get_connect_version,
@@ -798,3 +806,142 @@ def test_get_features_table():
     }
 
     assert isinstance(get_features_table(features), Table)
+
+
+def test_enforce_and_override_django_settings(mocker):
+    settings_mock = mocker.MagicMock()
+    settings_mock.DATABASES = {
+        'default': {
+            'ENGINE': 'myengine',
+            'NAME': 'mydb',
+            'HOST': 'myhost',
+        },
+    }
+    settings_mock.DEBUG = True
+    settings_mock.ALLOWED_HOSTS = []
+
+    mocker.patch.object(django.conf, 'settings', settings_mock)
+    config_mock = mocker.MagicMock(
+        environment_runtime='local',
+        environment_hostname='srvc-1234-dev',
+        environment_domain='extensions.io',
+        variables={'DJANGO_SECRET_KEY': 'my-secret'},
+    )
+
+    overrides = {
+        'DATABASES': {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'HOST': 'db',
+                'PORT': 5432,
+                'NAME': 'eaas',
+                'USER': 'postgres',
+                'PASSWORD': 'mypass',
+            },
+        },
+    }
+
+    enforce_and_override_django_settings(config_mock, 'DJANGO_SECRET_KEY', overrides)
+    assert settings_mock.DATABASES == overrides['DATABASES']
+    assert settings_mock.SECRET_KEY == 'my-secret'
+    assert settings_mock.ALLOWED_HOSTS == ['srvc-1234-dev.extensions.io']
+    assert settings_mock.DEBUG is True
+
+
+def test_enforce_and_override_django_settings_mandatory(mocker):
+    overrides = {}
+    settings_mock = mocker.MagicMock()
+
+    mocker.patch.object(django.conf, 'settings', settings_mock)
+    config_mock = mocker.MagicMock(
+        environment_runtime='cloud',
+        environment_hostname='srvc-1234-dev',
+        environment_domain='extensions.io',
+        variables={'DJ_SECRET': 'my-secret'},
+    )
+
+    required_ovverides = list(DJANGO_REQUIRED_OVERRIDE_SETTINGS) + ['DATABASES']
+
+    with pytest.raises(ImproperlyConfigured) as cv:
+        enforce_and_override_django_settings(config_mock, 'DJ_SECRET', overrides)
+
+    assert str(cv.value) == (
+        f'The settings `{",".join(required_ovverides)}` must be overridden.'
+    )
+
+
+@pytest.mark.parametrize('forbidden_setting', DJANGO_NON_OVERRIDEABLE_SETTINGS)
+def test_enforce_and_override_django_settings_forbidden(mocker, forbidden_setting):
+    settings_mock = mocker.MagicMock()
+
+    mocker.patch.object(django.conf, 'settings', settings_mock)
+    config_mock = mocker.MagicMock(
+        environment_runtime='cloud',
+        environment_hostname='srvc-1234-dev',
+        environment_domain='extensions.io',
+        variables={'DJ_SECRET': 'my-secret'},
+    )
+
+    overrides = {
+        'DATABASES': {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'HOST': 'db',
+                'PORT': 5432,
+                'NAME': 'eaas',
+                'USER': 'postgres',
+                'PASSWORD': 'mypass',
+            },
+        },
+        forbidden_setting: 'a-value',
+    }
+
+    with pytest.raises(ImproperlyConfigured) as cv:
+        enforce_and_override_django_settings(config_mock, 'DJ_SECRET', overrides)
+
+    assert str(cv.value) == (
+        f'The settings `{",".join(DJANGO_NON_OVERRIDEABLE_SETTINGS)}` cannot be overridden.'
+    )
+
+
+def test_enforce_and_override_django_settings_enforced(mocker):
+    settings_mock = mocker.MagicMock()
+    settings_mock.DATABASES = {
+        'default': {
+            'ENGINE': 'myengine',
+            'NAME': 'mydb',
+            'HOST': 'myhost',
+        },
+    }
+    settings_mock.DEBUG = True
+    settings_mock.ALLOWED_HOSTS = []
+
+    mocker.patch.object(django.conf, 'settings', settings_mock)
+    config_mock = mocker.MagicMock(
+        environment_runtime='cloud',
+        environment_hostname='srvc-1234-dev',
+        environment_domain='extensions.io',
+        variables={'DJ_SECRET': 'my-secret'},
+    )
+
+    overrides = {
+        'DATABASES': {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'HOST': 'db',
+                'PORT': 5432,
+                'NAME': 'eaas',
+                'USER': 'postgres',
+                'PASSWORD': 'mypass',
+            },
+        },
+    }
+
+    enforce_and_override_django_settings(config_mock, 'DJ_SECRET', overrides)
+    assert settings_mock.DATABASES == overrides['DATABASES']
+    assert settings_mock.SECRET_KEY == 'my-secret'
+    assert settings_mock.ALLOWED_HOSTS == ['srvc-1234-dev.extensions.io']
+    assert settings_mock.DEBUG is False
+
+    for setting, setting_value in DJANGO_ENFORCED_SETTINGS.items():
+        assert getattr(settings_mock, setting) == setting_value
