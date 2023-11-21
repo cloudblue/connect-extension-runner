@@ -945,3 +945,40 @@ def test_enforce_and_override_django_settings_enforced(mocker):
 
     for setting, setting_value in DJANGO_ENFORCED_SETTINGS.items():
         assert getattr(settings_mock, setting) == setting_value
+
+
+def test_missing_django_secret(mocker):
+    mocker.patch.object(django.conf, 'settings', mocker.MagicMock())
+    config_mock = mocker.MagicMock(
+        environment_runtime='cloud',
+        environment_hostname='srvc-1234-dev',
+        environment_domain='extensions.io',
+        variables={'DJ_SECRET': 'my-secret'},
+    )
+    overrides = {}
+
+    with pytest.raises(ImproperlyConfigured) as cv:
+        enforce_and_override_django_settings(config_mock, False, overrides)
+
+    assert str(cv.value) == (
+        "Your extension class must be decorated with the `@django_secret_key_variable` "
+        "to specify the name of the environment variable that store the django `SECRET_KEY`."
+    )
+
+
+def test_improperly_configured_django_secret_settings(mocker):
+    mocker.patch.object(django.conf, 'settings', mocker.MagicMock())
+    config_mock = mocker.MagicMock(
+        environment_runtime='cloud',
+        environment_hostname='srvc-1234-dev',
+        environment_domain='extensions.io',
+        variables={'DJ_SECRET': 'my-secret'},
+    )
+    overrides = {}
+
+    with pytest.raises(ImproperlyConfigured) as cv:
+        enforce_and_override_django_settings(config_mock, 'False', overrides)
+
+    assert str(cv.value) == (
+        "The environment variable False has not been found and it is mandatory to setup django."
+    )
