@@ -1,6 +1,11 @@
 import os
 
+import django.conf
+import django.core.handlers.asgi
 import pytest
+from django.core.exceptions import (
+    ImproperlyConfigured,
+)
 from fastapi import (
     Depends,
     Header,
@@ -135,8 +140,9 @@ def test_properties(mocker):
     assert handler.proxied_connect_api == ['/abc']
 
 
+@pytest.mark.parametrize('dj_settings', ('some.settings', None))
 @pytest.mark.parametrize('static_root', ('static', None))
-def test_get_asgi_application(mocker, static_root):
+def test_get_asgi_application(mocker, static_root, dj_settings):
 
     config = ConfigHelper()
 
@@ -185,6 +191,12 @@ def test_get_asgi_application(mocker, static_root):
         return_value=MyExtension,
     )
 
+    mocked_mount_dj_apps = mocker.patch.object(
+        WebApp,
+        'mount_django_apps',
+        return_value=MyExtension,
+    )
+
     mocked_fastapi = mocker.MagicMock()
     mocked_fastapi_constructor = mocker.patch(
         'connect.eaas.runner.handlers.web.FastAPI',
@@ -198,6 +210,7 @@ def test_get_asgi_application(mocker, static_root):
         return_value=mocked_static,
     )
     handler = WebApp(config)
+    handler._django_settings_module = dj_settings
 
     assert handler.app == mocked_fastapi
 
@@ -234,6 +247,11 @@ def test_get_asgi_application(mocker, static_root):
             mocked_static,
             name='static',
         )
+
+    if dj_settings:
+        mocked_mount_dj_apps.assert_called_once()
+    else:
+        mocked_mount_dj_apps.assert_not_called()
 
 
 def test_openapi_schema_generation(mocker):
@@ -430,3 +448,105 @@ def test_empty_extension(mocker):
         'endpoints': {'auth': [], 'no_auth': []},
         'ui_modules': [],
     }
+
+
+def test_mount_django_apps(mocker):
+    config = ConfigHelper()
+
+    router = APIRouter()
+    mocker.patch('connect.eaas.core.extension.router', router)
+
+    @web_app(router)
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_static_root(cls):
+            return '/static'
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    handler = WebApp(config)
+
+    mocked_fastapi = mocker.MagicMock()
+
+    mocked_static = mocker.MagicMock()
+
+    mocked_static_files = mocker.patch(
+        'connect.eaas.runner.handlers.web.StaticFiles',
+        return_value=mocked_static,
+    )
+
+    mocked_asgi_handler = mocker.MagicMock()
+
+    mocked_asgi_handler_constr = mocker.patch.object(
+        django.core.handlers.asgi,
+        'ASGIHandler',
+    )
+    mocked_asgi_handler_constr.return_value = mocked_asgi_handler
+
+    mocked_settings = mocker.MagicMock()
+    mocked_settings.FORCE_SCRIPT_NAME = '/guest/django'
+    mocked_settings.STATIC_ROOT = '/static/django'
+    mocked_settings.STATIC_URL = 'dj-static/'
+    mocker.patch.object(django.conf, 'settings', mocked_settings)
+
+    handler.mount_django_apps(mocked_fastapi)
+
+    assert mocked_fastapi.mount.mock_calls[0].args == (
+        '/guest/django/dj-static/',
+        mocked_static,
+    )
+    assert mocked_fastapi.mount.mock_calls[1].args == ('/guest/django', mocked_asgi_handler)
+    mocked_static_files.assert_called_once_with(directory=mocked_settings.STATIC_ROOT)
+
+
+@pytest.mark.parametrize('script_name', ('/wathever', '/guest/', None))
+def test_mount_django_apps_invalid_force_script_name(mocker, script_name):
+    config = ConfigHelper()
+
+    handler = WebApp(config)
+
+    mocked_settings = mocker.MagicMock()
+    mocked_settings.FORCE_SCRIPT_NAME = script_name
+    mocker.patch.object(django.conf, 'settings', mocked_settings)
+
+    with pytest.raises(ImproperlyConfigured) as cv:
+        handler.mount_django_apps(mocker.MagicMock())
+
+    assert str(cv.value) == '`FORCE_SCRIPT_NAME` must be set and must start with "/guest/"'
+
+
+@pytest.mark.parametrize('script_name', ('/wathever', '/guest/', None))
+def test_mount_django_apps_invalid_static_root(mocker, script_name):
+    config = ConfigHelper()
+
+    router = APIRouter()
+    mocker.patch('connect.eaas.core.extension.router', router)
+
+    @web_app(router)
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_static_root(cls):
+            return '/static'
+
+    mocker.patch.object(
+        WebApp,
+        'load_application',
+        return_value=MyExtension,
+    )
+
+    mocked_settings = mocker.MagicMock()
+    mocked_settings.FORCE_SCRIPT_NAME = '/guest/a'
+    mocked_settings.STATIC_ROOT = '/django-static'
+
+    mocker.patch.object(django.conf, 'settings', mocked_settings)
+
+    handler = WebApp(config)
+
+    with pytest.raises(ImproperlyConfigured) as cv:
+        handler.mount_django_apps(mocker.MagicMock())
+
+    assert str(cv.value) == '`STATIC_ROOT` must be a directory within /static'

@@ -5,6 +5,7 @@
 import functools
 import inspect
 import logging
+import os
 
 from fastapi import (
     FastAPI,
@@ -186,8 +187,40 @@ class WebApp(ApplicationHandlerBase):
         static_root = self.get_application().get_static_root()
         if static_root:
             app.mount('/static', StaticFiles(directory=static_root), name='static')
+        if self.django_settings_module:
+            self.mount_django_apps(app)
 
         return app
+
+    def mount_django_apps(self, app):
+        from django.conf import settings  # noqa: I001
+        from django.core.exceptions import ImproperlyConfigured  # noqa: I001
+        from django.core.handlers.asgi import ASGIHandler  # noqa: I001
+        script_name = getattr(settings, 'FORCE_SCRIPT_NAME', None)
+        if not (
+            script_name
+            and script_name.startswith('/guest/')
+            and len(script_name) > len('/guest/')
+        ):
+            raise ImproperlyConfigured(
+                '`FORCE_SCRIPT_NAME` must be set and must start with "/guest/"',
+            )
+        static_root = self.get_application().get_static_root()
+        if not (
+            settings.STATIC_ROOT.startswith(static_root)
+            and len(settings.STATIC_ROOT) > len(static_root) - 1
+        ):
+            raise ImproperlyConfigured(
+                f'`STATIC_ROOT` must be a directory within {static_root}',
+            )
+        static_path = os.path.join(script_name, settings.STATIC_URL)
+        app.mount(
+            static_path,
+            StaticFiles(
+                directory=settings.STATIC_ROOT,
+            ),
+        )
+        app.mount(script_name, ASGIHandler())
 
     def setup_middlewares(self, app, middlewares):
         for middleware in middlewares:

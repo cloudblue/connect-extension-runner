@@ -58,6 +58,18 @@ class ConfigHelper:
         return self.dyn_config.environment_type
 
     @property
+    def environment_runtime(self):
+        return self.dyn_config.environment_runtime
+
+    @property
+    def environment_hostname(self):
+        return self.dyn_config.environment_hostname
+
+    @property
+    def environment_domain(self):
+        return self.dyn_config.environment_domain
+
+    @property
     def account_id(self):
         return self.dyn_config.logging.meta.account_id
 
@@ -187,6 +199,15 @@ class ConfigHelper:
             )
             self.dyn_config.environment_type = (
                 data.environment_type or self.dyn_config.environment_type
+            )
+            self.dyn_config.environment_runtime = (
+                data.environment_runtime or self.dyn_config.environment_runtime
+            )
+            self.dyn_config.environment_hostname = (
+                data.environment_hostname or self.dyn_config.environment_hostname
+            )
+            self.dyn_config.environment_domain = (
+                data.environment_domain or self.dyn_config.environment_domain
             )
             self.dyn_config.logging.meta.account_id = (
                 data.logging.meta.account_id or self.dyn_config.logging.meta.account_id

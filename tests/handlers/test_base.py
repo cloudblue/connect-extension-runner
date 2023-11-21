@@ -2,6 +2,7 @@ from importlib.metadata import (
     EntryPoint,
 )
 
+import django
 import pytest
 
 from connect.eaas.runner.handlers.base import (
@@ -136,6 +137,9 @@ def test_load_application(mocker):
         def get_features(self):
             pass
 
+        def get_django_settings_module(self):
+            pass
+
     mocked_app = mocker.MagicMock()
     mocker.patch.object(
         EntryPoint,
@@ -154,6 +158,67 @@ def test_load_application(mocker):
     assert handler.load_application('test_app') == mocked_app
 
 
+def test_load_application_with_django(mocker):
+
+    mocked_load_django = mocker.patch.object(ApplicationHandlerBase, 'load_django')
+
+    class AppHandler(ApplicationHandlerBase):
+        def get_application(self):
+            pass
+
+        def get_features(self):
+            pass
+
+        def get_django_settings_module(self):
+            return 'dj.settings'
+
+    mocked_app = mocker.MagicMock()
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=mocked_app,
+    )
+    mocker.patch(
+        'connect.eaas.runner.handlers.base.iter_entry_points',
+        return_value=iter([
+            EntryPoint('testapp', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = AppHandler(mocker.MagicMock())
+
+    assert handler.load_application('test_app') == mocked_app
+    mocked_load_django.assert_called_once()
+
+
+def test_get_django_settings_module(mocker):
+
+    class AppHandler(ApplicationHandlerBase):
+        def get_application(self):
+            pass
+
+        def get_features(self):
+            pass
+
+    mocked_get_dj_settings = mocker.MagicMock(return_value='my.dj.settings')
+    mocker.patch.object(
+        EntryPoint,
+        'load',
+        return_value=mocked_get_dj_settings,
+    )
+
+    mocker.patch(
+        'connect.eaas.runner.handlers.base.iter_entry_points',
+        return_value=iter([
+            EntryPoint('djsettings', None, 'connect.eaas.ext'),
+        ]),
+    )
+
+    handler = AppHandler(mocker.MagicMock())
+
+    assert handler.django_settings_module == 'my.dj.settings'
+
+
 def test_load_application_not_found(mocker):
 
     class AppHandler(ApplicationHandlerBase):
@@ -161,6 +226,9 @@ def test_load_application_not_found(mocker):
             pass
 
         def get_features(self):
+            pass
+
+        def get_django_settings_module(self):
             pass
 
     mocker.patch.object(
@@ -345,3 +413,27 @@ def test_get_variables_no_app(mocker):
     handler = AppHandler(mocker.MagicMock())
 
     assert handler.get_variables() is None
+
+
+def test_load_django(mocker):
+    mocked_dj_setup = mocker.patch.object(django, 'setup')
+    mocked_os = mocker.patch('connect.eaas.runner.handlers.base.os')
+
+    class AppHandler(ApplicationHandlerBase):
+        def get_application(self):
+            pass
+
+        def get_features(self):
+            pass
+
+        def get_django_settings_module(self):
+            return 'dj.settings'
+
+    handler = AppHandler(mocker.MagicMock())
+    handler.load_django()
+
+    mocked_dj_setup.assert_called_once()
+    mocked_os.environ.setdefault.assert_called_once_with(
+        'DJANGO_SETTINGS_MODULE',
+        'dj.settings',
+    )

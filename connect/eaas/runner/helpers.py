@@ -3,6 +3,7 @@
 #
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
+import copy
 import logging
 import os
 import subprocess
@@ -47,6 +48,9 @@ from connect.eaas.core.validation.validators import (
 )
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    DJANGO_ENFORCED_SETTINGS,
+    DJANGO_NON_OVERRIDEABLE_SETTINGS,
+    DJANGO_REQUIRED_OVERRIDE_SETTINGS,
     HANDLER_CLASS_TITLE,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     ORDINAL_SUFFIX,
@@ -56,6 +60,7 @@ from connect.eaas.runner.constants import (
     TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
     TRANSFORMATION_WRITE_QUEUE_TIMEOUT,
 )
+from django.core.exceptions import ImproperlyConfigured  # noqa: I001
 
 
 logger = logging.getLogger('connect.eaas')
@@ -620,3 +625,71 @@ def get_features_table(features):
                 Align.center(get_tfnapp_detail_table(details)),
             )
     return table
+
+
+def enforce_and_override_django_settings(config, django_secret_key_variable, overridden_settings):
+    from django.conf import settings  # noqa: I001
+    _validate_django_secret_key(config, django_secret_key_variable)
+    _set_django_secret_key(config, django_secret_key_variable, settings)
+    overrides = copy.copy(overridden_settings)
+    _override_and_validate_settings(config, overrides)
+    _override_database_settings(overrides, settings)
+    _apply_enforced_settings(settings)
+    _configure_host_and_debug(config, settings)
+
+
+def _validate_django_secret_key(config, django_secret_key_variable):
+    if not django_secret_key_variable:
+        raise ImproperlyConfigured(
+            'Your extension class must be decorated with the '
+            '`@django_secret_key_variable` to specify the name of '
+            'the environment variable that store the django `SECRET_KEY`.',
+        )
+    if django_secret_key_variable not in config.variables:
+        raise ImproperlyConfigured(
+            f'The environment variable {django_secret_key_variable} has '
+            'not been found and it is mandatory to setup django.',
+        )
+
+
+def _set_django_secret_key(config, django_secret_key_variable, settings):
+    settings.SECRET_KEY = config.variables[django_secret_key_variable]
+
+
+def _override_and_validate_settings(config, overrides):
+    required_overrides = list(DJANGO_REQUIRED_OVERRIDE_SETTINGS)
+    if config.environment_runtime == 'cloud':
+        required_overrides.append('DATABASES')
+    for required_setting in required_overrides:
+        if required_setting not in overrides:
+            raise ImproperlyConfigured(
+                f'The settings `{",".join(required_overrides)}` must be overridden.',
+            )
+    for non_overrideable_setting in DJANGO_NON_OVERRIDEABLE_SETTINGS:
+        if non_overrideable_setting in overrides:
+            raise ImproperlyConfigured(
+                'The settings '
+                f'`{",".join(DJANGO_NON_OVERRIDEABLE_SETTINGS)}` cannot be overridden.',
+            )
+
+
+def _override_database_settings(overrides, settings):
+    databases_override = overrides.pop('DATABASES', None)
+    if databases_override:
+        for db, db_config in databases_override.items():
+            for prop, prop_value in db_config.items():
+                settings.DATABASES[db][prop] = prop_value
+
+
+def _apply_enforced_settings(settings):
+    for setting, setting_value in DJANGO_ENFORCED_SETTINGS.items():
+        setattr(settings, setting, setting_value)
+
+
+def _configure_host_and_debug(config, settings):
+    if config.environment_hostname and config.environment_domain:
+        settings.ALLOWED_HOSTS = [
+            f'{config.environment_hostname}.{config.environment_domain}',
+        ]
+    if config.environment_runtime == 'cloud':
+        settings.DEBUG = False

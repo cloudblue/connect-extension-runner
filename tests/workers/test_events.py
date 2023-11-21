@@ -1841,6 +1841,40 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
 
 
 @pytest.mark.asyncio
+async def test_connection_refused(mocker, caplog):
+    mocker.patch.object(
+        EventsApp,
+        'load_application',
+    )
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', 1)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .01)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', .1)
+    mocker.patch(
+        'connect.eaas.runner.workers.base.websockets.connect',
+        side_effect=ConnectionClosedError(1006, 'disconnected'),
+    )
+
+    config = ConfigHelper(secure=False)
+    ext_handler = EventsApp(config)
+
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
+    worker.run_event.set()
+    worker.get_url = lambda: 'ws://test'
+
+    with pytest.raises(CommunicationError):
+        with caplog.at_level(logging.INFO):
+            await worker.ensure_connection()
+
+    assert 'connection closed by the host...' in caplog.text
+    assert '1st communication attempt failed, backing off waiting' in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_shutdown_pending_task_timeout(
     mocker, ws_server, unused_port, settings_payload, caplog,
 ):

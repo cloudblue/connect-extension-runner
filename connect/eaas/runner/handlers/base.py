@@ -27,6 +27,8 @@ class ApplicationHandlerBase(ABC):
     def __init__(self, config):
         self._config = config
         self._logging_handler = None
+        self._django_settings_module = self.get_django_settings_module()
+        self._django_secret_key_variable = None
 
     @property
     def config(self):
@@ -72,7 +74,36 @@ class ApplicationHandlerBase(ABC):
     def variables(self):
         return self.get_variables()
 
+    @property
+    def django_settings_module(self):
+        return self._django_settings_module
+
+    @property
+    def django_secret_key_variable(self):
+        if not self._django_secret_key_variable:
+            application = self.get_application()
+            if hasattr(application, 'get_django_secret_key_variable'):
+                self._django_secret_key_variable = application.get_django_secret_key_variable()
+        return self._django_secret_key_variable
+
+    def get_django_settings_module(self):
+        ep = next(
+            iter_entry_points('connect.eaas.ext', 'djsettings'),
+            None,
+        )
+        if ep:
+            get_settings = ep.load()
+            return get_settings()
+        return None
+
+    def load_django(self):
+        if self._django_settings_module:
+            os.environ.setdefault('DJANGO_SETTINGS_MODULE', self._django_settings_module)
+            import django
+            django.setup()
+
     def load_application(self, name):
+        self.load_django()
         ep = next(
             iter_entry_points('connect.eaas.ext', name),
             None,
