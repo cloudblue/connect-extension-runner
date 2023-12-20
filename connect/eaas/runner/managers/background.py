@@ -55,7 +55,6 @@ class BackgroundTasksManager(TasksManagerBase):
                 use_specs=False,
                 default_headers=self.config.get_user_agent(),
             )
-
         object_exists = await self.filter_collection_by_event_definition(
             client,
             task_data,
