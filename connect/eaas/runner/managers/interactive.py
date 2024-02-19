@@ -4,6 +4,7 @@
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
 import asyncio
+import copy
 import logging
 import time
 import traceback
@@ -30,7 +31,7 @@ class InteractiveTasksManager(TasksManagerBase):
         return self.handler.events[task_data.input.event_type]['method']
 
     async def get_argument(self, task_data):
-        return task_data.input.data
+        return copy.deepcopy(task_data.input.data)
 
     async def build_response(self, task_data, future):
         """

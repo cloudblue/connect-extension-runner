@@ -303,7 +303,11 @@ async def test_get_argument(task_payload, event_type):
     config = ConfigHelper()
     manager = InteractiveTasksManager(config, None, None)
 
-    assert await manager.get_argument(task) == task.input.data
+    argument = await manager.get_argument(task)
+    assert argument == task.input.data
+
+    argument['additional'] = 'value'
+    assert task.input.data == {'some': 'data'}
 
 
 @pytest.mark.asyncio
