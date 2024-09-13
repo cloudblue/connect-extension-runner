@@ -73,12 +73,15 @@ class TransformationTasksManager(TasksManagerBase):
 
     def get_client(self, task_data):
         if task_data.options.api_key:
-            return AsyncConnectClient(
+            return self._task_api_key_clients.setdefault(
                 task_data.options.api_key,
-                endpoint=self.config.get_api_url(),
-                use_specs=False,
-                default_headers=self.config.get_user_agent(),
-                logger=RequestLogger(logger),
+                AsyncConnectClient(
+                    task_data.options.api_key,
+                    endpoint=self.config.get_api_url(),
+                    use_specs=False,
+                    default_headers=self.config.get_user_agent(),
+                    logger=RequestLogger(logger),
+                ),
             )
 
         return self.client

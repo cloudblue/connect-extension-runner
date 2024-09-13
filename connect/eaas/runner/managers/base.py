@@ -63,6 +63,7 @@ class TasksManagerBase(ABC):
             use_specs=False,
             default_headers=self.config.get_user_agent(),
         )
+        self._task_api_key_clients = {}
         self.running_tasks = 0
 
     async def filter_collection_by_event_definition(self, client, task_data):

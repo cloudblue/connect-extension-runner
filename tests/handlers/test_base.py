@@ -1,3 +1,4 @@
+import sys
 from importlib.metadata import (
     EntryPoint,
 )
@@ -195,7 +196,10 @@ def test_reload_class(mocker):
 
     mocker.patch(
         'connect.eaas.runner.handlers.base.sys.modules',
-        {'my_module': mocked_module},
+        {
+            **sys.modules,
+            'my_module': mocked_module,
+        },
     )
 
     mocker.patch(
