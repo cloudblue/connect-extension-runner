@@ -49,11 +49,14 @@ class BackgroundTasksManager(TasksManagerBase):
         """
         client = self.client
         if task_data.options.api_key:
-            client = AsyncConnectClient(
+            client = self._task_api_key_clients.setdefault(
                 task_data.options.api_key,
-                endpoint=self.config.get_api_url(),
-                use_specs=False,
-                default_headers=self.config.get_user_agent(),
+                AsyncConnectClient(
+                    task_data.options.api_key,
+                    endpoint=self.config.get_api_url(),
+                    use_specs=False,
+                    default_headers=self.config.get_user_agent(),
+                ),
             )
         object_exists = await self.filter_collection_by_event_definition(
             client,

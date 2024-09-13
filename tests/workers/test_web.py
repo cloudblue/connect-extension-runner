@@ -10,7 +10,6 @@ from websockets.exceptions import (
 from connect.eaas.core.decorators import (
     account_settings_page,
     customer_pages,
-    router,
     web_app,
 )
 from connect.eaas.core.extension import (
@@ -169,7 +168,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     ),
 )
 @pytest.mark.asyncio
-async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_options):
+async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_options, router):
     setup_response = copy.deepcopy(settings_payload)
     setup_response['logging']['logging_api_key'] = 'logging_api_key'
     setup_response['logging']['log_level'] = None
@@ -340,7 +339,9 @@ async def test_http_call(mocker, ws_server, unused_port, settings_payload, task_
     ),
 )
 @pytest.mark.asyncio
-async def test_http_call_redirect(mocker, ws_server, unused_port, settings_payload, task_options):
+async def test_http_call_redirect(
+    mocker, ws_server, unused_port, settings_payload, task_options, router,
+):
     setup_response = copy.deepcopy(settings_payload)
     setup_response['logging']['logging_api_key'] = 'logging_api_key'
     setup_response['logging']['log_level'] = None
@@ -477,7 +478,7 @@ async def test_http_call_redirect(mocker, ws_server, unused_port, settings_paylo
 
 
 @pytest.mark.asyncio
-async def test_http_call_exception(mocker, ws_server, unused_port, settings_payload):
+async def test_http_call_exception(mocker, ws_server, unused_port, settings_payload, router):
     setup_response = copy.deepcopy(settings_payload)
     setup_response['logging']['logging_api_key'] = 'logging_api_key'
     mocker.patch(
@@ -1017,7 +1018,7 @@ async def test_close_connection_with_reason(
 
 
 @pytest.mark.asyncio
-async def test_proper_internal_headers(mocker, ws_server, unused_port, settings_payload):
+async def test_proper_internal_headers(mocker, ws_server, unused_port, settings_payload, router):
 
     task_options = WebTaskOptions(
         correlation_id='correlation_id',
@@ -1148,7 +1149,7 @@ async def test_proper_internal_headers(mocker, ws_server, unused_port, settings_
 
 
 @pytest.mark.asyncio
-async def test_optional_internal_headers(mocker, ws_server, unused_port, settings_payload):
+async def test_optional_internal_headers(mocker, ws_server, unused_port, settings_payload, router):
 
     task_options = WebTaskOptions(
         correlation_id='correlation_id',

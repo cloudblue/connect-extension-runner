@@ -10,6 +10,9 @@ import pytest
 import responses as sentry_responses
 import websockets
 
+from connect.eaas.core.decorators import (
+    router as router_decorator,
+)
 from connect.eaas.core.extension import (
     Extension,
 )
@@ -185,3 +188,9 @@ def default_env(mocker, unused_port):
             'row_transformation_task_max_execution_time': 60,
         },
     )
+
+
+@pytest.fixture(scope='function')
+def router():
+    router_decorator.routes = []
+    return router_decorator

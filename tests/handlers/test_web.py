@@ -362,19 +362,19 @@ def test_get_features(mocker):
                 {
                     'method': 'GET',
                     'path': '/auth',
-                    'summary': 'Example Auth',
+                    'summary': 'Myextension.Example Auth',
                 },
             ],
             'no_auth': [
                 {
                     'method': 'GET',
                     'path': '/no_auth_deprecated',
-                    'summary': 'Example No Auth Deprecated',
+                    'summary': 'Myextension.Example No Auth Deprecated',
                 },
                 {
                     'method': 'GET',
                     'path': '/no_auth',
-                    'summary': 'Example No Auth',
+                    'summary': 'Myextension.Example No Auth',
                 },
             ],
         },
