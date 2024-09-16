@@ -53,10 +53,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
 
 
 RUN apt-get update; \
-    apt-get install -y git curl tmux ca-certificates libsqlite3-dev; \
-    apt-get autoremove -y; \
-    apt-get clean -y; \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y git curl tmux ca-certificates libsqlite3-dev gcc;
 
 
 ARG RUNNER_VERSION
@@ -76,6 +73,11 @@ RUN poetry version ${RUNNER_VERSION}
 RUN poetry build
 
 RUN pip install dist/*.whl
+
+RUN apt-get purge gcc -y; \
+    apt-get autoremove --purge -y; \
+    apt-get clean -y; \
+    rm -rf /var/lib/apt/lists/*
 
 COPY ./connect/eaas/runner/artworks/ansi_regular.flf /install_temp/.
 COPY ./connect/eaas/runner/artworks/bloody.flf /install_temp/.
