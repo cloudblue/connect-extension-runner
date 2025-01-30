@@ -1013,7 +1013,9 @@ async def test_connection_closed_error(mocker, ws_server, unused_port, caplog):
             mocker.MagicMock(),
         )
         worker.do_handshake = mocker.AsyncMock()
-        worker.receive = mocker.AsyncMock(side_effect=ConnectionClosedError(1006, 'disconnected'))
+        worker.receive = mocker.AsyncMock(
+            side_effect=ConnectionClosedError(1006, 'disconnected', True),
+        )
         with caplog.at_level(logging.INFO):
             task = asyncio.create_task(worker.start())
             await asyncio.sleep(.5)
