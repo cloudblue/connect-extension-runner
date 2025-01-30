@@ -1008,6 +1008,7 @@ async def test_close_connection_with_reason(
         exception = ConnectionClosedOK(
             rcvd=mocker.MagicMock(reason='Somereason'),
             sent=mocker.MagicMock(),
+            rcvd_then_sent=True,
         )
         worker.receive = mocker.MagicMock(side_effect=exception)
         with caplog.at_level(logging.WARNING):
