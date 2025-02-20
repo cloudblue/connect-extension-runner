@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-ENV NODE_VERSION 20.9.0
+ENV NODE_VERSION=20.9.0
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     && case "${dpkgArch##*-}" in \
@@ -53,54 +53,37 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
 
 
 RUN apt-get update; \
-    apt-get install -y git curl tmux ca-certificates libsqlite3-dev gcc;
+    apt-get install -y --no-install-recommends git curl tmux ca-certificates libsqlite3-dev gcc;
 
 
 ARG RUNNER_VERSION
 
-RUN pip install -U pip && pip install poetry && mkdir -p /root/.config/pypoetry \
-    && echo "[virtualenvs]" > /root/.config/pypoetry/config.toml \
-    && echo "create = false" >> /root/.config/pypoetry/config.toml
+RUN pip install -U pip && pip install poetry==1.8.5 && poetry config virtualenvs.create false
 
 COPY ./connect /install_temp/connect
-COPY ./pyproject.toml /install_temp/.
-COPY ./README.md /install_temp/.
+COPY ./pyproject.toml ./README.md /install_temp/
 
 WORKDIR /install_temp
 
-RUN poetry version ${RUNNER_VERSION}
-
-RUN poetry build
-
-RUN pip install dist/*.whl
-
-RUN apt-get purge gcc -y; \
+RUN poetry version ${RUNNER_VERSION} && \
+    poetry build && \
+    pip install dist/*.whl; \
+    apt-get purge gcc -y; \
     apt-get autoremove --purge -y; \
     apt-get clean -y; \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./connect/eaas/runner/artworks/ansi_regular.flf /install_temp/.
-COPY ./connect/eaas/runner/artworks/bloody.flf /install_temp/.
+COPY ./connect/eaas/runner/artworks/ansi_regular.flf ./connect/eaas/runner/artworks/bloody.flf /install_temp/
 
-RUN pyfiglet -L ansi_regular.flf && pyfiglet -L bloody.flf
+RUN pyfiglet -L ansi_regular.flf && pyfiglet -L bloody.flf && rm -rf /install_temp
 
-RUN rm -rf /install_temp
-
-COPY ./extension-devel /usr/local/bin/extension-devel
-RUN chmod 755 /usr/local/bin/extension-devel
-
-COPY ./extension-test /usr/local/bin/extension-test
-RUN chmod 755 /usr/local/bin/extension-test
-
-COPY ./extension-check-static /usr/local/bin/extension-check-static
-RUN chmod 755 /usr/local/bin/extension-test
+COPY --chmod=755 ./extension-devel ./extension-test ./extension-check-static /usr/local/bin/
 
 RUN mkdir /banners
 
 COPY ./banner* /banners/
 
-COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod 755 /entrypoint.sh
+COPY --chmod=755 ./entrypoint.sh /entrypoint.sh
 
 WORKDIR /extension
 
