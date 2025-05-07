@@ -39,6 +39,9 @@ class WebWorker(WorkerBase):
     the server and wait for tasks that need to be processed using
     the tasks manager.
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._httpx_app_transport = httpx.ASGITransport(app=self.handler.app)
 
     def get_url(self):
         return self.config.get_webapp_ws_url()
@@ -86,7 +89,7 @@ class WebWorker(WorkerBase):
         message = None
         try:
             async with httpx.AsyncClient(
-                app=self.handler.app, base_url='http://localhost',
+                base_url='http://localhost', transport=self._httpx_app_transport,
             ) as client:
                 body = (
                     base64.decodebytes(task.request.content.encode('utf-8'))

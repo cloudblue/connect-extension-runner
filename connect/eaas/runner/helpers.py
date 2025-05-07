@@ -224,14 +224,17 @@ def notify_process_restarted(process_type):
 
 
 def iter_entry_points(group, name=None):
-    group_entrypoints = entry_points().get(group)
-    if not group_entrypoints:
-        return
-    for ep in group_entrypoints:
-        if name:
-            if ep.name == name:
-                yield ep
-        else:
+    eps = entry_points()
+
+    # Support for Python 3.10+ where .select() is available
+    if hasattr(eps, 'select'):
+        matches = eps.select(group=group)
+    else:
+        # Older versions (pre-3.10)
+        matches = eps.get(group, [])
+
+    for ep in matches:
+        if name is None or ep.name == name:
             yield ep
 
 

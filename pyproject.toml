@@ -18,6 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Utilities",
     "Topic :: Software Development :: Libraries",
 ]
@@ -32,15 +33,18 @@ connect-openapi-client = ">=29.0,<36"
 logzio-python-handler = "^4.1.4"
 backoff = "^2.2.1"
 connect-eaas-core = ">=33.0,<37"
-httpx = ">=0.23,<1"
+httpx = ">=0.23,<0.29"
 rich = ">=12"
 pyfiglet = "^1.0.2"
 devtools = "^0.12.2"
 watchfiles = "^0.24"
 openpyxl = ">=3.0.0,<4"
 lxml = "^4.9.2"
-uvloop = "^0.20"
+uvloop = "^0.21"
 python-socks = {extras = ["asyncio"], version = "^2.5.1"}
+
+[tool.poetry.group.test]
+optional = true
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3"
