@@ -29,17 +29,17 @@ cextrun = 'connect.eaas.runner.main:main'
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
 websockets = "13.*"
-connect-openapi-client = ">=29.0,<36"
+connect-openapi-client = ">=29.0,<38"
 logzio-python-handler = "^4.1.4"
 backoff = "^2.2.1"
-connect-eaas-core = ">=33.0,<37"
+connect-eaas-core = ">=33.0,<38"
 httpx = ">=0.23,<0.29"
 rich = ">=12"
 pyfiglet = "^1.0.2"
 devtools = "^0.12.2"
-watchfiles = "^0.24"
+watchfiles = "^1.0.5"
 openpyxl = ">=3.0.0,<4"
-lxml = "^4.9.2"
+lxml = "^5.4.0"
 uvloop = "^0.21"
 python-socks = {extras = ["asyncio"], version = "^2.5.1"}
 
