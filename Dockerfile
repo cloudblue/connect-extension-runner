@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-ENV NODE_VERSION 20.9.0
+ENV NODE_VERSION=20.19.2
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     && case "${dpkgArch##*-}" in \
@@ -14,8 +14,10 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     esac \
     && set -ex \
     # libatomic1 for arm
-    && apt-get update && apt-get install -y ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/* \
+    && DEBIAN_FRONTEND=noninteractive \
+    && apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 \
     && for key in \
       4ED778F539E3634C779C87C6D7062848A1AB005C \
       141F07595B7B3FFE74309A937405533BE57C7D57 \
@@ -45,62 +47,40 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
       | cut -d: -f1 \
       | sort -u \
       | xargs -r apt-mark manual \
-    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
     # smoke tests
     && node --version \
-    && npm --version
-
-
-RUN apt-get update; \
-    apt-get install -y git curl tmux ca-certificates libsqlite3-dev gcc;
-
+    && npm --version \
+    # runner packages
+    && apt-get install -y --no-install-recommends git curl tmux ca-certificates libsqlite3-dev gcc \
+    && pip install -U pip && pip install poetry && poetry config virtualenvs.create false
 
 ARG RUNNER_VERSION
 
-RUN pip install -U pip && pip install poetry && mkdir -p /root/.config/pypoetry \
-    && echo "[virtualenvs]" > /root/.config/pypoetry/config.toml \
-    && echo "create = false" >> /root/.config/pypoetry/config.toml
-
 COPY ./connect /install_temp/connect
-COPY ./pyproject.toml /install_temp/.
-COPY ./README.md /install_temp/.
+COPY ./pyproject.toml ./README.md /install_temp/
 
 WORKDIR /install_temp
 
-RUN poetry version ${RUNNER_VERSION}
-
-RUN poetry build
-
-RUN pip install dist/*.whl
-
-RUN apt-get purge gcc -y; \
-    apt-get autoremove --purge -y; \
+RUN poetry version ${RUNNER_VERSION} && \
+    poetry build && \
+    pip install dist/*.whl; \
+    apt-get purge gcc -y; \
+    apt-get autoremove --purge -y -o APT::AutoRemove::RecommendsImportant=false; \
     apt-get clean -y; \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./connect/eaas/runner/artworks/ansi_regular.flf /install_temp/.
-COPY ./connect/eaas/runner/artworks/bloody.flf /install_temp/.
+COPY ./connect/eaas/runner/artworks/ansi_regular.flf ./connect/eaas/runner/artworks/bloody.flf /install_temp/
 
-RUN pyfiglet -L ansi_regular.flf && pyfiglet -L bloody.flf
+RUN pyfiglet -L ansi_regular.flf && pyfiglet -L bloody.flf && rm -rf /install_temp
 
-RUN rm -rf /install_temp
-
-COPY ./extension-devel /usr/local/bin/extension-devel
-RUN chmod 755 /usr/local/bin/extension-devel
-
-COPY ./extension-test /usr/local/bin/extension-test
-RUN chmod 755 /usr/local/bin/extension-test
-
-COPY ./extension-check-static /usr/local/bin/extension-check-static
-RUN chmod 755 /usr/local/bin/extension-test
+COPY --chmod=755 ./extension-devel ./extension-test ./extension-check-static /usr/local/bin/
 
 RUN mkdir /banners
 
 COPY ./banner* /banners/
 
-COPY ./entrypoint.sh /entrypoint.sh
-RUN chmod 755 /entrypoint.sh
+COPY --chmod=755 ./entrypoint.sh /entrypoint.sh
 
 WORKDIR /extension
 
