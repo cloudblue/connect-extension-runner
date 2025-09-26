@@ -6,6 +6,10 @@
 import logging
 import os
 import subprocess
+from importlib.metadata import (
+    EntryPoint,
+    EntryPoints,
+)
 
 import pytest
 from freezegun import (
@@ -491,13 +495,11 @@ def test_notify_process_restarted_client_error(mocker, responses, caplog):
 
 
 def test_iter_entry_points(mocker):
-    ep1 = mocker.MagicMock()
-    ep1.name = 'ep1'
-    ep2 = mocker.MagicMock()
-    ep2.name = 'ep2'
+    ep1 = EntryPoint('ep1', 'value1', group='ep.group')
+    ep2 = EntryPoint('ep2', 'value2', group='ep.group')
     mocker.patch(
         'connect.eaas.runner.helpers.entry_points',
-        return_value={'ep.group': [ep1, ep2]},
+        return_value=EntryPoints([ep1, ep2]),
     )
 
     assert list(iter_entry_points('ep.group', name='ep1')) == [ep1]

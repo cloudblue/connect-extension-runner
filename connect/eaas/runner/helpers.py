@@ -225,13 +225,7 @@ def notify_process_restarted(process_type):
 
 def iter_entry_points(group, name=None):
     eps = entry_points()
-
-    # Support for Python 3.10+ where .select() is available
-    if hasattr(eps, 'select'):
-        matches = eps.select(group=group)
-    else:
-        # Older versions (pre-3.10)
-        matches = eps.get(group, [])
+    matches = eps.select(group=group)
 
     for ep in matches:
         if name is None or ep.name == name:
