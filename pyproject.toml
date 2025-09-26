@@ -15,7 +15,6 @@ classifiers = [
     "Environment :: Console",
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -27,7 +26,7 @@ classifiers = [
 cextrun = 'connect.eaas.runner.main:main'
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4"
+python = ">=3.10,<3.13"
 websockets = "13.*"
 connect-openapi-client = ">=29.0,<38"
 logzio-python-handler = "^4.1.4"
