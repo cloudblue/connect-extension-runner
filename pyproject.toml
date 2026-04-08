@@ -27,12 +27,12 @@ classifiers = [
 cextrun = 'connect.eaas.runner.main:main'
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4"
+python = ">=3.9,<3.13"
 websockets = "13.*"
 connect-openapi-client = ">=29.0,<38"
 logzio-python-handler = "^4.1.4"
 backoff = "^2.2.1"
-connect-eaas-core = ">=33.0,<38"
+connect-eaas-core = ">=37.3,<38"
 httpx = ">=0.23,<0.29"
 rich = ">=12"
 pyfiglet = "^1.0.2"
