@@ -83,6 +83,7 @@ def settings_payload():
             'log_level': 'DEBUG',
             'runner_log_level': 'INFO',
             'meta': {
+                'repository_tag': 'repository_tag',
                 'account_id': 'account_id',
                 'account_name': 'account_name',
                 'service_id': 'service_id',
@@ -114,6 +115,7 @@ def tfn_settings_payload():
             'log_level': 'DEBUG',
             'runner_log_level': 'INFO',
             'meta': {
+                'repository_tag': 'repository_tag',
                 'account_id': 'account_id',
                 'account_name': 'account_name',
                 'service_id': 'service_id',

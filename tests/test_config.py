@@ -43,6 +43,7 @@ def test_update_dynamic_config(mocker):
                 hub_id='HB-0000',
                 account_id='VA-000',
                 account_name='Acme Inc',
+                repository_tag='1.0',
             ),
         ),
     )
@@ -54,6 +55,7 @@ def test_update_dynamic_config(mocker):
     assert config.hub_id == payload.logging.meta.hub_id
     assert config.account_id == payload.logging.meta.account_id
     assert config.account_name == payload.logging.meta.account_name
+    assert config.repository_tag == payload.logging.meta.repository_tag
     assert config.logging_api_key == payload.logging.logging_api_key
     assert config.environment_type == payload.environment_type
 
@@ -71,6 +73,7 @@ def test_update_dynamic_config(mocker):
     assert config.hub_id == payload.logging.meta.hub_id
     assert config.account_id == payload.logging.meta.account_id
     assert config.account_name == payload.logging.meta.account_name
+    assert config.repository_tag == payload.logging.meta.repository_tag
     assert config.logging_api_key == payload.logging.logging_api_key
     assert config.environment_type == payload.environment_type
 
@@ -85,5 +88,6 @@ def test_update_dynamic_config(mocker):
     assert config.hub_id == payload.logging.meta.hub_id
     assert config.account_id == payload.logging.meta.account_id
     assert config.account_name == payload.logging.meta.account_name
+    assert config.repository_tag == payload.logging.meta.repository_tag
     assert config.logging_api_key == payload.logging.logging_api_key
     assert config.environment_type == payload.environment_type

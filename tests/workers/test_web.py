@@ -140,6 +140,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     assert worker.config.environment_type == settings_payload['environment_type']
     assert worker.config.account_id == settings_payload['logging']['meta']['account_id']
     assert worker.config.account_name == settings_payload['logging']['meta']['account_name']
+    assert worker.config.repository_tag == settings_payload['logging']['meta']['repository_tag']
     assert worker.config.service_id == settings_payload['logging']['meta']['service_id']
 
 
@@ -1142,7 +1143,7 @@ async def test_proper_internal_headers(mocker, ws_server, unused_port, settings_
                 '{"api_address": "127.0.0.1:' + f'{unused_port}", "service_id": "service_id", '
                 '"environment_id": "ENV-000-0001", "environment_type": "development", '
                 '"instance_id": "INS-000-0002", "account_id": "account_id", "account_name": '
-                '"account_name"}'
+                '"account_name", "repository_tag": "repository_tag"}'
             ),
         }
         worker.stop()
