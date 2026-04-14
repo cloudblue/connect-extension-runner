@@ -16,7 +16,6 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     # libatomic1 for arm
     && DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
-    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 \
     && for key in \
       4ED778F539E3634C779C87C6D7062848A1AB005C \
@@ -39,14 +38,6 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     && grep " node-v$NODE_VERSION-linux-$ARCH.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
     && tar -xJf "node-v$NODE_VERSION-linux-$ARCH.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
     && rm "node-v$NODE_VERSION-linux-$ARCH.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
-    && apt-mark auto '.*' > /dev/null \
-    && find /usr/local -type f -executable -exec ldd '{}' ';' \
-      | awk '/=>/ { print $(NF-1) }' \
-      | sort -u \
-      | xargs -r dpkg-query --search \
-      | cut -d: -f1 \
-      | sort -u \
-      | xargs -r apt-mark manual \
     && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
     # smoke tests
     && node --version \
