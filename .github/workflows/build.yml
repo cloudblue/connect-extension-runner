@@ -2,7 +2,7 @@ name: Build CloudBlue Connect EaaS Extension Runner
 
 on:
   push:
-    branches: 
+    branches:
       - '*'
     tags:
       - '*'
@@ -39,7 +39,7 @@ jobs:
     needs: [test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Python 3.10
@@ -57,10 +57,9 @@ jobs:
       - name: Fix coverage.xml for Sonar
         run: |
           sed -i 's/\/home\/runner\/work\/connect-extension-runner\/connect-extension-runner\//\/github\/workspace\//g' coverage.xml
-      - name: SonarCloud
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: SonarQube Quality Gate check
         uses: sonarsource/sonarqube-quality-gate-action@master
