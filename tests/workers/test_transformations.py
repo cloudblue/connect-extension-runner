@@ -132,7 +132,6 @@ async def test_extension_settings(mocker, ws_server, unused_port, tfn_settings_p
     handler.assert_received(msg.dict())
 
 
-@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_shutdown(mocker, ws_server, unused_port, tfn_settings_payload):
 
@@ -286,7 +285,6 @@ async def test_shutdown_pending_task_timeout(
     assert 'Cannot send all results timeout of 0.2 exceeded, cancel task' in caplog.text
 
 
-@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_start_tfnapp_worker_process(mocker):
     start_mock = mocker.AsyncMock()
 
@@ -450,7 +448,6 @@ async def test_task(
     )
 
 
-@pytest.mark.flaky(max_runs=3, min_passes=1)
 @pytest.mark.asyncio
 async def test_sender_max_retries_exceeded(mocker, tfn_settings_payload, task_payload, caplog):
     mocker.patch('connect.eaas.runner.workers.transformations.RESULT_SENDER_MAX_RETRIES', 3)

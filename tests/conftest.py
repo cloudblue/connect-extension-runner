@@ -3,6 +3,7 @@
 #
 # Copyright (c) 2022 Ingram Micro. All Rights Reserved.
 #
+import asyncio
 import contextlib
 import socket
 
@@ -22,6 +23,25 @@ from connect.eaas.core.responses import (
 from connect.eaas.runner.constants import (
     BACKGROUND_EVENT_TYPES,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_event_loop_policy():
+    """Restore the global asyncio event loop policy after every test.
+
+    ``connect.eaas.runner.main`` calls ``uvloop.install()``, which sets the
+    *global* event loop policy to uvloop. Without isolation a test that triggers
+    it leaves uvloop installed for every later test (``pytest-randomly`` runs
+    them in random order); uvloop loops then fail at teardown
+    ("Cannot close a running event loop" / "Bad file descriptor") and poison
+    unrelated async tests ("this event loop is already running"). Saving and
+    restoring the policy around each test keeps them isolated.
+    """
+    policy = asyncio.get_event_loop_policy()
+    try:
+        yield
+    finally:
+        asyncio.set_event_loop_policy(policy)
 
 
 @pytest.fixture
