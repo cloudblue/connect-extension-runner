@@ -33,6 +33,15 @@ connect-openapi-client = ">=29.0,<38"
 logzio-python-handler = "^4.1.4"
 backoff = "^2.2.1"
 connect-eaas-core = ">=37.4,<38"
+# Tripwire: keep pydantic on v1 in lockstep with connect-eaas-core <38. The
+# runner and every extension run on pydantic v1; connect-eaas-core's v2 line
+# (38.x) requires pydantic ^2 and would silently switch the runtime to
+# pydantic 2, breaking v1 extensions. This pin makes such a bump fail
+# `poetry lock` (naming pydantic) instead of breaking at runtime. Moving to
+# pydantic 2 is a coordinated migration: bump connect-eaas-core, pydantic and
+# fastapi together, after the extensions have migrated. Do not raise this
+# independently.
+pydantic = ">=1.10,<2"
 httpx = ">=0.23,<0.29"
 rich = ">=12"
 pyfiglet = "^1.0.2"
