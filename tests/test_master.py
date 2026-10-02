@@ -230,7 +230,7 @@ def test_run_with_reload(mocker, caplog):
     master.stop_event.wait.assert_not_called()
 
 
-def test_monitor_restart_died_process(mocker):
+def test_monitor_restart_died_process(mocker, caplog):
     mocker.patch('connect.eaas.runner.master.PROCESS_CHECK_INTERVAL_SECS', 0.01)
     mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
     mocked_notify = mocker.patch('connect.eaas.runner.master.notify_process_restarted')
@@ -243,18 +243,50 @@ def test_monitor_restart_died_process(mocker):
     master.workers['webapp'] = mocked_process
     master.monitor_event.set()
 
-    t = threading.Thread(target=master.monitor_processes)
-    t.start()
-    time.sleep(.03)
-    master.monitor_event.clear()
-    t.join()
+    with caplog.at_level(logging.INFO):
+        t = threading.Thread(target=master.monitor_processes)
+        t.start()
+        time.sleep(.03)
+        master.monitor_event.clear()
+        t.join()
 
     mocked_notify.assert_called()
-    assert mocked_notify.mock_calls[0].args[0] == 'webapp'
+    assert mocked_notify.mock_calls[0].args == ('webapp', -9)
+    assert 'Process of type webapp is dead (exit code -9), restart it' in caplog.text
     mocked_start_process.assert_called_with(
         'webapp',
         master.handlers['webapp'],
     )
+
+
+def test_monitor_survives_notify_error(mocker, caplog):
+    mocker.patch('connect.eaas.runner.master.PROCESS_CHECK_INTERVAL_SECS', 0.01)
+    mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
+    mocker.patch(
+        'connect.eaas.runner.master.notify_process_restarted',
+        side_effect=RuntimeError('notify failed'),
+    )
+
+    mocked_process = mocker.MagicMock()
+    mocked_process.is_alive.return_value = False
+    mocked_process.exitcode = 1
+
+    master = Master()
+    master.workers['webapp'] = mocked_process
+    master.monitor_event.set()
+
+    with caplog.at_level(logging.INFO):
+        t = threading.Thread(target=master.monitor_processes)
+        t.start()
+        time.sleep(.05)
+        alive = t.is_alive()
+        master.monitor_event.clear()
+        t.join()
+
+    assert alive is True
+    assert 'Unexpected error while monitoring the worker processes' in caplog.text
+    # The restart happens before the failed notification, on every check.
+    assert mocked_start_process.call_count >= 2
 
 
 def test_monitor_process_exited(mocker, caplog):
@@ -282,6 +314,41 @@ def test_monitor_process_exited(mocker, caplog):
     mocked_notify.assert_not_called()
     mocked_start_process.assert_not_called()
     assert master.stop_event.is_set() is True
+
+
+def test_monitor_does_not_restart_worker_exited_with_zero(mocker, caplog):
+    """
+    LITE-34090 R5: a worker that exits with code 0 while the others are alive
+    is not restarted and the master keeps running ("dead worker, live
+    container"). This is the master's contract, so workers must only exit
+    with 0 on a real shutdown.
+    """
+    mocker.patch('connect.eaas.runner.master.PROCESS_CHECK_INTERVAL_SECS', 0.01)
+    mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
+    mocked_notify = mocker.patch('connect.eaas.runner.master.notify_process_restarted')
+
+    dead_webapp = mocker.MagicMock(exitcode=0)
+    dead_webapp.is_alive.return_value = False
+    alive = mocker.MagicMock(exitcode=None)
+    alive.is_alive.return_value = True
+
+    master = Master()
+    master.workers['webapp'] = dead_webapp
+    master.workers['background'] = alive
+    master.workers['interactive'] = alive
+    master.monitor_event.set()
+
+    with caplog.at_level(logging.INFO):
+        t = threading.Thread(target=master.monitor_processes)
+        t.start()
+        time.sleep(.03)
+        master.monitor_event.clear()
+        t.join()
+
+    assert 'Webapp worker exited' in caplog.text
+    mocked_notify.assert_not_called()
+    mocked_start_process.assert_not_called()
+    assert master.stop_event.is_set() is False
 
 
 def test_get_available_features(mocker):

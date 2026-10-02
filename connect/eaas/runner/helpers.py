@@ -184,6 +184,9 @@ def get_client():
         endpoint=f'https://{api_address}/public/v1',
         use_specs=False,
         max_retries=3,
+        # Default is (15 s connect, 180 s read): keep the read timeout short
+        # so a hanging call cannot block the master monitor loop for long.
+        timeout=(15, 30),
     )
 
 
@@ -201,7 +204,7 @@ def get_current_environment():
             logger.warning(f'Cannot retrieve environment information: {ce}')
 
 
-def notify_process_restarted(process_type):
+def notify_process_restarted(process_type, exit_code):
     env = get_environment()
     current_environment = get_current_environment()
     if current_environment and current_environment['runtime'] == 'cloud':
@@ -215,7 +218,8 @@ def notify_process_restarted(process_type):
                     'error_output': (
                         f'Process {process_type} worker of instance '
                         f'{instance_id} has been '
-                        f'restarted at {datetime.now().isoformat()}'
+                        f'restarted at {datetime.now().isoformat()} '
+                        f'(exit code {exit_code})'
                     ),
                 },
             )

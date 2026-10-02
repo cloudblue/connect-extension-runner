@@ -221,18 +221,26 @@ class Master:
 
     def monitor_processes(self):
         while self.monitor_event.is_set():
-            exited_workers = []
-            for worker_type, p in self.workers.items():
-                if not p.is_alive():
-                    if p.exitcode != 0:
-                        notify_process_restarted(worker_type)
-                        logger.info(f'Process of type {worker_type} is dead, restart it')
-                        self.start_worker_process(worker_type, self.handlers[worker_type])
-                    else:
-                        exited_workers.append(worker_type)
-                        logger.info(f'{worker_type.capitalize()} worker exited')
-            if exited_workers == list(self.workers.keys()):
-                self.stop_event.set()
+            # Never let an error kill this thread, or dead workers are never restarted.
+            try:
+                exited_workers = []
+                for worker_type, p in self.workers.items():
+                    if not p.is_alive():
+                        if p.exitcode != 0:
+                            logger.info(
+                                f'Process of type {worker_type} is dead '
+                                f'(exit code {p.exitcode}), restart it',
+                            )
+                            # Restart first: a failed notification must not block the restart.
+                            self.start_worker_process(worker_type, self.handlers[worker_type])
+                            notify_process_restarted(worker_type, p.exitcode)
+                        else:
+                            exited_workers.append(worker_type)
+                            logger.info(f'{worker_type.capitalize()} worker exited')
+                if exited_workers == list(self.workers.keys()):
+                    self.stop_event.set()
+            except Exception:
+                logger.exception('Unexpected error while monitoring the worker processes')
 
             time.sleep(PROCESS_CHECK_INTERVAL_SECS)
 

@@ -1,10 +1,15 @@
 import asyncio
 import copy
 import logging
+import re
+import time
 
 import pytest
 from websockets.exceptions import (
     ConnectionClosedOK,
+)
+from websockets.utils import (
+    accept_key,
 )
 
 from connect.eaas.core.decorators import (
@@ -36,6 +41,7 @@ from connect.eaas.runner.workers.web import (
     start_webapp_worker_process,
 )
 from tests.utils import (
+    CloseAfterSetupWSHandler,
     WSHandler,
 )
 
@@ -958,6 +964,7 @@ async def test_close_connection_with_reason(
             'webapp_port': 53575,
         },
     )
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', .1)
 
     ui_modules = {
         'settings': {
@@ -1013,10 +1020,14 @@ async def test_close_connection_with_reason(
         )
         worker.receive = mocker.MagicMock(side_effect=exception)
         with caplog.at_level(logging.WARNING):
-            asyncio.create_task(worker.start())
+            task = asyncio.create_task(worker.start())
             await asyncio.sleep(1)
-        assert worker.run_event.is_set() is False
+        # A clean close is not a stop request: the worker reconnects (LITE-35241).
+        assert worker.run_event.is_set() is True
         assert 'The WS connection has been closed, reason: Somereason' in caplog.text
+        assert 'WebWorker: try to reconnect in 0.1s' in caplog.text
+        worker.stop()
+        await task
 
 
 @pytest.mark.asyncio
@@ -1280,3 +1291,307 @@ def test_prettify(mocker):
 
     logger.setLevel(logging.INFO)
     assert worker.prettify('message') == '<...>'
+
+
+WEBAPP_WS_PATH = '/public/v1/devops/ws/ENV-000-0001/INS-000-0002/webapp'
+
+
+def _setup_reconnect_test(mocker, unused_port):
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'webapp_port': 53575,
+        },
+    )
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', .1)
+
+    class MyExtension(WebApplicationBase):
+        @classmethod
+        def get_descriptor(cls):
+            return {
+                'readme_url': 'https://read.me',
+                'changelog_url': 'https://change.log',
+            }
+
+    mocker.patch.object(WebApp, 'load_application', return_value=MyExtension)
+    return WebWorker(
+        WebApp(ConfigHelper(secure=False)),
+        mocker.MagicMock(),
+        mocker.MagicMock(value=0),
+        mocker.MagicMock(value=0),
+    )
+
+
+def _setup_response(settings_payload):
+    return Message(
+        version=2,
+        message_type=MessageType.SETUP_RESPONSE,
+        data=SetupResponse(**settings_payload),
+    ).dict()
+
+
+@pytest.mark.parametrize('close_code', (1000, 1001))
+@pytest.mark.asyncio
+async def test_reconnect_after_clean_close(
+    mocker, ws_server, unused_port, settings_payload, close_code, caplog,
+):
+    """LITE-34090 R1: a clean close (ConnectionClosedOK) must not kill the worker."""
+    handler = CloseAfterSetupWSHandler(
+        WEBAPP_WS_PATH, _setup_response(settings_payload), close_code,
+    )
+    async with ws_server(handler):
+        worker = _setup_reconnect_test(mocker, unused_port)
+        with caplog.at_level(logging.WARNING):
+            task = asyncio.create_task(worker.start())
+            await asyncio.sleep(1.5)
+        try:
+            assert 'The WS connection has been closed, reason: closed by the test server' in (
+                caplog.text
+            )
+            assert handler.connections >= 2
+            assert worker.stop_event.is_set() is False
+        finally:
+            worker.stop()
+            await task
+
+
+@pytest.mark.parametrize('reject_status', (403, 502))
+@pytest.mark.asyncio
+async def test_reconnect_after_max_retry_time(
+    mocker, ws_server, unused_port, settings_payload, reject_status, caplog,
+):
+    """LITE-34090 R2: when backoff gives up, the worker must keep trying, not stop."""
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_GENERIC_SECONDS', .3)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_TIME_MAINTENANCE_SECONDS', .3)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .05)
+    handler = CloseAfterSetupWSHandler(
+        WEBAPP_WS_PATH, _setup_response(settings_payload), 1011,
+    )
+    async with ws_server(handler):
+        worker = _setup_reconnect_test(mocker, unused_port)
+        with caplog.at_level(logging.WARNING):
+            task = asyncio.create_task(worker.start())
+            await asyncio.sleep(.2)
+            handler.reject_status = reject_status
+            await asyncio.sleep(1.5)
+            handler.reject_status = None
+            await asyncio.sleep(1)
+        try:
+            assert 'max connection attemps reached' in caplog.text
+            assert handler.rejected > 0
+            assert handler.connections >= 2
+            assert worker.stop_event.is_set() is False
+        finally:
+            worker.stop()
+            await task
+
+
+@pytest.mark.parametrize('close_code', (None, 1011))
+@pytest.mark.asyncio
+async def test_reconnect_after_abnormal_close(
+    mocker, ws_server, unused_port, settings_payload, close_code, caplog,
+):
+    """LITE-34090 R3: an abnormal close (ConnectionClosedError) reconnects."""
+    handler = CloseAfterSetupWSHandler(
+        WEBAPP_WS_PATH, _setup_response(settings_payload), close_code,
+    )
+    async with ws_server(handler):
+        worker = _setup_reconnect_test(mocker, unused_port)
+        with caplog.at_level(logging.WARNING):
+            task = asyncio.create_task(worker.start())
+            await asyncio.sleep(1.5)
+        try:
+            assert 'disconnected from:' in caplog.text
+            assert handler.connections >= 2
+            assert worker.stop_event.is_set() is False
+        finally:
+            worker.stop()
+            await task
+
+
+@pytest.mark.asyncio
+async def test_no_reconnect_after_shutdown_message(
+    mocker, ws_server, unused_port, settings_payload,
+):
+    """LITE-34090 R4: a SHUTDOWN from the gateway still stops the worker for good."""
+    handler = CloseAfterSetupWSHandler(
+        WEBAPP_WS_PATH,
+        _setup_response(settings_payload),
+        1000,
+        extra_messages=[Message(message_type=MessageType.SHUTDOWN).dict()],
+    )
+    async with ws_server(handler):
+        worker = _setup_reconnect_test(mocker, unused_port)
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(1.5)
+        assert task.done() is True
+        assert worker.run_event.is_set() is False
+        assert handler.connections == 1
+
+
+@pytest.mark.asyncio
+async def test_no_reconnect_after_signal(mocker, ws_server, unused_port, settings_payload):
+    """LITE-34090 R4: a signal (SIGINT/SIGTERM) still stops the worker for good."""
+    mocker.patch('connect.eaas.runner.workers.base.SHUTDOWN_WAIT_GRACE_SECONDS', 0)
+    handler = CloseAfterSetupWSHandler(
+        WEBAPP_WS_PATH, _setup_response(settings_payload), 1000,
+    )
+    async with ws_server(handler):
+        worker = _setup_reconnect_test(mocker, unused_port)
+        task = asyncio.create_task(worker.start())
+        await asyncio.sleep(.1)
+        worker.handle_signal()
+        await asyncio.sleep(1.4)
+        assert task.done() is True
+        assert worker.run_event.is_set() is False
+        assert handler.connections == 1
+
+
+class NoSetupResponseFirstWSHandler(CloseAfterSetupWSHandler):
+    """Never answer the setup request of the first connection."""
+    first_close_code = None
+
+    async def __call__(self, ws, path):
+        if self.connections:
+            return await super().__call__(ws, path)
+        self.connections += 1
+        await ws.recv()
+        await ws.wait_closed()
+        self.first_close_code = ws.close_code
+
+
+@pytest.mark.asyncio
+async def test_reconnect_after_handshake_timeout(
+    mocker, ws_server, unused_port, settings_payload, caplog,
+):
+    """LITE-35241: after a handshake timeout the socket is closed and the retry reconnects."""
+    mocker.patch('connect.eaas.runner.workers.base.HANDSHAKE_TIMEOUT_SECONDS', .2)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .05)
+    handler = NoSetupResponseFirstWSHandler(
+        WEBAPP_WS_PATH, _setup_response(settings_payload), 1000,
+    )
+    async with ws_server(handler):
+        worker = _setup_reconnect_test(mocker, unused_port)
+        with caplog.at_level(logging.INFO):
+            task = asyncio.create_task(worker.start())
+            await asyncio.sleep(1)
+        try:
+            assert handler.first_close_code == 1000
+            assert handler.connections >= 2
+            assert f'WebWorker connected to ws://127.0.0.1:{unused_port}' in caplog.text
+        finally:
+            worker.stop()
+            await task
+
+
+@pytest.mark.asyncio
+async def test_no_reconnect_delay_on_clean_close_after_stop(mocker, unused_port, caplog):
+    worker = _setup_reconnect_test(mocker, unused_port)
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', 10)
+    worker.ensure_connection = mocker.AsyncMock()
+
+    def stop_and_close():
+        worker.stop()
+        raise ConnectionClosedOK(
+            rcvd=mocker.MagicMock(reason='shutdown'),
+            sent=mocker.MagicMock(),
+            rcvd_then_sent=True,
+        )
+
+    worker.receive = mocker.AsyncMock(side_effect=stop_and_close)
+    worker.run_event.set()
+    with caplog.at_level(logging.WARNING):
+        await asyncio.wait_for(worker.run(), timeout=1)
+    assert 'The WS connection has been closed, reason: shutdown' in caplog.text
+    assert 'try to reconnect' not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_exit_if_main_loop_ends_without_stop(mocker, unused_port, caplog):
+    """LITE-35241: a main loop that ends without stop() exits the process with code 1."""
+    mocked_exit = mocker.patch(
+        'connect.eaas.runner.workers.base.os._exit',
+        side_effect=SystemExit(1),
+    )
+    worker = _setup_reconnect_test(mocker, unused_port)
+    worker.run = mocker.AsyncMock(side_effect=asyncio.CancelledError())
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(SystemExit):
+            await worker.start()
+    worker.stop()
+    mocked_exit.assert_called_once_with(1)
+    assert 'WebWorker: unexpected exit without a stop request (main: <Task cancelled' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_exit_if_master_dies(mocker, unused_port, caplog):
+    """LITE-35241: a worker whose master died (new parent pid) exits with code 1."""
+    mocker.patch('connect.eaas.runner.workers.base.PROCESS_CHECK_INTERVAL_SECS', .01)
+    mocker.patch('connect.eaas.runner.workers.base.os.getppid', side_effect=[100, 100, 1])
+    mocked_exit = mocker.patch(
+        'connect.eaas.runner.workers.base.os._exit',
+        side_effect=SystemExit(1),
+    )
+    worker = _setup_reconnect_test(mocker, unused_port)
+
+    async def run_forever():
+        await asyncio.sleep(10)
+
+    worker.run = run_forever
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(SystemExit):
+            await worker.start()
+    worker.main_task.cancel()
+    worker.stop()
+    mocked_exit.assert_called_once_with(1)
+    assert 'WebWorker: master process 100 is gone' in caplog.text
+    assert 'WebWorker: unexpected exit without a stop request (main: <Task pending' in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_reconnect_after_ping_timeout(mocker, unused_port, caplog):
+    """
+    LITE-35241: a peer that accepts the websocket upgrade and then never answers
+    makes the ping time out. The socket is closed quickly and the worker reconnects.
+    """
+    mocker.patch('connect.eaas.runner.workers.base.HANDSHAKE_TIMEOUT_SECONDS', .2)
+    mocker.patch('connect.eaas.runner.workers.base.MAX_RETRY_DELAY_TIME_SECONDS', .05)
+    connections = []
+
+    async def silent_peer(reader, writer):
+        connections.append(time.monotonic())
+        request = await reader.readuntil(b'\r\n\r\n')
+        key = re.search(rb'Sec-WebSocket-Key: (\S+)', request, re.I).group(1).decode()
+        writer.write(
+            'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n'
+            f'Connection: Upgrade\r\nSec-WebSocket-Accept: {accept_key(key)}\r\n\r\n'.encode(),
+        )
+        while await reader.read(1024):
+            pass
+        writer.close()
+
+    server = await asyncio.start_server(silent_peer, '127.0.0.1', unused_port)
+    async with server:
+        worker = _setup_reconnect_test(mocker, unused_port)
+        with caplog.at_level(logging.INFO):
+            task = asyncio.create_task(worker.start())
+            for _ in range(80):
+                if len(connections) >= 2:
+                    break
+                await asyncio.sleep(.1)
+        try:
+            assert len(connections) >= 2
+            # With the default close_timeout (10 s) the close takes far longer than 6 s.
+            assert connections[1] - connections[0] < 6
+            assert 'received an unexpected exception' in caplog.text
+        finally:
+            worker.stop()
+            await asyncio.wait_for(task, 10)

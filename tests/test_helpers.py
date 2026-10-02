@@ -354,6 +354,7 @@ def test_get_client(mocker):
     assert isinstance(client, ConnectClient)
     assert client.api_key == 'ApiKey XXXX:YYYY'
     assert client.endpoint == 'https://api.example.com/public/v1'
+    assert client.timeout == (15, 30)
 
 
 def test_get_current_environment(mocker, responses):
@@ -447,7 +448,7 @@ def test_notify_process_restarted(mocker, responses):
                 {
                     'error_output': (
                         'Process background worker of instance instance_id has been '
-                        'restarted at 2022-01-01T12:00:00'
+                        'restarted at 2022-01-01T12:00:00 (exit code -9)'
                     ),
                 },
             ),
@@ -456,7 +457,7 @@ def test_notify_process_restarted(mocker, responses):
         status=200,
     )
     with freeze_time('2022-01-01 12:00:00'):
-        notify_process_restarted('background')
+        notify_process_restarted('background', -9)
 
 
 def test_notify_process_restarted_client_error(mocker, responses, caplog):
@@ -485,7 +486,7 @@ def test_notify_process_restarted_client_error(mocker, responses, caplog):
         status=400,
     )
     with caplog.at_level(logging.WARNING):
-        notify_process_restarted('background')
+        notify_process_restarted('background', -9)
 
     assert 'Cannot notify background process restart' in caplog.text
 
