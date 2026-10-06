@@ -231,9 +231,14 @@ class Master:
                                 f'Process of type {worker_type} is dead '
                                 f'(exit code {p.exitcode}), restart it',
                             )
-                            # Restart first: a failed notification must not block the restart.
                             self.start_worker_process(worker_type, self.handlers[worker_type])
-                            notify_process_restarted(worker_type, p.exitcode)
+                            # In a thread: a slow Connect API must not delay other restarts
+                            # or the shutdown.
+                            threading.Thread(
+                                target=notify_process_restarted,
+                                args=(worker_type, p.exitcode),
+                                daemon=True,
+                            ).start()
                         else:
                             exited_workers.append(worker_type)
                             logger.info(f'{worker_type.capitalize()} worker exited')

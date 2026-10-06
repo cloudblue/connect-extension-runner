@@ -250,8 +250,7 @@ def test_monitor_restart_died_process(mocker, caplog):
         master.monitor_event.clear()
         t.join()
 
-    mocked_notify.assert_called()
-    assert mocked_notify.mock_calls[0].args == ('webapp', -9)
+    mocked_notify.assert_called_with('webapp', -9)
     assert 'Process of type webapp is dead (exit code -9), restart it' in caplog.text
     mocked_start_process.assert_called_with(
         'webapp',
@@ -259,13 +258,14 @@ def test_monitor_restart_died_process(mocker, caplog):
     )
 
 
-def test_monitor_survives_notify_error(mocker, caplog):
+def test_monitor_survives_restart_error(mocker, caplog):
     mocker.patch('connect.eaas.runner.master.PROCESS_CHECK_INTERVAL_SECS', 0.01)
-    mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
-    mocker.patch(
-        'connect.eaas.runner.master.notify_process_restarted',
-        side_effect=RuntimeError('notify failed'),
+    mocked_start_process = mocker.patch.object(
+        Master,
+        'start_worker_process',
+        side_effect=RuntimeError('start failed'),
     )
+    mocker.patch('connect.eaas.runner.master.notify_process_restarted')
 
     mocked_process = mocker.MagicMock()
     mocked_process.is_alive.return_value = False
@@ -285,7 +285,35 @@ def test_monitor_survives_notify_error(mocker, caplog):
 
     assert alive is True
     assert 'Unexpected error while monitoring the worker processes' in caplog.text
-    # The restart happens before the failed notification, on every check.
+    assert mocked_start_process.call_count >= 2
+
+
+def test_monitor_not_blocked_by_hanging_notify(mocker):
+    """LITE-35241: a hanging restart notification does not delay the next restart."""
+    mocker.patch('connect.eaas.runner.master.PROCESS_CHECK_INTERVAL_SECS', 0.01)
+    mocked_start_process = mocker.patch.object(Master, 'start_worker_process')
+    release = threading.Event()
+    mocker.patch(
+        'connect.eaas.runner.master.notify_process_restarted',
+        side_effect=lambda *args: release.wait(),
+    )
+
+    mocked_process = mocker.MagicMock()
+    mocked_process.is_alive.return_value = False
+    mocked_process.exitcode = 1
+
+    master = Master()
+    master.workers['webapp'] = mocked_process
+    master.monitor_event.set()
+
+    t = threading.Thread(target=master.monitor_processes)
+    t.start()
+    time.sleep(.05)
+    master.monitor_event.clear()
+    t.join(timeout=1)
+    release.set()
+
+    assert t.is_alive() is False
     assert mocked_start_process.call_count >= 2
 
 

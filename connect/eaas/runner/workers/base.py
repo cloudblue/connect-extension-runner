@@ -7,6 +7,7 @@ import asyncio
 import inspect
 import json
 import logging
+import multiprocessing
 import os
 import time
 from abc import (
@@ -332,7 +333,10 @@ class WorkerBase(ABC):
         """
         Return when the master process dies, so this worker does not run as an orphan.
         """
-        ppid = os.getppid()
+        # Use the pid recorded when the process was created: os.getppid() is already
+        # the new parent if the master died while this worker was starting up.
+        parent = multiprocessing.parent_process()
+        ppid = parent.pid if parent else os.getppid()
         while os.getppid() == ppid:
             await asyncio.sleep(PROCESS_CHECK_INTERVAL_SECS)
         logger.error(f'{self}: master process {ppid} is gone')

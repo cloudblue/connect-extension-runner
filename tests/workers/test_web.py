@@ -1557,6 +1557,37 @@ async def test_exit_if_master_dies(mocker, unused_port, caplog):
 
 
 @pytest.mark.asyncio
+async def test_exit_if_master_died_during_startup(mocker, unused_port, caplog):
+    """
+    LITE-35241: the master died before the worker reached the check, so os.getppid()
+    is already the new parent. The pid recorded at process creation still detects it.
+    """
+    mocker.patch('connect.eaas.runner.workers.base.PROCESS_CHECK_INTERVAL_SECS', .01)
+    mocker.patch(
+        'connect.eaas.runner.workers.base.multiprocessing.parent_process',
+        return_value=mocker.MagicMock(pid=100),
+    )
+    mocker.patch('connect.eaas.runner.workers.base.os.getppid', return_value=1)
+    mocked_exit = mocker.patch(
+        'connect.eaas.runner.workers.base.os._exit',
+        side_effect=SystemExit(1),
+    )
+    worker = _setup_reconnect_test(mocker, unused_port)
+
+    async def run_forever():
+        await asyncio.sleep(10)
+
+    worker.run = run_forever
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(SystemExit):
+            await worker.start()
+    worker.main_task.cancel()
+    worker.stop()
+    mocked_exit.assert_called_once_with(1)
+    assert 'WebWorker: master process 100 is gone' in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_reconnect_after_ping_timeout(mocker, unused_port, caplog):
     """
     LITE-35241: a peer that accepts the websocket upgrade and then never answers
