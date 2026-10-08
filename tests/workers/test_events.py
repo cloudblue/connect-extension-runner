@@ -1578,7 +1578,7 @@ async def test_sender_retries(mocker, settings_payload, task_payload, caplog):
         )
         worker.get_extension_message = mocker.MagicMock(return_value={})
         worker.config.update_dynamic_config(SetupResponse(**settings_payload))
-        worker.run = mocker.AsyncMock()
+        worker.run = mocker.AsyncMock(side_effect=worker.stop_event.wait)
         worker.send = mocker.AsyncMock(side_effect=[Exception('retry'), None])
         worker.ws = mocker.AsyncMock(closed=False)
         await worker.results_queue.put(
@@ -1617,7 +1617,7 @@ async def test_sender_max_retries_exceeded(mocker, settings_payload, task_payloa
         )
         worker.get_extension_message = mocker.MagicMock(return_value={})
         worker.config.update_dynamic_config(SetupResponse(**settings_payload))
-        worker.run = mocker.AsyncMock()
+        worker.run = mocker.AsyncMock(side_effect=worker.stop_event.wait)
         worker.send = mocker.AsyncMock(
             side_effect=[Exception('retry') for _ in range(3)],
         )
@@ -1811,7 +1811,7 @@ async def test_ensure_connection_exit_backoff(mocker, caplog):
 
 
 @pytest.mark.asyncio
-async def test_ensure_connection_exit_max_attemps(mocker, caplog):
+async def test_ensure_connection_retry_after_max_attemps(mocker, caplog):
     mocker.patch.object(
         EventsApp,
         'load_application',
@@ -1835,12 +1835,20 @@ async def test_ensure_connection_exit_max_attemps(mocker, caplog):
     worker.run_event.set()
     worker.get_url = lambda: 'ws://test'
 
+    mocker.patch('connect.eaas.runner.workers.base.DELAY_ON_CONNECT_EXCEPTION_SECONDS', .01)
+
     with caplog.at_level(logging.ERROR):
         task = asyncio.create_task(worker.run())
-        await task
+        await asyncio.sleep(.5)
 
-    assert worker.stop_event.is_set() is True
-    assert 'max connection attemps reached, exit!' in caplog.text
+    # Giving up a backoff round is not a stop request: the worker retries (LITE-35241).
+    assert worker.stop_event.is_set() is False
+    assert task.done() is False
+    assert caplog.text.count(
+        'max connection attemps reached, try to reconnect in 0.01s',
+    ) >= 2
+    worker.stop()
+    await task
 
 
 @pytest.mark.asyncio
@@ -2156,8 +2164,46 @@ async def test_ensure_connection_with_proxy(mocker, secure, ws_url, ws_port, env
         extra_headers=(('Authorization', 'SU-000:XXXX'),),
         ping_interval=60,
         ping_timeout=60,
+        close_timeout=1,
         max_queue=128,
         max_size=2**21,
         sock=mocked_sock,
         server_hostname='my.ws.addr',
     )
+
+
+@pytest.mark.asyncio
+async def test_exit_if_result_sender_ends_without_stop(mocker, settings_payload, caplog):
+    """LITE-35241: a result sender that ends without stop() exits the process with code 1."""
+    mocker.patch.object(
+        EventsApp,
+        'load_application',
+    )
+    mocked_exit = mocker.patch(
+        'connect.eaas.runner.workers.base.os._exit',
+        side_effect=SystemExit(1),
+    )
+
+    config = ConfigHelper(secure=False)
+    ext_handler = EventsApp(config)
+
+    worker = EventsWorker(
+        ext_handler,
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+        mocker.MagicMock(),
+    )
+    worker.config.update_dynamic_config(SetupResponse(**settings_payload))
+    worker.run = mocker.AsyncMock(side_effect=worker.stop_event.wait)
+    worker.result_sender = mocker.AsyncMock(side_effect=RuntimeError('sender failed'))
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(SystemExit):
+            await worker.start()
+    worker.stop()
+    await worker.main_task
+    with pytest.raises(RuntimeError):
+        await worker.results_task
+    mocked_exit.assert_called_once_with(1)
+    assert 'results: <Task finished' in caplog.text
+    assert "exception=RuntimeError('sender failed')" in caplog.text
