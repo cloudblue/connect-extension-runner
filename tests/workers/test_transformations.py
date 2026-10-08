@@ -472,7 +472,7 @@ async def test_sender_max_retries_exceeded(mocker, tfn_settings_payload, task_pa
         worker.send = mocker.AsyncMock(
             side_effect=[Exception('retry') for _ in range(3)],
         )
-        worker.run = mocker.AsyncMock()
+        worker.run = mocker.AsyncMock(side_effect=worker.stop_event.wait)
         worker.ws = mocker.AsyncMock(closed=False)
         await worker.results_queue.put(
             Task(**task_payload(TaskCategory.TRANSFORMATION, 'test', 'TQ-000')),
