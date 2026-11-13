@@ -27,7 +27,7 @@ cextrun = 'connect.eaas.runner.main:main'
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-websockets = "13.*"
+websockets = ">=13,<17"
 connect-openapi-client = ">=29.0,<38"
 logzio-python-handler = "^4.1.4"
 backoff = "^2.2.1"
@@ -44,35 +44,35 @@ pydantic = ">=1.10,<2"
 httpx = ">=0.23,<0.29"
 rich = ">=12"
 pyfiglet = "^1.0.2"
-devtools = "^0.12.2"
+devtools = ">=0.12.2,<0.14.0"
 watchfiles = "^1.0.5"
 openpyxl = ">=3.0.0,<4"
-lxml = "^5.4.0"
-uvloop = "^0.21"
-python-socks = {extras = ["asyncio"], version = "^2.5.1"}
+lxml = ">=5.4,<7.0"
+uvloop = ">=0.21,<0.24"
+python-socks = {extras = ["asyncio"], version = ">=2.5.1,<4.0.0"}
 
 [tool.poetry.group.test]
 optional = true
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3"
-pytest-cov = "^4.0.0"
+pytest-cov = ">=4,<8"
 pytest-mock = "^3.3.1"
-pytest-randomly = "^3.12.0"
+pytest-randomly = ">=3.12,<6.0"
 coverage = {extras = ["toml"], version = "^7"}
 flake8 = "^7"
-flake8-bugbear = "^22"
+flake8-bugbear = ">=22,<27"
 flake8-cognitive-complexity = "^0.1"
 flake8-commas = "^4.0"
 flake8-future-import = "~0.4"
 flake8-broken-line = "^1"
 flake8-pyproject = "^1.2"
-pytest-asyncio = "0.20.*"
+pytest-asyncio = ">=0.20,<1.5"
 pytest-httpx = ">=0.20,<0.30"
-responses = "^0.23.0"
+responses = ">=0.23,<0.27"
 freezegun = "^1.5.1"
 flaky = "^3.8"
-flake8-isort = "^6.0.0"
+flake8-isort = ">=6,<8"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
