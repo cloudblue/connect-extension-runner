@@ -58,6 +58,10 @@ class ConfigHelper:
         return self.dyn_config.environment_type
 
     @property
+    def repository_tag(self):
+        return self.dyn_config.logging.meta.repository_tag
+
+    @property
     def account_id(self):
         return self.dyn_config.logging.meta.account_id
 
@@ -90,6 +94,7 @@ class ConfigHelper:
             'instance_id': self.instance_id,
             'account_id': self.account_id,
             'account_name': self.account_name,
+            'repository_tag': self.repository_tag,
         }
 
     @property
@@ -187,6 +192,9 @@ class ConfigHelper:
             )
             self.dyn_config.environment_type = (
                 data.environment_type or self.dyn_config.environment_type
+            )
+            self.dyn_config.logging.meta.repository_tag = (
+                data.logging.meta.repository_tag or self.dyn_config.logging.meta.repository_tag
             )
             self.dyn_config.logging.meta.account_id = (
                 data.logging.meta.account_id or self.dyn_config.logging.meta.account_id

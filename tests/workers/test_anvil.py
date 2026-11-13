@@ -117,6 +117,7 @@ async def test_extension_settings(mocker, ws_server, unused_port, settings_paylo
     assert worker.config.environment_type == settings_payload['environment_type']
     assert worker.config.account_id == settings_payload['logging']['meta']['account_id']
     assert worker.config.account_name == settings_payload['logging']['meta']['account_name']
+    assert worker.config.repository_tag == settings_payload['logging']['meta']['repository_tag']
     assert worker.config.service_id == settings_payload['logging']['meta']['service_id']
 
 

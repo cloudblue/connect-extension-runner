@@ -15,7 +15,6 @@ classifiers = [
     "Environment :: Console",
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -27,12 +26,21 @@ classifiers = [
 cextrun = 'connect.eaas.runner.main:main'
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4"
+python = ">=3.10,<3.13"
 websockets = "13.*"
 connect-openapi-client = ">=29.0,<38"
 logzio-python-handler = "^4.1.4"
 backoff = "^2.2.1"
-connect-eaas-core = ">=33.0,<38"
+connect-eaas-core = ">=37.4,<38"
+# Tripwire: keep pydantic on v1 in lockstep with connect-eaas-core <38. The
+# runner and every extension run on pydantic v1; connect-eaas-core's v2 line
+# (38.x) requires pydantic ^2 and would silently switch the runtime to
+# pydantic 2, breaking v1 extensions. This pin makes such a bump fail
+# `poetry lock` (naming pydantic) instead of breaking at runtime. Moving to
+# pydantic 2 is a coordinated migration: bump connect-eaas-core, pydantic and
+# fastapi together, after the extensions have migrated. Do not raise this
+# independently.
+pydantic = ">=1.10,<2"
 httpx = ">=0.23,<0.29"
 rich = ">=12"
 pyfiglet = "^1.0.2"
@@ -51,7 +59,7 @@ pytest = "^8.3"
 pytest-cov = "^4.0.0"
 pytest-mock = "^3.3.1"
 pytest-randomly = "^3.12.0"
-coverage = {extras = ["toml"], version = "^5.3"}
+coverage = {extras = ["toml"], version = "^7"}
 flake8 = "^7"
 flake8-bugbear = "^22"
 flake8-cognitive-complexity = "^0.1"

@@ -54,3 +54,38 @@ class WSHandler:
 
     async def process_request(self, path, headers):
         self.headers = headers
+
+
+class CloseAfterSetupWSHandler:
+    """
+    Fake gateway socket: answer the setup request, optionally send more
+    messages, then close the socket with `close_code` (None drops the TCP
+    connection). Counts connections so tests can check reconnects.
+    """
+    def __init__(self, path, setup_response, close_code, extra_messages=None):
+        self.path = path
+        self.setup_response = setup_response
+        self.close_code = close_code
+        self.extra_messages = extra_messages or []
+        self.connections = 0
+        self.rejected = 0
+        self.reject_status = None
+
+    async def __call__(self, ws, path):
+        if path != self.path:
+            return
+        self.connections += 1
+        await ws.recv()
+        await ws.send(json.dumps(self.setup_response))
+        for message in self.extra_messages:
+            await ws.send(json.dumps(message))
+        await asyncio.sleep(.3)
+        if self.close_code is None:
+            ws.transport.abort()
+        else:
+            await ws.close(code=self.close_code, reason='closed by the test server')
+
+    async def process_request(self, path, headers):
+        if self.reject_status:
+            self.rejected += 1
+            return self.reject_status, [], b''

@@ -7,6 +7,8 @@ import asyncio
 import inspect
 import json
 import logging
+import multiprocessing
+import os
 import time
 from abc import (
     ABC,
@@ -36,9 +38,11 @@ from connect.eaas.core.proto import (
 )
 from connect.eaas.runner.constants import (
     DELAY_ON_CONNECT_EXCEPTION_SECONDS,
+    HANDSHAKE_TIMEOUT_SECONDS,
     MAX_RETRY_DELAY_TIME_SECONDS,
     MAX_RETRY_TIME_GENERIC_SECONDS,
     MAX_RETRY_TIME_MAINTENANCE_SECONDS,
+    PROCESS_CHECK_INTERVAL_SECS,
     SHUTDOWN_WAIT_GRACE_SECONDS,
 )
 from connect.eaas.runner.exceptions import (
@@ -116,12 +120,21 @@ class WorkerBase(ABC):
                             extra_headers=self.config.get_headers(),
                             ping_interval=60,
                             ping_timeout=60,
+                            close_timeout=1,
                             max_queue=128,
                             max_size=2**21,
                             **await self.get_proxy_config(),
                         )
-                        await (await self.ws.ping())
-                        await self.do_handshake()
+                        try:
+                            await asyncio.wait_for(
+                                await self.ws.ping(),
+                                timeout=HANDSHAKE_TIMEOUT_SECONDS,
+                            )
+                            await self.do_handshake()
+                        except Exception:
+                            # Close the socket so the retry does a full connect and handshake.
+                            await self.ws.close()
+                            raise
                         logger.info(f'{self} connected to {url}')
                     except InvalidStatusCode as ic:
                         if ic.status_code == 502:
@@ -160,7 +173,7 @@ class WorkerBase(ABC):
     async def do_handshake(self):
         setup_request = self.get_setup_request()
         await self.send(setup_request)
-        message = await asyncio.wait_for(self.ws.recv(), timeout=5)
+        message = await asyncio.wait_for(self.ws.recv(), timeout=HANDSHAKE_TIMEOUT_SECONDS)
         await self.process_message(json.loads(message))
 
     async def send(self, message):
@@ -196,15 +209,23 @@ class WorkerBase(ABC):
                     if not message:
                         continue
                     await self.process_message(message)
-            except (ConnectionClosedOK, StopBackoffError) as exc:
+            except StopBackoffError:
                 self.stop()
-                if isinstance(exc, ConnectionClosedOK):
-                    logger.warning(f'The WS connection has been closed, reason: {exc.reason}')
                 continue
+            except ConnectionClosedOK as exc:
+                logger.warning(f'The WS connection has been closed, reason: {exc.reason}')
+                # On a real shutdown stop() has already been called: exit without waiting.
+                if self.run_event.is_set():
+                    logger.warning(
+                        f'{self}: try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
+                    )
+                    await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
             except (CommunicationError, MaintenanceError):
-                logger.error(f'{self}: max connection attemps reached, exit!')
-                self.stop()
-                continue
+                logger.error(
+                    f'{self}: max connection attemps reached, '
+                    f'try to reconnect in {DELAY_ON_CONNECT_EXCEPTION_SECONDS}s',
+                )
+                await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
             except ConnectionClosedError:
                 logger.warning(
                     f'{self}: disconnected from: {self.get_url()}'
@@ -285,13 +306,40 @@ class WorkerBase(ABC):
         self.main_task = asyncio.create_task(self.run())
         self.run_event.set()
         logger.info(f'{self} started')
-        await self.stop_event.wait()
+        stop_task = asyncio.create_task(self.stop_event.wait())
+        parent_task = asyncio.create_task(self.wait_parent_exit())
+        tasks = [self.main_task, stop_task, parent_task]
+        if self.results_task:
+            tasks.append(self.results_task)
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        parent_task.cancel()
+        if not self.stop_event.is_set():
+            # The main loop, the result sender or the master ended without a stop request:
+            # exit non-zero so the master restarts this worker. os._exit does not wait for
+            # executor threads that may never end.
+            logger.error(
+                f'{self}: unexpected exit without a stop request '
+                f'(main: {self.main_task!r}, results: {self.results_task!r}), exit!',
+            )
+            os._exit(1)
         await self.stopping()
         await self.trigger_event('on_shutdown')
         await self.main_task
         if self.ws:
             await self.ws.close()
         logger.info(f'{self} stopped')
+
+    async def wait_parent_exit(self):
+        """
+        Return when the master process dies, so this worker does not run as an orphan.
+        """
+        # Use the pid recorded when the process was created: os.getppid() is already
+        # the new parent if the master died while this worker was starting up.
+        parent = multiprocessing.parent_process()
+        ppid = parent.pid if parent else os.getppid()
+        while os.getppid() == ppid:
+            await asyncio.sleep(PROCESS_CHECK_INTERVAL_SECS)
+        logger.error(f'{self}: master process {ppid} is gone')
 
     def stop(self):
         """
