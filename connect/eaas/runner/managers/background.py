@@ -33,13 +33,28 @@ logger = logging.getLogger(__name__)
 
 
 class BackgroundTasksManager(TasksManagerBase):
-
     def get_method_name(self, task_data, argument):
-        return self.handler.events[task_data.input.event_type]['method']
+        return self.handler.events[task_data.input.event_type]["method"]
 
     def send_skip_response(self, data, output):
         future = asyncio.Future()
         future.set_result(BackgroundResponse.skip(output))
+        asyncio.create_task(self.enqueue_result(data, future))
+
+    def send_transient_error_response(self, data, output):
+        """
+        Reschedule the task with a long countdown instead of returning RETRY,
+        so a Connect outage longer than the backend retry window does not
+        leave the object without an active task.
+        """
+        countdown = self.config.get_transient_error_reschedule_countdown()
+        logger.warning(
+            f"Connect API unavailable for task {data.options.task_id}, "
+            f"rescheduling in {countdown}s "
+            f"(status_code: {output.status_code})",
+        )
+        future = asyncio.Future()
+        future.set_result(BackgroundResponse.reschedule(countdown=countdown))
         asyncio.create_task(self.enqueue_result(data, future))
 
     async def get_argument(self, task_data):
@@ -81,13 +96,13 @@ class BackgroundTasksManager(TasksManagerBase):
             begin_ts = time.monotonic()
             result = await asyncio.wait_for(
                 future,
-                timeout=self.config.get_timeout('background'),
+                timeout=self.config.get_timeout("background"),
             )
             result_message.output = TaskOutput(result=result.status)
             result_message.output.runtime = time.monotonic() - begin_ts
             logger.info(
-                f'background task {task_data.options.task_id} result: {result.status}, took:'
-                f' {result_message.output.runtime}',
+                f"background task {task_data.options.task_id} result: {result.status}, took:"
+                f" {result_message.output.runtime}",
             )
             if result.status in (ResultType.SKIP, ResultType.FAIL):
                 result_message.output.message = result.output

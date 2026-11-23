@@ -24,6 +24,7 @@ class ConfigHelper:
     Provides both static (from env vars) and dynamic (from backend)
     configuration.
     """
+
     def __init__(self, secure=True):
         self.secure = secure
         self.env = get_environment()
@@ -31,7 +32,7 @@ class ConfigHelper:
 
     @property
     def api_key(self):
-        return self.env['api_key']
+        return self.env["api_key"]
 
     @property
     def service_id(self):
@@ -47,11 +48,11 @@ class ConfigHelper:
 
     @property
     def environment_id(self):
-        return self.env['environment_id']
+        return self.env["environment_id"]
 
     @property
     def instance_id(self):
-        return self.env['instance_id']
+        return self.env["instance_id"]
 
     @property
     def environment_type(self):
@@ -80,21 +81,22 @@ class ConfigHelper:
     @property
     def variables(self):
         return (
-            {var['name']: var['value'] for var in self.dyn_config.variables or {}}
-            if self.dyn_config else {}
+            {var["name"]: var["value"] for var in self.dyn_config.variables or {}}
+            if self.dyn_config
+            else {}
         )
 
     @property
     def metadata(self):
         return {
-            'api_address': self.env['api_address'],
-            'service_id': self.service_id,
-            'environment_id': self.environment_id,
-            'environment_type': self.environment_type,
-            'instance_id': self.instance_id,
-            'account_id': self.account_id,
-            'account_name': self.account_name,
-            'repository_tag': self.repository_tag,
+            "api_address": self.env["api_address"],
+            "service_id": self.service_id,
+            "environment_id": self.environment_id,
+            "environment_type": self.environment_type,
+            "instance_id": self.instance_id,
+            "account_id": self.account_id,
+            "account_name": self.account_name,
+            "repository_tag": self.repository_tag,
         }
 
     @property
@@ -106,7 +108,7 @@ class ConfigHelper:
 
     @property
     def proxy(self):
-        return self.env.get('wss_proxy') if self.secure else self.env.get('ws_proxy')
+        return self.env.get("wss_proxy") if self.secure else self.env.get("ws_proxy")
 
     @property
     def ws_address(self):
@@ -117,38 +119,38 @@ class ConfigHelper:
         return 443 if self.secure else 80
 
     def get_events_ws_url(self):
-        proto = 'wss' if self.secure else 'ws'
+        proto = "wss" if self.secure else "ws"
         return (
-            f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
-            f'/{self.env["environment_id"]}/{self.env["instance_id"]}'
+            f"{proto}://{self.env['ws_address']}/public/v1/devops/ws"
+            f"/{self.env['environment_id']}/{self.env['instance_id']}"
         )
 
     def get_webapp_ws_url(self):
-        proto = 'wss' if self.secure else 'ws'
+        proto = "wss" if self.secure else "ws"
         return (
-            f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
-            f'/{self.env["environment_id"]}/{self.env["instance_id"]}/webapp'
+            f"{proto}://{self.env['ws_address']}/public/v1/devops/ws"
+            f"/{self.env['environment_id']}/{self.env['instance_id']}/webapp"
         )
 
     def get_anvilapp_ws_url(self):
-        proto = 'wss' if self.secure else 'ws'
+        proto = "wss" if self.secure else "ws"
         return (
-            f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
-            f'/{self.env["environment_id"]}/{self.env["instance_id"]}/anvilapp'
+            f"{proto}://{self.env['ws_address']}/public/v1/devops/ws"
+            f"/{self.env['environment_id']}/{self.env['instance_id']}/anvilapp"
         )
 
     def get_tfnapp_ws_url(self):
-        proto = 'wss' if self.secure else 'ws'
+        proto = "wss" if self.secure else "ws"
         return (
-            f'{proto}://{self.env["ws_address"]}/public/v1/devops/ws'
-            f'/{self.env["environment_id"]}/{self.env["instance_id"]}/tfnapp'
+            f"{proto}://{self.env['ws_address']}/public/v1/devops/ws"
+            f"/{self.env['environment_id']}/{self.env['instance_id']}/tfnapp"
         )
 
     def get_api_url(self):
-        return f'https://{self.env["api_address"]}/public/v1'
+        return f"https://{self.env['api_address']}/public/v1"
 
     def get_api_address(self):
-        return f'https://{self.env["api_address"]}'
+        return f"https://{self.env['api_address']}"
 
     def get_user_agent(self):
         version = get_version()
@@ -157,18 +159,19 @@ class ConfigHelper:
         sysname = platform.system()
         sysver = platform.release()
         ua = (
-            f'connect-extension-runner/{version} {pimpl}/{pver} {sysname}/{sysver}'
-            f' {self.env["environment_id"]}/{self.env["instance_id"]}'
+            f"connect-extension-runner/{version} {pimpl}/{pver} {sysname}/{sysver}"
+            f" {self.env['environment_id']}/{self.env['instance_id']}"
         )
-        return {'User-Agent': ua}
+        return {"User-Agent": ua}
 
     def get_headers(self):
-        return (
-            ('Authorization', self.api_key),
-        )
+        return (("Authorization", self.api_key),)
 
     def get_timeout(self, category):
-        return self.env[f'{category}_task_max_execution_time']
+        return self.env[f"{category}_task_max_execution_time"]
+
+    def get_transient_error_reschedule_countdown(self):
+        return self.env["background_transient_error_reschedule_countdown"]
 
     def update_dynamic_config(self, data):
         """Updates the dynamic configuration."""
@@ -194,13 +197,15 @@ class ConfigHelper:
                 data.environment_type or self.dyn_config.environment_type
             )
             self.dyn_config.logging.meta.repository_tag = (
-                data.logging.meta.repository_tag or self.dyn_config.logging.meta.repository_tag
+                data.logging.meta.repository_tag
+                or self.dyn_config.logging.meta.repository_tag
             )
             self.dyn_config.logging.meta.account_id = (
                 data.logging.meta.account_id or self.dyn_config.logging.meta.account_id
             )
             self.dyn_config.logging.meta.account_name = (
-                data.logging.meta.account_name or self.dyn_config.logging.meta.account_name
+                data.logging.meta.account_name
+                or self.dyn_config.logging.meta.account_name
             )
             self.dyn_config.variables = data.variables or self.dyn_config.variables
             self.dyn_config.logging.logging_api_key = (
@@ -216,11 +221,11 @@ class ConfigHelper:
             )
 
         if data.logging.log_level:
-            logger.info(f'Change extension logger level to {data.logging.log_level}')
-            logging.getLogger('eaas.eventsapp').setLevel(
+            logger.info(f"Change extension logger level to {data.logging.log_level}")
+            logging.getLogger("eaas.eventsapp").setLevel(
                 getattr(logging, data.logging.log_level),
             )
         if data.logging.runner_log_level:
-            logging.getLogger('connect.eaas').setLevel(
+            logging.getLogger("connect.eaas").setLevel(
                 getattr(logging, data.logging.runner_log_level),
             )

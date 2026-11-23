@@ -57,11 +57,12 @@ def ws_server(unused_port):
     async def _ws_server(handler):
         async with websockets.serve(
             handler,
-            '127.0.0.1',
+            "127.0.0.1",
             unused_port,
             process_request=handler.process_request,
         ):
             yield
+
     return _ws_server
 
 
@@ -93,96 +94,100 @@ def extension_cls():
     return _extension
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def settings_payload():
     return {
-        'variables': [{'name': 'conf1', 'value': 'val1', 'secure': False}],
-        'environment_type': 'development',
-        'logging': {
-            'logging_api_key': None,
-            'log_level': 'DEBUG',
-            'runner_log_level': 'INFO',
-            'meta': {
-                'repository_tag': 'repository_tag',
-                'account_id': 'account_id',
-                'account_name': 'account_name',
-                'service_id': 'service_id',
-                'products': ['product_id'],
-                'hub_id': 'HB-0000',
+        "variables": [{"name": "conf1", "value": "val1", "secure": False}],
+        "environment_type": "development",
+        "logging": {
+            "logging_api_key": None,
+            "log_level": "DEBUG",
+            "runner_log_level": "INFO",
+            "meta": {
+                "repository_tag": "repository_tag",
+                "account_id": "account_id",
+                "account_name": "account_name",
+                "service_id": "service_id",
+                "products": ["product_id"],
+                "hub_id": "HB-0000",
             },
         },
-        'event_definitions': [
+        "event_definitions": [
             {
-                'event_type': evt_type,
-                'api_collection_endpoint': 'collection',
-                'api_resource_endpoint': 'collection/{pk}',
-                'api_collection_filter': 'and(eq(id,${_object_id_}),in(status,${_statuses_}))',
+                "event_type": evt_type,
+                "api_collection_endpoint": "collection",
+                "api_resource_endpoint": "collection/{pk}",
+                "api_collection_filter": "and(eq(id,${_object_id_}),in(status,${_statuses_}))",
             }
             for evt_type in BACKGROUND_EVENT_TYPES
         ],
-        'model_type': 'setup_response',
-        'proxied_connect_api': [],
+        "model_type": "setup_response",
+        "proxied_connect_api": [],
     }
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def tfn_settings_payload():
     return {
-        'variables': [{'name': 'conf1', 'value': 'val1', 'secure': False}],
-        'environment_type': 'development',
-        'logging': {
-            'logging_api_key': None,
-            'log_level': 'DEBUG',
-            'runner_log_level': 'INFO',
-            'meta': {
-                'repository_tag': 'repository_tag',
-                'account_id': 'account_id',
-                'account_name': 'account_name',
-                'service_id': 'service_id',
-                'products': ['product_id'],
-                'hub_id': 'HB-0000',
+        "variables": [{"name": "conf1", "value": "val1", "secure": False}],
+        "environment_type": "development",
+        "logging": {
+            "logging_api_key": None,
+            "log_level": "DEBUG",
+            "runner_log_level": "INFO",
+            "meta": {
+                "repository_tag": "repository_tag",
+                "account_id": "account_id",
+                "account_name": "account_name",
+                "service_id": "service_id",
+                "products": ["product_id"],
+                "hub_id": "HB-0000",
             },
         },
-        'event_definitions': [
+        "event_definitions": [
             {
-                'event_type': 'billing_transformation_request',
-                'api_collection_endpoint': 'collection',
-                'api_resource_endpoint': 'collection/{pk}',
-                'api_collection_filter': 'and(eq(id,${_object_id_}),eq(status,pending))',
+                "event_type": "billing_transformation_request",
+                "api_collection_endpoint": "collection",
+                "api_resource_endpoint": "collection/{pk}",
+                "api_collection_filter": "and(eq(id,${_object_id_}),eq(status,pending))",
             },
             {
-                'event_type': 'pricing_transformation_request',
-                'api_collection_endpoint': 'collection',
-                'api_resource_endpoint': 'collection/{pk}',
-                'api_collection_filter': 'and(eq(id,${_object_id_}),eq(status,pending))',
+                "event_type": "pricing_transformation_request",
+                "api_collection_endpoint": "collection",
+                "api_resource_endpoint": "collection/{pk}",
+                "api_collection_filter": "and(eq(id,${_object_id_}),eq(status,pending))",
             },
         ],
-        'model_type': 'setup_response',
+        "model_type": "setup_response",
     }
 
 
 @pytest.fixture
 def task_payload():
     def _task_payload(
-        task_category, event_type, object_id,
-        runtime=0.0, api_key=None, installation_id=None,
+        task_category,
+        event_type,
+        object_id,
+        runtime=0.0,
+        api_key=None,
+        installation_id=None,
         connect_correlation_id=None,
     ):
         return {
-            'options': {
-                'task_id': 'TQ-000',
-                'task_category': task_category,
-                'runtime': runtime,
-                'api_key': api_key,
-                'installation_id': installation_id,
-                'connect_correlation_id': connect_correlation_id,
+            "options": {
+                "task_id": "TQ-000",
+                "task_category": task_category,
+                "runtime": runtime,
+                "api_key": api_key,
+                "installation_id": installation_id,
+                "connect_correlation_id": connect_correlation_id,
             },
-            'input': {
-                'event_type': event_type,
-                'object_id': object_id,
+            "input": {
+                "event_type": event_type,
+                "object_id": object_id,
             },
-
         }
+
     return _task_payload
 
 
@@ -195,24 +200,25 @@ def responses():
 @pytest.fixture
 def default_env(mocker, unused_port):
     mocker.patch(
-        'connect.eaas.runner.config.get_environment',
+        "connect.eaas.runner.config.get_environment",
         return_value={
-            'ws_address': f'127.0.0.1:{unused_port}',
-            'api_address': f'127.0.0.1:{unused_port}',
-            'api_key': 'SU-000:XXXX',
-            'environment_id': 'ENV-000-0001',
-            'instance_id': 'INS-000-0002',
-            'background_task_max_execution_time': 300,
-            'interactive_task_max_execution_time': 120,
-            'scheduled_task_max_execution_time': 43200,
-            'transformation_task_max_execution_time': 300,
-            'transformation_write_queue_timeout': 600,
-            'row_transformation_task_max_execution_time': 60,
+            "ws_address": f"127.0.0.1:{unused_port}",
+            "api_address": f"127.0.0.1:{unused_port}",
+            "api_key": "SU-000:XXXX",
+            "environment_id": "ENV-000-0001",
+            "instance_id": "INS-000-0002",
+            "background_task_max_execution_time": 300,
+            "interactive_task_max_execution_time": 120,
+            "scheduled_task_max_execution_time": 43200,
+            "transformation_task_max_execution_time": 300,
+            "transformation_write_queue_timeout": 600,
+            "row_transformation_task_max_execution_time": 60,
+            "background_transient_error_reschedule_countdown": 300,
         },
     )
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def router():
     router_decorator.routes = []
     return router_decorator

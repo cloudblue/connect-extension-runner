@@ -10,46 +10,52 @@ from connect.eaas.runner.config import (
 
 def test_get_user_agent(mocker):
     mocker.patch(
-        'connect.eaas.runner.config.platform.python_implementation',
-        return_value='1',
+        "connect.eaas.runner.config.platform.python_implementation",
+        return_value="1",
     )
     mocker.patch(
-        'connect.eaas.runner.config.platform.python_version',
-        return_value='3.15',
+        "connect.eaas.runner.config.platform.python_version",
+        return_value="3.15",
     )
-    mocker.patch('connect.eaas.runner.config.platform.system', return_value='Linux')
-    mocker.patch('connect.eaas.runner.config.platform.release', return_value='1.0')
-    mocker.patch('connect.eaas.runner.config.get_version', return_value='22.0')
+    mocker.patch("connect.eaas.runner.config.platform.system", return_value="Linux")
+    mocker.patch("connect.eaas.runner.config.platform.release", return_value="1.0")
+    mocker.patch("connect.eaas.runner.config.get_version", return_value="22.0")
 
     config = ConfigHelper()
-    config.env = {'environment_id': '1', 'instance_id': '2'}
-    expected_ua = 'connect-extension-runner/22.0 1/3.15 Linux/1.0 1/2'
-    assert config.get_user_agent() == {'User-Agent': expected_ua}
+    config.env = {"environment_id": "1", "instance_id": "2"}
+    expected_ua = "connect-extension-runner/22.0 1/3.15 Linux/1.0 1/2"
+    assert config.get_user_agent() == {"User-Agent": expected_ua}
+
+
+def test_get_transient_error_reschedule_countdown():
+    config = ConfigHelper()
+    config.env = {"background_transient_error_reschedule_countdown": 42}
+    assert config.get_transient_error_reschedule_countdown() == 42
 
 
 def test_update_dynamic_config(mocker):
-    mocker.patch('connect.eaas.runner.config.logging.getLogger')
+    mocker.patch("connect.eaas.runner.config.logging.getLogger")
     config = ConfigHelper()
     payload = SetupResponse(
-        variables=[{'name': 'var', 'value': 'value'}],
-        environment_type='production',
+        variables=[{"name": "var", "value": "value"}],
+        environment_type="production",
         logging=Logging(
-            log_level='DEBUG',
-            logging_api_key='logging_api_key',
-            runner_log_level='INFO',
+            log_level="DEBUG",
+            logging_api_key="logging_api_key",
+            runner_log_level="INFO",
             meta=LogMeta(
-                service_id='SRVC-0001',
-                product_id='PRD-000',
-                hub_id='HB-0000',
-                account_id='VA-000',
-                account_name='Acme Inc',
-                repository_tag='1.0',
+                service_id="SRVC-0001",
+                product_id="PRD-000",
+                hub_id="HB-0000",
+                account_id="VA-000",
+                account_name="Acme Inc",
+                repository_tag="1.0",
             ),
         ),
     )
 
     config.update_dynamic_config(payload)
-    assert config.variables == {var['name']: var['value'] for var in payload.variables}
+    assert config.variables == {var["name"]: var["value"] for var in payload.variables}
     assert config.service_id == payload.logging.meta.service_id
     assert config.products == payload.logging.meta.products
     assert config.hub_id == payload.logging.meta.hub_id
@@ -61,13 +67,13 @@ def test_update_dynamic_config(mocker):
 
     payload2 = SetupResponse(
         logging=Logging(
-            log_level='WARNING',
-            runner_log_level='ERROR',
+            log_level="WARNING",
+            runner_log_level="ERROR",
         ),
     )
 
     config.update_dynamic_config(payload2)
-    assert config.variables == {var['name']: var['value'] for var in payload.variables}
+    assert config.variables == {var["name"]: var["value"] for var in payload.variables}
     assert config.service_id == payload.logging.meta.service_id
     assert config.products == payload.logging.meta.products
     assert config.hub_id == payload.logging.meta.hub_id
@@ -78,11 +84,11 @@ def test_update_dynamic_config(mocker):
     assert config.environment_type == payload.environment_type
 
     payload3 = SetupResponse(
-        variables=[{'name': 'var2', 'value': 'value2'}],
+        variables=[{"name": "var2", "value": "value2"}],
     )
 
     config.update_dynamic_config(payload3)
-    assert config.variables == {var['name']: var['value'] for var in payload3.variables}
+    assert config.variables == {var["name"]: var["value"] for var in payload3.variables}
     assert config.service_id == payload.logging.meta.service_id
     assert config.products == payload.logging.meta.products
     assert config.hub_id == payload.logging.meta.hub_id

@@ -47,6 +47,7 @@ from connect.eaas.core.validation.validators import (
 )
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN,
     HANDLER_CLASS_TITLE,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     ORDINAL_SUFFIX,
@@ -58,12 +59,12 @@ from connect.eaas.runner.constants import (
 )
 
 
-logger = logging.getLogger('connect.eaas')
+logger = logging.getLogger("connect.eaas")
 
 
 def get_container_id():
     result = subprocess.run(
-        ['cat', '/proc/1/cpuset'],
+        ["cat", "/proc/1/cpuset"],
         capture_output=True,
         stdin=subprocess.DEVNULL,
         start_new_session=True,
@@ -73,12 +74,12 @@ def get_container_id():
     except subprocess.CalledProcessError:
         return str(uuid4())
 
-    _, container_id = result.stdout.decode()[:-1].rsplit('/', 1)
+    _, container_id = result.stdout.decode()[:-1].rsplit("/", 1)
     if len(container_id) == 64:
         return container_id
 
     result = subprocess.run(
-        ['grep', 'overlay', '/proc/self/mountinfo'],
+        ["grep", "overlay", "/proc/self/mountinfo"],
         capture_output=True,
         stdin=subprocess.DEVNULL,
         start_new_session=True,
@@ -86,10 +87,10 @@ def get_container_id():
     try:
         result.check_returncode()
         mount = result.stdout.decode()
-        start_idx = mount.index('upperdir=') + len('upperdir=')
-        end_idx = mount.index(',', start_idx)
+        start_idx = mount.index("upperdir=") + len("upperdir=")
+        end_idx = mount.index(",", start_idx)
         dir_path = mount[start_idx:end_idx]
-        _, container_id, _ = dir_path.rsplit('/', 2)
+        _, container_id, _ = dir_path.rsplit("/", 2)
         if len(container_id) != 64:
             return str(uuid4())
         return container_id
@@ -99,42 +100,65 @@ def get_container_id():
 
 def get_environment():
     return {
-        'api_key': os.getenv('API_KEY'),
-        'environment_id': os.getenv('ENVIRONMENT_ID'),
-        'instance_id': os.getenv('INSTANCE_ID', get_container_id()),
-        'ws_address': os.getenv('SERVER_ADDRESS', 'api.cnct.info'),
-        'api_address': os.getenv('API_ADDRESS', os.getenv('SERVER_ADDRESS', 'api.cnct.info')),
-        'ws_proxy': os.getenv('HTTP_PROXY'),
-        'wss_proxy': os.getenv('HTTPS_PROXY'),
-        'background_task_max_execution_time': int(os.getenv(
-            'BACKGROUND_TASK_MAX_EXECUTION_TIME', BACKGROUND_TASK_MAX_EXECUTION_TIME,
-        )),
-        'interactive_task_max_execution_time': int(os.getenv(
-            'INTERACTIVE_TASK_MAX_EXECUTION_TIME', INTERACTIVE_TASK_MAX_EXECUTION_TIME,
-        )),
-        'scheduled_task_max_execution_time': int(os.getenv(
-            'SCHEDULED_TASK_MAX_EXECUTION_TIME', SCHEDULED_TASK_MAX_EXECUTION_TIME,
-        )),
-        'transformation_task_max_execution_time': int(os.getenv(
-            'TRANSFORMATION_TASK_MAX_EXECUTION_TIME', TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
-        )),
-        'row_transformation_task_max_execution_time': int(
+        "api_key": os.getenv("API_KEY"),
+        "environment_id": os.getenv("ENVIRONMENT_ID"),
+        "instance_id": os.getenv("INSTANCE_ID", get_container_id()),
+        "ws_address": os.getenv("SERVER_ADDRESS", "api.cnct.info"),
+        "api_address": os.getenv(
+            "API_ADDRESS", os.getenv("SERVER_ADDRESS", "api.cnct.info")
+        ),
+        "ws_proxy": os.getenv("HTTP_PROXY"),
+        "wss_proxy": os.getenv("HTTPS_PROXY"),
+        "background_task_max_execution_time": int(
             os.getenv(
-                'ROW_TRANSFORMATION_TASK_MAX_EXECUTION_TIME',
+                "BACKGROUND_TASK_MAX_EXECUTION_TIME",
+                BACKGROUND_TASK_MAX_EXECUTION_TIME,
+            )
+        ),
+        "interactive_task_max_execution_time": int(
+            os.getenv(
+                "INTERACTIVE_TASK_MAX_EXECUTION_TIME",
+                INTERACTIVE_TASK_MAX_EXECUTION_TIME,
+            )
+        ),
+        "scheduled_task_max_execution_time": int(
+            os.getenv(
+                "SCHEDULED_TASK_MAX_EXECUTION_TIME",
+                SCHEDULED_TASK_MAX_EXECUTION_TIME,
+            )
+        ),
+        "transformation_task_max_execution_time": int(
+            os.getenv(
+                "TRANSFORMATION_TASK_MAX_EXECUTION_TIME",
+                TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
+            )
+        ),
+        "row_transformation_task_max_execution_time": int(
+            os.getenv(
+                "ROW_TRANSFORMATION_TASK_MAX_EXECUTION_TIME",
                 ROW_TRANSFORMATION_TASK_MAX_EXECUTION_TIME,
             ),
         ),
-        'transformation_write_queue_timeout': int(os.getenv(
-            'TRANSFORMATION_WRITE_QUEUE_TIMEOUT', TRANSFORMATION_WRITE_QUEUE_TIMEOUT,
-        )),
+        "transformation_write_queue_timeout": int(
+            os.getenv(
+                "TRANSFORMATION_WRITE_QUEUE_TIMEOUT",
+                TRANSFORMATION_WRITE_QUEUE_TIMEOUT,
+            )
+        ),
+        "background_transient_error_reschedule_countdown": int(
+            os.getenv(
+                "BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN",
+                BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN,
+            )
+        ),
     }
 
 
 def get_version():
     try:
-        return version('connect-extension-runner')
+        return version("connect-extension-runner")
     except Exception:
-        return '0.0.0'
+        return "0.0.0"
 
 
 def to_ordinal(val):
@@ -150,38 +174,40 @@ def get_connect_version():
     except ClientError as ce:
         if ce.status_code in [401, 403]:
             raise Exception(
-                'Cannot check the current EaaS Runner version: '
-                f'API key is not valid: {ce}.')
-        raise Exception(f'Cannot check the current EaaS Runner version: {ce}.')
+                "Cannot check the current EaaS Runner version: "
+                f"API key is not valid: {ce}."
+            )
+        raise Exception(f"Cannot check the current EaaS Runner version: {ce}.")
 
-    return connect_client.response.headers['Connect-Version']
+    return connect_client.response.headers["Connect-Version"]
 
 
 def get_pypi_runner_latest_version(major_version):
     res = requests.get(PYPI_EXTENSION_RUNNER_URL)
     if res.status_code != 200:
         logger.error(
-            f'Cannot check the current EaaS Runner version: {res.text}.',
+            f"Cannot check the current EaaS Runner version: {res.text}.",
         )
-        raise Exception(f'Cannot check the current EaaS Runner version: {res.text}.')
+        raise Exception(f"Cannot check the current EaaS Runner version: {res.text}.")
 
     content = res.json()
     tags = [
-        int(version.split('.')[1])
-        for version in content['releases'] if version.startswith(f'{major_version}.')
+        int(version.split(".")[1])
+        for version in content["releases"]
+        if version.startswith(f"{major_version}.")
     ]
     if tags:
-        return f'{major_version}.{str(max(tags))}'
-    return content['info']['version']
+        return f"{major_version}.{str(max(tags))}"
+    return content["info"]["version"]
 
 
 def get_client():
     env = get_environment()
-    api_key = env['api_key']
-    api_address = env['api_address']
+    api_key = env["api_key"]
+    api_address = env["api_address"]
     return ConnectClient(
         api_key,
-        endpoint=f'https://{api_address}/public/v1',
+        endpoint=f"https://{api_address}/public/v1",
         use_specs=False,
         max_retries=3,
         # Default is (15 s connect, 180 s read): keep the read timeout short
@@ -192,39 +218,39 @@ def get_client():
 
 def get_current_environment():
     env = get_environment()
-    environment_id = env['environment_id']
-    if environment_id.startswith('ENV-'):
-        service_id = f'SRVC-{environment_id[4:-3]}'
+    environment_id = env["environment_id"]
+    if environment_id.startswith("ENV-"):
+        service_id = f"SRVC-{environment_id[4:-3]}"
         client = get_client()
         try:
             return (
-                client('devops').services[service_id].environments[environment_id].get()
+                client("devops").services[service_id].environments[environment_id].get()
             )
         except ClientError as ce:
-            logger.warning(f'Cannot retrieve environment information: {ce}')
+            logger.warning(f"Cannot retrieve environment information: {ce}")
 
 
 def notify_process_restarted(process_type, exit_code):
     env = get_environment()
     current_environment = get_current_environment()
-    if current_environment and current_environment['runtime'] == 'cloud':
-        instance_id = env['instance_id']
-        environment_id = current_environment['id']
-        service_id = f'SRVC-{environment_id[4:-3]}'
+    if current_environment and current_environment["runtime"] == "cloud":
+        instance_id = env["instance_id"]
+        environment_id = current_environment["id"]
+        service_id = f"SRVC-{environment_id[4:-3]}"
         client = get_client()
         try:
-            client('devops').services[service_id].environments[environment_id].update(
+            client("devops").services[service_id].environments[environment_id].update(
                 {
-                    'error_output': (
-                        f'Process {process_type} worker of instance '
-                        f'{instance_id} has been '
-                        f'restarted at {datetime.now().isoformat()} '
-                        f'(exit code {exit_code})'
+                    "error_output": (
+                        f"Process {process_type} worker of instance "
+                        f"{instance_id} has been "
+                        f"restarted at {datetime.now().isoformat()} "
+                        f"(exit code {exit_code})"
                     ),
                 },
             )
         except ClientError as ce:
-            logger.warning(f'Cannot notify {process_type} process restart: {ce}')
+            logger.warning(f"Cannot notify {process_type} process restart: {ce}")
 
 
 def iter_entry_points(group, name=None):
@@ -239,38 +265,39 @@ def iter_entry_points(group, name=None):
 def configure_logger(debug, no_rich):
     logging.config.dictConfig(
         {
-            'version': 1,
-            'disable_existing_loggers': False,
-            'formatters': {
-                'verbose': {
-                    'format': '%(asctime)s %(name)s %(levelname)s PID_%(process)d %(message)s',
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "verbose": {
+                    "format": "%(asctime)s %(name)s %(levelname)s PID_%(process)d %(message)s",
                 },
-                'rich': {
-                    'format': '%(message)s',
-                },
-            },
-            'filters': {},
-            'handlers': {
-                'console': {
-                    'class': 'logging.StreamHandler',
-                    'formatter': 'verbose',
-                },
-                'rich': {
-                    'class': 'rich.logging.RichHandler',
-                    'formatter': 'rich',
-                    'log_time_format': lambda x: x.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
-                    'rich_tracebacks': True,
-
+                "rich": {
+                    "format": "%(message)s",
                 },
             },
-            'loggers': {
-                'connect.eaas': {
-                    'handlers': ['console'] if no_rich else ['rich'],
-                    'level': 'DEBUG' if debug else 'INFO',
+            "filters": {},
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "verbose",
                 },
-                'eaas': {
-                    'handlers': ['console'] if no_rich else ['rich'],
-                    'level': 'DEBUG' if debug else 'INFO',
+                "rich": {
+                    "class": "rich.logging.RichHandler",
+                    "formatter": "rich",
+                    "log_time_format": lambda x: x.strftime("%Y-%m-%d %H:%M:%S.%f")[
+                        :-3
+                    ],
+                    "rich_tracebacks": True,
+                },
+            },
+            "loggers": {
+                "connect.eaas": {
+                    "handlers": ["console"] if no_rich else ["rich"],
+                    "level": "DEBUG" if debug else "INFO",
+                },
+                "eaas": {
+                    "handlers": ["console"] if no_rich else ["rich"],
+                    "level": "DEBUG" if debug else "INFO",
                 },
             },
         },
@@ -280,7 +307,7 @@ def configure_logger(debug, no_rich):
 def check_runner_version(context):
     try:
         connect_full_version = get_connect_version()
-        connect_version = connect_full_version.split('.')[0]
+        connect_version = connect_full_version.split(".")[0]
         runner_version = get_version()
         latest_runner_version = get_pypi_runner_latest_version(connect_version)
 
@@ -288,11 +315,11 @@ def check_runner_version(context):
             return ValidationResult(
                 items=[
                     ValidationItem(
-                        level='ERROR',
+                        level="ERROR",
                         message=(
-                            'Runner is outdated, please, update. '
-                            f'Required version {latest_runner_version}, '
-                            f'current version: {runner_version}.'
+                            "Runner is outdated, please, update. "
+                            f"Required version {latest_runner_version}, "
+                            f"current version: {runner_version}."
                         ),
                     ),
                 ],
@@ -301,7 +328,7 @@ def check_runner_version(context):
     except Exception as e:
         return ValidationResult(
             items=[
-                ValidationItem(level='ERROR', message=str(e)),
+                ValidationItem(level="ERROR", message=str(e)),
             ],
             must_exit=True,
         )
@@ -311,13 +338,13 @@ def check_runner_version(context):
 def validate_extension():
     validation_items = []
     event_definitions = {
-        definition['type']: definition
-        for definition in get_client()('devops').event_definitions.all()
+        definition["type"]: definition
+        for definition in get_client()("devops").event_definitions.all()
     }
     context = {
-        'runner_version': get_version(),
-        'project_dir': os.getcwd(),
-        'event_definitions': event_definitions,
+        "runner_version": get_version(),
+        "project_dir": os.getcwd(),
+        "event_definitions": event_definitions,
     }
     for validator in [check_runner_version, *get_validators()]:
         result = validator(context=context)
@@ -327,36 +354,38 @@ def validate_extension():
         if result.context:
             context.update(result.context)
 
-    higest_message_level = 'INFO'
+    higest_message_level = "INFO"
 
     tables = []
 
     if validation_items:
-        higest_message_level = 'WARNING'
+        higest_message_level = "WARNING"
         for item in validation_items:
-            if item.level == 'ERROR':
-                higest_message_level = 'ERROR'
+            if item.level == "ERROR":
+                higest_message_level = "ERROR"
             table = Table(
                 box=box.ROUNDED,
                 show_header=False,
             )
-            table.add_column('Field', style='blue')
-            table.add_column('Value', overflow='fold')
-            level_color = 'red' if item.level == 'ERROR' else 'yellow'
-            table.add_row('Level', f'[bold {level_color}]{item.level}[/]')
-            table.add_row('Message', Markdown(item.message))
-            table.add_row('File', item.file or '-')
+            table.add_column("Field", style="blue")
+            table.add_column("Value", overflow="fold")
+            level_color = "red" if item.level == "ERROR" else "yellow"
+            table.add_row("Level", f"[bold {level_color}]{item.level}[/]")
+            table.add_row("Message", Markdown(item.message))
+            table.add_row("File", item.file or "-")
             table.add_row(
-                'Code',
+                "Code",
                 Syntax(
                     item.code,
-                    'python3',
-                    theme='ansi_light',
+                    "python3",
+                    theme="ansi_light",
                     dedent=True,
                     line_numbers=True,
                     start_line=item.start_line,
                     highlight_lines={item.lineno},
-                ) if item.code else '-',
+                )
+                if item.code
+                else "-",
             )
             tables.append(table)
     return higest_message_level, tables
@@ -367,43 +396,40 @@ def get_no_features_table():
         box=box.ROUNDED,
         show_header=False,
     )
-    table.add_column('Field', style='blue')
-    table.add_column('Value')
-    table.add_row('Level', '[bold red]ERROR[/]')
+    table.add_column("Field", style="blue")
+    table.add_column("Value")
+    table.add_row("Level", "[bold red]ERROR[/]")
     table.add_row(
-        'Message',
-        (
-            'No feature available for current extension. '
-            'Did you run poetry install ?'
-        ),
+        "Message",
+        ("No feature available for current extension. Did you run poetry install ?"),
     )
-    table.add_row('File', '-')
-    table.add_row('Code', '-')
+    table.add_row("File", "-")
+    table.add_row("Code", "-")
     return table
 
 
 def get_anvilapp_detail_table(details):
     callables_table = None
 
-    callables = details['features'].get('callables')
+    callables = details["features"].get("callables")
 
     if callables:
         callables_table = Table(
             box=box.MINIMAL_HEAVY_HEAD,
-            title='Anvil Callables',
-            title_style='blue',
+            title="Anvil Callables",
+            title_style="blue",
             show_header=True,
             expand=True,
-            row_styles=['', 'dim'],
+            row_styles=["", "dim"],
         )
-        callables_table.add_column('Method')
-        callables_table.add_column('Summary')
-        callables_table.add_column('Description')
+        callables_table.add_column("Method")
+        callables_table.add_column("Summary")
+        callables_table.add_column("Description")
         for callable in callables:
             callables_table.add_row(
-                callable['method'],
-                callable['summary'],
-                callable['description'],
+                callable["method"],
+                callable["summary"],
+                callable["description"],
             )
 
     return callables_table
@@ -414,45 +440,45 @@ def get_eventsapp_detail_table(details):
     schedulables_table = None
     grid = None
 
-    events = details['features'].get('events')
-    schedulables = details['features'].get('schedulables')
+    events = details["features"].get("events")
+    schedulables = details["features"].get("schedulables")
 
     if events:
         events_table = Table(
             box=box.MINIMAL_HEAVY_HEAD,
-            title='Event Subscriptions',
-            title_style='blue',
+            title="Event Subscriptions",
+            title_style="blue",
             show_header=True,
             expand=True,
-            row_styles=['', 'dim'],
+            row_styles=["", "dim"],
         )
-        events_table.add_column('Method Name')
-        events_table.add_column('Event Type')
-        events_table.add_column('Statuses')
+        events_table.add_column("Method Name")
+        events_table.add_column("Event Type")
+        events_table.add_column("Statuses")
         for event in events.values():
             events_table.add_row(
-                event['method'],
-                event['event_type'],
-                ', '.join(event['statuses'] or []),
+                event["method"],
+                event["event_type"],
+                ", ".join(event["statuses"] or []),
             )
 
     if schedulables:
         schedulables_table = Table(
             box=box.MINIMAL_HEAVY_HEAD,
-            title='Schedulable Methods',
-            title_style='blue',
+            title="Schedulable Methods",
+            title_style="blue",
             show_header=True,
             expand=True,
-            row_styles=['', 'dim'],
+            row_styles=["", "dim"],
         )
-        schedulables_table.add_column('Method Name')
-        schedulables_table.add_column('Name')
-        schedulables_table.add_column('Description')
+        schedulables_table.add_column("Method Name")
+        schedulables_table.add_column("Name")
+        schedulables_table.add_column("Description")
         for schedulable in schedulables:
             schedulables_table.add_row(
-                schedulable['method'],
-                schedulable['name'],
-                schedulable['description'],
+                schedulable["method"],
+                schedulable["name"],
+                schedulable["description"],
             )
 
     if events_table and schedulables_table:
@@ -470,65 +496,65 @@ def get_webapp_detail_table(details):
     ui_modules_table = None
     grid = None
 
-    auth_endpoints = details['features']['endpoints'].get('auth')
-    no_auth_endpoints = details['features']['endpoints'].get('no_auth')
-    ui_modules = details['features'].get('ui_modules')
+    auth_endpoints = details["features"]["endpoints"].get("auth")
+    no_auth_endpoints = details["features"]["endpoints"].get("no_auth")
+    ui_modules = details["features"].get("ui_modules")
 
     if auth_endpoints:
         auth_table = Table(
             box=box.MINIMAL_HEAVY_HEAD,
-            title='Authenticated API Endpoints',
-            title_style='blue',
+            title="Authenticated API Endpoints",
+            title_style="blue",
             show_header=True,
             expand=True,
-            row_styles=['', 'dim'],
+            row_styles=["", "dim"],
         )
-        auth_table.add_column('Summary')
-        auth_table.add_column('Method')
-        auth_table.add_column('Path')
+        auth_table.add_column("Summary")
+        auth_table.add_column("Method")
+        auth_table.add_column("Path")
         for endpoint in auth_endpoints:
             auth_table.add_row(
-                endpoint['summary'],
-                endpoint['method'],
-                endpoint['path'],
+                endpoint["summary"],
+                endpoint["method"],
+                endpoint["path"],
             )
 
     if no_auth_endpoints:
         no_auth_table = Table(
             box=box.MINIMAL_HEAVY_HEAD,
-            title='Non Authenticated API Endpoints',
-            title_style='blue',
+            title="Non Authenticated API Endpoints",
+            title_style="blue",
             show_header=True,
             expand=True,
-            row_styles=['', 'dim'],
+            row_styles=["", "dim"],
         )
-        no_auth_table.add_column('Summary')
-        no_auth_table.add_column('Method')
-        no_auth_table.add_column('Path')
+        no_auth_table.add_column("Summary")
+        no_auth_table.add_column("Method")
+        no_auth_table.add_column("Path")
         for endpoint in no_auth_endpoints:
             no_auth_table.add_row(
-                endpoint['summary'],
-                endpoint['method'],
-                endpoint['path'],
+                endpoint["summary"],
+                endpoint["method"],
+                endpoint["path"],
             )
 
     if ui_modules:
         ui_modules_table = Table(
             box=box.MINIMAL_HEAVY_HEAD,
-            title='UI Components',
-            title_style='blue',
+            title="UI Components",
+            title_style="blue",
             show_header=True,
             expand=True,
-            row_styles=['', 'dim'],
+            row_styles=["", "dim"],
         )
-        ui_modules_table.add_column('Name')
-        ui_modules_table.add_column('Url')
-        ui_modules_table.add_column('Integration point')
+        ui_modules_table.add_column("Name")
+        ui_modules_table.add_column("Url")
+        ui_modules_table.add_column("Integration point")
         for ui_module in ui_modules:
             ui_modules_table.add_row(
-                ui_module['name'],
-                ui_module['url'],
-                ui_module['integration_point'],
+                ui_module["name"],
+                ui_module["url"],
+                ui_module["integration_point"],
             )
 
     grid = Table.grid(expand=True)
@@ -547,27 +573,27 @@ def get_tfnapp_detail_table(details):
     grid = Table.grid(expand=True)
     grid.add_column()
 
-    transformations = details['features'].get('transformations')
+    transformations = details["features"].get("transformations")
 
     if transformations:
         table = Table(
             box=box.MINIMAL_HEAVY_HEAD,
-            title='Transformations',
-            title_style='blue',
+            title="Transformations",
+            title_style="blue",
             show_header=True,
             expand=True,
-            row_styles=['', 'dim'],
+            row_styles=["", "dim"],
         )
-        table.add_column('Name')
-        table.add_column('Description')
-        table.add_column('Edit dialog')
-        table.add_column('Method')
+        table.add_column("Name")
+        table.add_column("Description")
+        table.add_column("Edit dialog")
+        table.add_column("Method")
         for transformation in transformations:
             table.add_row(
-                transformation['name'],
-                transformation['description'],
-                transformation['edit_dialog_ui'],
-                transformation['method'],
+                transformation["name"],
+                transformation["description"],
+                transformation["edit_dialog_ui"],
+                transformation["method"],
             )
 
         grid.add_row(table)
@@ -578,46 +604,46 @@ def get_tfnapp_detail_table(details):
 def get_features_table(features):
     table = Table(
         box=box.ROUNDED,
-        title='Available Features',
-        title_style='blue',
+        title="Available Features",
+        title_style="blue",
         show_header=True,
         show_lines=True,
         expand=True,
     )
-    table.add_column('Feature Name')
-    table.add_column('Supported', width=9)
-    table.add_column('Details')
+    table.add_column("Feature Name")
+    table.add_column("Supported", width=9)
+    table.add_column("Details")
 
     for feature_handler, details in features.items():
-        if not details['available']:
+        if not details["available"]:
             table.add_row(
                 HANDLER_CLASS_TITLE[feature_handler],
-                Align.center('[red]\u2716[/]'),
-                '-',
+                Align.center("[red]\u2716[/]"),
+                "-",
             )
             continue
-        if feature_handler == 'EventsApp':
+        if feature_handler == "EventsApp":
             table.add_row(
                 HANDLER_CLASS_TITLE[feature_handler],
-                Align.center('[green]\u2714[/]'),
+                Align.center("[green]\u2714[/]"),
                 Align.center(get_eventsapp_detail_table(details)),
             )
-        elif feature_handler == 'WebApp':
+        elif feature_handler == "WebApp":
             table.add_row(
                 HANDLER_CLASS_TITLE[feature_handler],
-                Align.center('[green]\u2714[/]'),
+                Align.center("[green]\u2714[/]"),
                 Align.center(get_webapp_detail_table(details)),
             )
-        elif feature_handler == 'AnvilApp':
+        elif feature_handler == "AnvilApp":
             table.add_row(
                 HANDLER_CLASS_TITLE[feature_handler],
-                Align.center('[green]\u2714[/]'),
+                Align.center("[green]\u2714[/]"),
                 Align.center(get_anvilapp_detail_table(details)),
             )
-        elif feature_handler == 'TfnApp':
+        elif feature_handler == "TfnApp":
             table.add_row(
                 HANDLER_CLASS_TITLE[feature_handler],
-                Align.center('[green]\u2714[/]'),
+                Align.center("[green]\u2714[/]"),
                 Align.center(get_tfnapp_detail_table(details)),
             )
     return table

@@ -51,7 +51,10 @@ class TasksManagerBase(ABC):
     """
     Base class for Tasks managers.
     """
-    def __init__(self, config: ConfigHelper, handler: Union[EventsApp, TfnApp], enqueue):
+
+    def __init__(
+        self, config: ConfigHelper, handler: Union[EventsApp, TfnApp], enqueue
+    ):
         self.config = config
         self.handler = handler
         self.enqueue = enqueue
@@ -69,10 +72,12 @@ class TasksManagerBase(ABC):
     async def filter_collection_by_event_definition(self, client, task_data):
         definition = self.config.event_definitions[task_data.input.event_type]
         supported_statuses = []
-        template_args = {'_object_id_': task_data.input.object_id}
-        if 'events' in self.handler.get_features():
-            supported_statuses = self.handler.events[task_data.input.event_type]['statuses']
-            template_args['_statuses_'] = f'({",".join(supported_statuses)})'
+        template_args = {"_object_id_": task_data.input.object_id}
+        if "events" in self.handler.get_features():
+            supported_statuses = self.handler.events[task_data.input.event_type][
+                "statuses"
+            ]
+            template_args["_statuses_"] = f"({','.join(supported_statuses)})"
 
         rql_filter = Template(definition.api_collection_filter).substitute(
             template_args,
@@ -83,13 +88,13 @@ class TasksManagerBase(ABC):
         count = await collection.filter(rql_filter).count()
         if count == 0:
             logger.info(
-                f'Send skip response for {task_data.options.task_id} since '
-                'the current request status is not supported.',
+                f"Send skip response for {task_data.options.task_id} since "
+                "the current request status is not supported.",
             )
             self.send_skip_response(
                 task_data,
-                'The request status does not match the '
-                f'supported statuses: {",".join(supported_statuses)}.',
+                "The request status does not match the "
+                f"supported statuses: {','.join(supported_statuses)}.",
             )
 
         return count
@@ -107,8 +112,8 @@ class TasksManagerBase(ABC):
             async with self.lock:
                 self.running_tasks += 1
             logger.info(
-                f'new {task_data.options.task_category} task received: '
-                f'{task_data.options.task_id}, running tasks: {self.running_tasks}',
+                f"new {task_data.options.task_category} task received: "
+                f"{task_data.options.task_id}, running tasks: {self.running_tasks}",
             )
             argument = await self.get_argument(task_data)
             if not argument:
@@ -118,12 +123,12 @@ class TasksManagerBase(ABC):
                 installation = await self.get_installation(task_data)
             method_name = self.get_method_name(task_data, argument)
             kwargs = {
-                'installation': installation,
-                'api_key': task_data.options.api_key,
-                'connect_correlation_id': task_data.options.connect_correlation_id,
+                "installation": installation,
+                "api_key": task_data.options.api_key,
+                "connect_correlation_id": task_data.options.connect_correlation_id,
             }
             if task_data.options.task_category == TaskCategory.TRANSFORMATION:
-                kwargs['transformation_request'] = argument
+                kwargs["transformation_request"] = argument
             method = self.handler.get_method(
                 task_data.input.event_type,
                 task_data.options.task_id,
@@ -135,21 +140,46 @@ class TasksManagerBase(ABC):
                     self.running_tasks -= 1
                 return
 
-            logger.info(f'invoke method {method.__name__} for task {task_data.options.task_id}')
+            logger.info(
+                f"invoke method {method.__name__} for task {task_data.options.task_id}"
+            )
             await self.invoke(task_data, method, argument)
         except ClientError as ce:
             logger.warning(
-                f'Cannot retrieve object {task_data.input.object_id} '
-                f'for task {task_data.options.task_id}',
+                f"Cannot retrieve object {task_data.input.object_id} "
+                f"for task {task_data.options.task_id}",
             )
-            self.send_exception_response(task_data, ce)
+            if self.is_transient_api_error(ce):
+                self.send_transient_error_response(task_data, ce)
+            else:
+                self.send_exception_response(task_data, ce)
             return
         except Exception as e:
             logger.error(
-                f'Exceptions while processing task {task_data.options.task_id}',
+                f"Exceptions while processing task {task_data.options.task_id}",
             )
             self.send_exception_response(task_data, e)
             return
+
+    @staticmethod
+    def is_transient_api_error(error: ClientError) -> bool:
+        """
+        Returns True if the error means the Connect API is temporarily
+        unavailable: a 5xx response or a transport error (no status code).
+        """
+        return error.status_code is None or error.status_code >= 500
+
+    def send_transient_error_response(self, data, e):
+        """
+        Enqueue the result for a task whose object could not be retrieved
+        because the Connect API is temporarily unavailable.
+        Defaults to the generic exception response; managers can override it.
+        :param data: Task data.
+        :type data: connect.eaas.core.proto.Task
+        :param e: The transient ClientError.
+        :type e: ClientError
+        """
+        self.send_exception_response(data, e)
 
     def send_exception_response(self, data, e):
         """
@@ -195,7 +225,7 @@ class TasksManagerBase(ABC):
                 method,
                 argument,
             )
-        logger.info(f'enqueue result for task {task_data.options.task_id}')
+        logger.info(f"enqueue result for task {task_data.options.task_id}")
         asyncio.create_task(self.enqueue_result(task_data, future))
 
     def log_exception(self, task_data, e):
@@ -204,13 +234,13 @@ class TasksManagerBase(ABC):
         and the extension one.
         """
         logger.warning(
-            f'Got exception during execution of task {task_data.options.task_id}: {e}',
+            f"Got exception during execution of task {task_data.options.task_id}: {e}",
         )
         ext_logger = self.handler.get_logger(
-            extra={'task_id': task_data.options.task_id},
+            extra={"task_id": task_data.options.task_id},
         )
         ext_logger.exception(
-            f'Unhandled exception during execution of task {task_data.options.task_id}',
+            f"Unhandled exception during execution of task {task_data.options.task_id}",
         )
 
     @abstractmethod
@@ -235,9 +265,14 @@ class TasksManagerBase(ABC):
         Get the related event installation for multi-account
         extension.
         """
-        return await self.client(
-            'devops',
-        ).services[self.config.service_id].installations[task_data.options.installation_id].get()
+        return (
+            await self.client(
+                "devops",
+            )
+            .services[self.config.service_id]
+            .installations[task_data.options.installation_id]
+            .get()
+        )
 
     @abstractmethod
     def get_method_name(self, task_data, argument):  # pragma: no cover
