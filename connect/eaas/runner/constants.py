@@ -10,30 +10,30 @@ from connect.eaas.core.enums import (
 
 
 EVENT_TYPE_EXT_METHOD_MAP = {
-    EventType.ASSET_PURCHASE_REQUEST_PROCESSING: "process_asset_purchase_request",
-    EventType.ASSET_CHANGE_REQUEST_PROCESSING: "process_asset_change_request",
-    EventType.ASSET_SUSPEND_REQUEST_PROCESSING: "process_asset_suspend_request",
-    EventType.ASSET_RESUME_REQUEST_PROCESSING: "process_asset_resume_request",
-    EventType.ASSET_CANCEL_REQUEST_PROCESSING: "process_asset_cancel_request",
-    EventType.ASSET_ADJUSTMENT_REQUEST_PROCESSING: "process_asset_adjustment_request",
-    EventType.ASSET_RENEW_REQUEST_PROCESSING: "process_asset_renew_request",
-    EventType.ASSET_TRANSFER_REQUEST_PROCESSING: "process_asset_transfer_request",
-    EventType.ASSET_PURCHASE_REQUEST_VALIDATION: "validate_asset_purchase_request",
-    EventType.ASSET_CHANGE_REQUEST_VALIDATION: "validate_asset_change_request",
-    EventType.ASSET_RENEW_REQUEST_VALIDATION: "validate_asset_renew_request",
-    EventType.ASSET_TRANSFER_REQUEST_VALIDATION: "validate_asset_transfer_request",
-    EventType.PRODUCT_ACTION_EXECUTION: "execute_product_action",
-    EventType.PRODUCT_CUSTOM_EVENT_PROCESSING: "process_product_custom_event",
-    EventType.TIER_CONFIG_SETUP_REQUEST_PROCESSING: "process_tier_config_setup_request",
-    EventType.TIER_CONFIG_CHANGE_REQUEST_PROCESSING: "process_tier_config_change_request",
-    EventType.TIER_CONFIG_ADJUSTMENT_REQUEST_PROCESSING: "process_tier_config_adjustment_request",
-    EventType.TIER_CONFIG_SETUP_REQUEST_VALIDATION: "validate_tier_config_setup_request",
-    EventType.TIER_CONFIG_CHANGE_REQUEST_VALIDATION: "validate_tier_config_change_request",
-    EventType.LISTING_NEW_REQUEST_PROCESSING: "process_new_listing_request",
-    EventType.LISTING_REMOVE_REQUEST_PROCESSING: "process_remove_listing_request",
-    EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING: "process_tier_account_update_request",
-    EventType.USAGE_FILE_REQUEST_PROCESSING: "process_usage_file",
-    EventType.PART_USAGE_FILE_REQUEST_PROCESSING: "process_usage_chunk_file",
+    EventType.ASSET_PURCHASE_REQUEST_PROCESSING: 'process_asset_purchase_request',
+    EventType.ASSET_CHANGE_REQUEST_PROCESSING: 'process_asset_change_request',
+    EventType.ASSET_SUSPEND_REQUEST_PROCESSING: 'process_asset_suspend_request',
+    EventType.ASSET_RESUME_REQUEST_PROCESSING: 'process_asset_resume_request',
+    EventType.ASSET_CANCEL_REQUEST_PROCESSING: 'process_asset_cancel_request',
+    EventType.ASSET_ADJUSTMENT_REQUEST_PROCESSING: 'process_asset_adjustment_request',
+    EventType.ASSET_RENEW_REQUEST_PROCESSING: 'process_asset_renew_request',
+    EventType.ASSET_TRANSFER_REQUEST_PROCESSING: 'process_asset_transfer_request',
+    EventType.ASSET_PURCHASE_REQUEST_VALIDATION: 'validate_asset_purchase_request',
+    EventType.ASSET_CHANGE_REQUEST_VALIDATION: 'validate_asset_change_request',
+    EventType.ASSET_RENEW_REQUEST_VALIDATION: 'validate_asset_renew_request',
+    EventType.ASSET_TRANSFER_REQUEST_VALIDATION: 'validate_asset_transfer_request',
+    EventType.PRODUCT_ACTION_EXECUTION: 'execute_product_action',
+    EventType.PRODUCT_CUSTOM_EVENT_PROCESSING: 'process_product_custom_event',
+    EventType.TIER_CONFIG_SETUP_REQUEST_PROCESSING: 'process_tier_config_setup_request',
+    EventType.TIER_CONFIG_CHANGE_REQUEST_PROCESSING: 'process_tier_config_change_request',
+    EventType.TIER_CONFIG_ADJUSTMENT_REQUEST_PROCESSING: 'process_tier_config_adjustment_request',
+    EventType.TIER_CONFIG_SETUP_REQUEST_VALIDATION: 'validate_tier_config_setup_request',
+    EventType.TIER_CONFIG_CHANGE_REQUEST_VALIDATION: 'validate_tier_config_change_request',
+    EventType.LISTING_NEW_REQUEST_PROCESSING: 'process_new_listing_request',
+    EventType.LISTING_REMOVE_REQUEST_PROCESSING: 'process_remove_listing_request',
+    EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING: 'process_tier_account_update_request',
+    EventType.USAGE_FILE_REQUEST_PROCESSING: 'process_usage_file',
+    EventType.PART_USAGE_FILE_REQUEST_PROCESSING: 'process_usage_chunk_file',
 }
 
 ASSET_REQUEST_EVENT_TYPES = (
@@ -81,6 +81,7 @@ BACKGROUND_EVENT_TYPES = (
     EventType.TIER_ACCOUNT_UPDATE_REQUEST_PROCESSING,
     EventType.USAGE_FILE_REQUEST_PROCESSING,
     EventType.PART_USAGE_FILE_REQUEST_PROCESSING,
+
 )
 
 INTERACTIVE_EVENT_TYPES = (
@@ -135,21 +136,21 @@ SHUTDOWN_WAIT_GRACE_SECONDS = 1
 REPORT_EVERY_ROW_MAX = 1000
 
 ORDINAL_SUFFIX = {
-    1: "st",
-    2: "nd",
-    3: "rd",
-    11: "th",
-    12: "th",
-    13: "th",
+    1: 'st',
+    2: 'nd',
+    3: 'rd',
+    11: 'th',
+    12: 'th',
+    13: 'th',
 }
 
-PYPI_EXTENSION_RUNNER_URL = "https://pypi.org/pypi/connect-extension-runner/json"
+PYPI_EXTENSION_RUNNER_URL = 'https://pypi.org/pypi/connect-extension-runner/json'
 
-BACKGROUND_EVENTS_WORKER = "background"
-INTERACTIVE_EVENTS_WORKER = "interactive"
-WEBAPP_WORKER = "webapp"
-ANVILAPP_WORKER = "anvilapp"
-TFNAPP_WORKER = "tfnapp"
+BACKGROUND_EVENTS_WORKER = 'background'
+INTERACTIVE_EVENTS_WORKER = 'interactive'
+WEBAPP_WORKER = 'webapp'
+ANVILAPP_WORKER = 'anvilapp'
+TFNAPP_WORKER = 'tfnapp'
 
 WORKER_TYPES = (
     BACKGROUND_EVENTS_WORKER,
@@ -160,19 +161,19 @@ WORKER_TYPES = (
 )
 
 HANDLER_CLASS_TITLE = {
-    "EventsApp": "Events Processing Application",
-    "AnvilApp": "Anvil Application",
-    "WebApp": "Web Application",
-    "TfnApp": "Transformation Application",
+    'EventsApp': 'Events Processing Application',
+    'AnvilApp': 'Anvil Application',
+    'WebApp': 'Web Application',
+    'TfnApp': 'Transformation Application',
 }
 
 PROCESS_CHECK_INTERVAL_SECS = 1
 
 LEVEL_TO_FONT_COLOR = {
-    "INFO": ("ansi_regular", "BLUE"),
-    "WARNING": ("bloody", "YELLOW"),
-    "ERROR": ("bloody", "RED"),
+    'INFO': ('ansi_regular', 'BLUE'),
+    'WARNING': ('bloody', 'YELLOW'),
+    'ERROR': ('bloody', 'RED'),
 }
 
-EXCEL_NULL_MARKER = "#N/A"
-ROW_DELETED_MARKER = "#INSTRUCTION/DELETE_ROW"
+EXCEL_NULL_MARKER = '#N/A'
+ROW_DELETED_MARKER = '#INSTRUCTION/DELETE_ROW'

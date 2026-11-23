@@ -32,17 +32,17 @@ async def test_submit(mocker, extension_cls, task_payload):
             pass
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    mocked_get_argument = mocker.patch.object(TaskManager, "get_argument")
-    mocked_get_argument.return_value = {"test": "data"}
-    mocked_invoke = mocker.patch.object(TaskManager, "invoke")
-    mocked_get_method = mocker.patch.object(EventsApp, "get_method")
+    mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
+    mocked_get_argument.return_value = {'test': 'data'}
+    mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
+    mocked_get_method = mocker.patch.object(EventsApp, 'get_method')
 
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     extension_instance = cls(None, None, None)
@@ -51,23 +51,21 @@ async def test_submit(mocker, extension_cls, task_payload):
 
     manager = TaskManager(config, handler, None)
 
-    task_data = Task(**task_payload("category", "type", "ID"))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     assert manager.running_tasks == 0
     await manager.submit(task_data)
 
     mocked_get_method.assert_called_once_with(
-        "type",
+        'type',
         task_data.options.task_id,
-        "my_method",
+        'my_method',
         installation=None,
         api_key=None,
         connect_correlation_id=None,
     )
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_awaited_once_with(
-        task_data,
-        extension_instance.my_method,
-        {"test": "data"},
+        task_data, extension_instance.my_method, {'test': 'data'},
     )
     assert manager.running_tasks == 1
 
@@ -82,22 +80,22 @@ async def test_submit_multi_account(mocker, extension_cls, task_payload):
             pass
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    mocked_get_argument = mocker.patch.object(TaskManager, "get_argument")
-    mocked_get_argument.return_value = {"test": "data"}
-    mocked_invoke = mocker.patch.object(TaskManager, "invoke")
-    mocked_get_method = mocker.patch.object(EventsApp, "get_method")
+    mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
+    mocked_get_argument.return_value = {'test': 'data'}
+    mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
+    mocked_get_method = mocker.patch.object(EventsApp, 'get_method')
     mocked_get_installation = mocker.patch.object(
         TaskManager,
-        "get_installation",
-        return_value={"installation": "data"},
+        'get_installation',
+        return_value={'installation': 'data'},
     )
 
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     extension_instance = cls(None, None, None)
@@ -106,32 +104,25 @@ async def test_submit_multi_account(mocker, extension_cls, task_payload):
 
     manager = TaskManager(config, handler, None)
 
-    task_data = Task(
-        **task_payload(
-            "category",
-            "type",
-            "ID",
-            api_key="api_key",
-            installation_id="installation_id",
-            connect_correlation_id="correlation_id",
-        )
-    )
+    task_data = Task(**task_payload(
+        'category', 'type', 'ID',
+        api_key='api_key', installation_id='installation_id',
+        connect_correlation_id='correlation_id',
+    ))
     assert manager.running_tasks == 0
     await manager.submit(task_data)
 
     mocked_get_method.assert_called_once_with(
-        "type",
+        'type',
         task_data.options.task_id,
-        "my_method",
-        installation={"installation": "data"},
-        api_key="api_key",
-        connect_correlation_id="correlation_id",
+        'my_method',
+        installation={'installation': 'data'},
+        api_key='api_key',
+        connect_correlation_id='correlation_id',
     )
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_invoke.assert_awaited_once_with(
-        task_data,
-        extension_instance.my_method,
-        {"test": "data"},
+        task_data, extension_instance.my_method, {'test': 'data'},
     )
     assert manager.running_tasks == 1
     mocked_get_installation.assert_called_once_with(task_data)
@@ -144,35 +135,35 @@ async def test_submit_client_error(mocker, extension_cls, task_payload):
             try:
                 await future
             except Exception as e:
-                task_data.output = TaskOutput(result="fail", message=str(e))
+                task_data.output = TaskOutput(result='fail', message=str(e))
                 return task_data
 
         async def get_argument(self, task_data):
             pass
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    mocked_get_argument = mocker.patch.object(TaskManager, "get_argument")
-    exc = ClientError("test error")
+    mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
+    exc = ClientError('test error')
     mocked_get_argument.side_effect = exc
-    mocked_invoke = mocker.patch.object(TaskManager, "invoke")
+    mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
 
     mocked_put = mocker.AsyncMock()
 
-    mocked_get_method = mocker.patch.object(EventsApp, "get_method")
+    mocked_get_method = mocker.patch.object(EventsApp, 'get_method')
 
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, mocked_put)
 
-    task_data = Task(**task_payload("category", "type", "ID"))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(.01)
     mocked_get_argument.assert_awaited_once_with(task_data)
     mocked_get_method.assert_not_called()
     mocked_invoke.assert_not_awaited()
@@ -188,32 +179,32 @@ async def test_submit_exception(mocker, extension_cls, task_payload):
             try:
                 await future
             except Exception as e:
-                task_data.output = TaskOutput(result="fail", message=str(e))
+                task_data.output = TaskOutput(result='fail', message=str(e))
                 return task_data
 
         async def get_argument(self, task_data):
             pass
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    mocked_get_argument = mocker.patch.object(TaskManager, "get_argument")
-    mocker.patch.object(TaskManager, "invoke", side_effect=Exception("invoke exc"))
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
+    mocked_get_argument = mocker.patch.object(TaskManager, 'get_argument')
+    mocker.patch.object(TaskManager, 'invoke', side_effect=Exception('invoke exc'))
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     mocked_put = mocker.AsyncMock()
 
     manager = TaskManager(config, handler, mocked_put)
 
-    task_data = Task(**task_payload("category", "type", "ID"))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(.01)
     mocked_get_argument.assert_awaited_once_with(task_data)
-    task_data.output.message = "invoke exc"
+    task_data.output.message = 'invoke exc'
     mocked_put.assert_awaited_once_with(task_data)
     assert manager.running_tasks == 0
 
@@ -228,21 +219,21 @@ async def test_submit_no_argument(mocker, extension_cls, task_payload):
             return None
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    mocked_invoke = mocker.patch.object(TaskManager, "invoke")
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
 
     config = ConfigHelper()
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 
-    task_data = Task(**task_payload("category", "type", "ID"))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(.01)
     mocked_invoke.assert_not_awaited()
 
 
@@ -256,31 +247,29 @@ async def test_submit_no_method(mocker, extension_cls, task_payload):
             return True
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    mocked_invoke = mocker.patch.object(TaskManager, "invoke")
+    mocked_invoke = mocker.patch.object(TaskManager, 'invoke')
 
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
-    mocker.patch.object(EventsApp, "get_method", return_value=None)
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
+    mocker.patch.object(EventsApp, 'get_method', return_value=None)
 
     config = ConfigHelper()
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 
-    task_data = Task(**task_payload("category", "type", "ID"))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(.01)
     mocked_invoke.assert_not_awaited()
     assert manager.running_tasks == 0
 
 
 @pytest.mark.asyncio
-async def test_log_exception(
-    mocker, extension_cls, settings_payload, task_payload, caplog
-):
+async def test_log_exception(mocker, extension_cls, settings_payload, task_payload, caplog):
     class TaskManager(TasksManagerBase):
         async def build_response(self, task_data, future):
             pass
@@ -295,50 +284,46 @@ async def test_log_exception(
     dyn = SetupResponse(**settings_payload)
     dyn.logging.logging_api_key = None
     config.update_dynamic_config(dyn)
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 
-    task_data = Task(**task_payload("category", "type", "ID"))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
 
     with caplog.at_level(logging.ERROR):
-        manager.log_exception(task_data, Exception("test exc"))
+        manager.log_exception(task_data, Exception('test exc'))
 
     assert caplog.record_tuples[-1] == (
-        "eaas.eventsapp",
+        'eaas.eventsapp',
         logging.ERROR,
-        "Unhandled exception during execution of task TQ-000",
+        'Unhandled exception during execution of task TQ-000',
     )
 
 
 @pytest.mark.asyncio
 async def test_get_installation(
-    mocker,
-    httpx_mock,
-    extension_cls,
-    settings_payload,
-    task_payload,
-    unused_port,
+    mocker, httpx_mock, extension_cls,
+    settings_payload, task_payload, unused_port,
 ):
 
     mocker.patch(
-        "connect.eaas.runner.config.get_environment",
+        'connect.eaas.runner.config.get_environment',
         return_value={
-            "ws_address": f"127.0.0.1:{unused_port}",
-            "api_address": f"127.0.0.1:{unused_port}",
-            "api_key": "SU-000:XXXX",
-            "environment_id": "ENV-000-0001",
-            "instance_id": "INS-000-0002",
-            "background_task_max_execution_time": 300,
-            "interactive_task_max_execution_time": 120,
-            "scheduled_task_max_execution_time": 43200,
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
         },
     )
 
-    api_url = f"https://127.0.0.1:{unused_port}/public/v1"
+    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
 
     class TaskManager(TasksManagerBase):
         async def build_response(self, task_data, future):
@@ -348,39 +333,33 @@ async def test_get_installation(
             pass
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
     config.update_dynamic_config(SetupResponse(**settings_payload))
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, None)
 
-    task_data = Task(
-        **task_payload(
-            "category",
-            "type",
-            "ID",
-            api_key="api_key",
-            installation_id="installation_id",
-        )
-    )
+    task_data = Task(**task_payload(
+        'category', 'type', 'ID', api_key='api_key', installation_id='installation_id',
+    ))
 
-    installation = {"installation": "data"}
+    installation = {'installation': 'data'}
 
     httpx_mock.add_response(
-        method="GET",
-        url=f"{api_url}/devops/services/{config.service_id}/installations/installation_id",
+        method='GET',
+        url=f'{api_url}/devops/services/{config.service_id}/installations/installation_id',
         json=installation,
     )
     assert await manager.get_installation(task_data) == installation
 
 
 @pytest.mark.parametrize(
-    ("status_code", "expected"),
+    ('status_code', 'expected'),
     (
         (None, True),
         (500, True),
@@ -393,21 +372,17 @@ async def test_get_installation(
     ),
 )
 def test_is_transient_api_error(status_code, expected):
-    error = ClientError("error", status_code=status_code)
+    error = ClientError('error', status_code=status_code)
     assert TasksManagerBase.is_transient_api_error(error) is expected
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("status_code", "transient"),
+    ('status_code', 'transient'),
     ((503, True), (None, True), (404, False)),
 )
 async def test_submit_client_error_dispatch(
-    mocker,
-    extension_cls,
-    task_payload,
-    status_code,
-    transient,
+    mocker, extension_cls, task_payload, status_code, transient,
 ):
     class TaskManager(TasksManagerBase):
         async def build_response(self, task_data, future):
@@ -417,21 +392,21 @@ async def test_submit_client_error_dispatch(
             pass
 
         def get_method_name(self, task_data, argument):
-            return "my_method"
+            return 'my_method'
 
-    exc = ClientError("error", status_code=status_code)
-    mocker.patch.object(TaskManager, "get_argument", side_effect=exc)
-    mocked_transient = mocker.patch.object(TaskManager, "send_transient_error_response")
-    mocked_exception = mocker.patch.object(TaskManager, "send_exception_response")
+    exc = ClientError('error', status_code=status_code)
+    mocker.patch.object(TaskManager, 'get_argument', side_effect=exc)
+    mocked_transient = mocker.patch.object(TaskManager, 'send_transient_error_response')
+    mocked_exception = mocker.patch.object(TaskManager, 'send_exception_response')
 
-    cls = extension_cls("my_method")
-    mocker.patch.object(cls, "get_descriptor")
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
     config = ConfigHelper()
-    mocker.patch.object(EventsApp, "load_application", return_value=cls)
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
     handler = EventsApp(config)
 
     manager = TaskManager(config, handler, mocker.AsyncMock())
-    task_data = Task(**task_payload("category", "type", "ID"))
+    task_data = Task(**task_payload('category', 'type', 'ID'))
     await manager.submit(task_data)
 
     if transient:
@@ -454,10 +429,10 @@ async def test_send_transient_error_response_default(mocker, task_payload):
         def get_method_name(self, task_data, argument):
             pass
 
-    mocked_exception = mocker.patch.object(TaskManager, "send_exception_response")
+    mocked_exception = mocker.patch.object(TaskManager, 'send_exception_response')
     manager = TaskManager(ConfigHelper(), None, None)
-    task_data = Task(**task_payload("category", "type", "ID"))
-    exc = ClientError("error", status_code=503)
+    task_data = Task(**task_payload('category', 'type', 'ID'))
+    exc = ClientError('error', status_code=503)
 
     manager.send_transient_error_response(task_data, exc)
 
