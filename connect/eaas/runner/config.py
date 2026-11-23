@@ -170,6 +170,9 @@ class ConfigHelper:
     def get_timeout(self, category):
         return self.env[f'{category}_task_max_execution_time']
 
+    def get_transient_error_reschedule_countdown(self):
+        return self.env['background_transient_error_reschedule_countdown']
+
     def update_dynamic_config(self, data):
         """Updates the dynamic configuration."""
         if data.logging is None:

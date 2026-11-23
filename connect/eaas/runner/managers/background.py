@@ -42,6 +42,23 @@ class BackgroundTasksManager(TasksManagerBase):
         future.set_result(BackgroundResponse.skip(output))
         asyncio.create_task(self.enqueue_result(data, future))
 
+    def send_transient_error_response(self, data, output):
+        """
+        Reschedule the task with a long countdown instead of returning RETRY,
+        so a Connect outage longer than the backend retry window does not
+        leave the object without an active task.
+        """
+        countdown = self.config.get_transient_error_reschedule_countdown()
+        logger.warning(
+            f'Connect API unavailable for task {data.options.task_id}, '
+            f'rescheduling in {countdown}s '
+            f'(status_code: {output.status_code})',
+        )
+        future = asyncio.Future()
+        future.set_result(BackgroundResponse.reschedule(countdown=countdown))
+        # Same fire-and-forget pattern as send_skip_response: the future is already resolved.
+        asyncio.create_task(self.enqueue_result(data, future))  # NOSONAR
+
     async def get_argument(self, task_data):
         """
         Get the request object through the Connect public API

@@ -47,6 +47,7 @@ from connect.eaas.core.validation.validators import (
 )
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN,
     HANDLER_CLASS_TITLE,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     ORDINAL_SUFFIX,
@@ -126,6 +127,10 @@ def get_environment():
         ),
         'transformation_write_queue_timeout': int(os.getenv(
             'TRANSFORMATION_WRITE_QUEUE_TIMEOUT', TRANSFORMATION_WRITE_QUEUE_TIMEOUT,
+        )),
+        'background_transient_error_reschedule_countdown': int(os.getenv(
+            'BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN',
+            BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN,
         )),
     }
 

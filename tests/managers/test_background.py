@@ -3,6 +3,9 @@ import time
 
 import pytest
 
+from connect.client import (
+    ClientError,
+)
 from connect.eaas.core.enums import (
     EventType,
     ResultType,
@@ -445,3 +448,99 @@ async def test_send_skip_response(mocker, task_payload):
     task.output = TaskOutput(result=ResultType.SKIP, message='test output', runtime=1.0)
 
     mocked_put.assert_awaited_once_with(task)
+
+
+@pytest.mark.asyncio
+async def test_send_transient_error_response(mocker, task_payload, caplog):
+    config = ConfigHelper()
+    config.env['background_transient_error_reschedule_countdown'] = 42
+    mocked_put = mocker.AsyncMock()
+    manager = BackgroundTasksManager(config, None, mocked_put)
+    manager.running_tasks = 1
+
+    task = Task(
+        **task_payload(
+            TaskCategory.BACKGROUND, EventType.ASSET_CHANGE_REQUEST_PROCESSING, 'PR-000',
+        ),
+    )
+
+    manager.send_transient_error_response(
+        task, ClientError('Service unavailable', status_code=503),
+    )
+    await asyncio.sleep(.01)
+
+    mocked_put.assert_awaited_once()
+    response = mocked_put.await_args.args[0]
+    assert response.output.result == ResultType.RESCHEDULE
+    assert response.output.countdown == 42
+    assert manager.running_tasks == 0
+    assert 'rescheduling in 42s' in caplog.text
+    assert '(status_code: 503)' in caplog.text
+    assert 'Service unavailable' not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_submit_get_argument_503_reschedules(
+    mocker, httpx_mock, extension_cls, settings_payload, task_payload, unused_port,
+):
+    """LITE-35595: a Connect 503 while fetching the request must reschedule, not RETRY."""
+    mocker.patch(
+        'connect.eaas.runner.config.get_environment',
+        return_value={
+            'ws_address': f'127.0.0.1:{unused_port}',
+            'api_address': f'127.0.0.1:{unused_port}',
+            'api_key': 'SU-000:XXXX',
+            'environment_id': 'ENV-000-0001',
+            'instance_id': 'INS-000-0002',
+            'background_task_max_execution_time': 300,
+            'interactive_task_max_execution_time': 120,
+            'scheduled_task_max_execution_time': 43200,
+            'background_transient_error_reschedule_countdown': 120,
+        },
+    )
+    mocker.patch('connect.client.mixins.time.sleep')
+    api_url = f'https://127.0.0.1:{unused_port}/public/v1'
+    mocker.patch.object(ConfigHelper, 'get_api_url', return_value=api_url)
+    config = ConfigHelper()
+    config.update_dynamic_config(SetupResponse(**settings_payload))
+    event_type = EventType.ASSET_CHANGE_REQUEST_PROCESSING
+    method = EVENT_TYPE_EXT_METHOD_MAP[event_type]
+    mocker.patch.object(
+        EventsApp,
+        'events',
+        new_callable=mocker.PropertyMock(return_value={
+            event_type: {'statuses': ['pending'], 'method': method},
+        }),
+    )
+    cls = extension_cls(method, async_impl=True)
+    mocker.patch.object(cls, 'get_descriptor')
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
+    handler = EventsApp(config)
+    mocked_invoke = mocker.patch.object(BackgroundTasksManager, 'invoke')
+    mocked_put = mocker.AsyncMock()
+    manager = BackgroundTasksManager(config, handler, mocked_put)
+
+    httpx_mock.add_response(
+        method='GET',
+        url=f'{api_url}/collection?and(eq(id,PR-000),in(status,(pending)))&limit=0&offset=0',
+        json=[],
+        headers={'Content-Range': 'items 0-0/1'},
+    )
+    for _ in range(4):  # first call + client max_retries (3)
+        httpx_mock.add_response(
+            method='GET',
+            url=f'{api_url}/collection/PR-000',
+            status_code=503,
+            json={'error_code': 'SYS_001', 'errors': ['Service unavailable']},
+        )
+
+    task = Task(**task_payload(TaskCategory.BACKGROUND, event_type, 'PR-000'))
+    await manager.submit(task)
+    await asyncio.sleep(.01)
+
+    mocked_invoke.assert_not_called()
+    mocked_put.assert_awaited_once()
+    response = mocked_put.await_args.args[0]
+    assert response.output.result == ResultType.RESCHEDULE
+    assert response.output.countdown == 120
+    assert manager.running_tasks == 0

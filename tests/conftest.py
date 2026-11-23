@@ -208,6 +208,7 @@ def default_env(mocker, unused_port):
             'transformation_task_max_execution_time': 300,
             'transformation_write_queue_timeout': 600,
             'row_transformation_task_max_execution_time': 60,
+            'background_transient_error_reschedule_countdown': 300,
         },
     )
 

@@ -31,6 +31,7 @@ from connect.eaas.core.validation.models import (
 )
 from connect.eaas.runner.constants import (
     BACKGROUND_TASK_MAX_EXECUTION_TIME,
+    BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN,
     INTERACTIVE_TASK_MAX_EXECUTION_TIME,
     SCHEDULED_TASK_MAX_EXECUTION_TIME,
 )
@@ -189,6 +190,9 @@ def test_get_environment_with_defaults(mocker):
     assert env['background_task_max_execution_time'] == BACKGROUND_TASK_MAX_EXECUTION_TIME
     assert env['interactive_task_max_execution_time'] == INTERACTIVE_TASK_MAX_EXECUTION_TIME
     assert env['scheduled_task_max_execution_time'] == SCHEDULED_TASK_MAX_EXECUTION_TIME
+    assert env['background_transient_error_reschedule_countdown'] == (
+        BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN
+    )
 
 
 def test_get_environment(mocker):
@@ -203,6 +207,7 @@ def test_get_environment(mocker):
             'BACKGROUND_TASK_MAX_EXECUTION_TIME': '1',
             'INTERACTIVE_TASK_MAX_EXECUTION_TIME': '2',
             'SCHEDULED_TASK_MAX_EXECUTION_TIME': '3',
+            'BACKGROUND_TRANSIENT_ERROR_RESCHEDULE_COUNTDOWN': '4',
         },
     )
     mocker.patch(
@@ -219,6 +224,7 @@ def test_get_environment(mocker):
     assert env['background_task_max_execution_time'] == 1
     assert env['interactive_task_max_execution_time'] == 2
     assert env['scheduled_task_max_execution_time'] == 3
+    assert env['background_transient_error_reschedule_countdown'] == 4
 
 
 def test_get_version(mocker):

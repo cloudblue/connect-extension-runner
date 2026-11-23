@@ -142,7 +142,10 @@ class TasksManagerBase(ABC):
                 f'Cannot retrieve object {task_data.input.object_id} '
                 f'for task {task_data.options.task_id}',
             )
-            self.send_exception_response(task_data, ce)
+            if self.is_transient_api_error(ce):
+                self.send_transient_error_response(task_data, ce)
+            else:
+                self.send_exception_response(task_data, ce)
             return
         except Exception as e:
             logger.error(
@@ -150,6 +153,26 @@ class TasksManagerBase(ABC):
             )
             self.send_exception_response(task_data, e)
             return
+
+    @staticmethod
+    def is_transient_api_error(error: ClientError) -> bool:
+        """
+        Returns True if the error means the Connect API is temporarily
+        unavailable: a 5xx response or a transport error (no status code).
+        """
+        return error.status_code is None or error.status_code >= 500
+
+    def send_transient_error_response(self, data, e):
+        """
+        Enqueue the result for a task whose object could not be retrieved
+        because the Connect API is temporarily unavailable.
+        Defaults to the generic exception response; managers can override it.
+        :param data: Task data.
+        :type data: connect.eaas.core.proto.Task
+        :param e: The transient ClientError.
+        :type e: ClientError
+        """
+        self.send_exception_response(data, e)
 
     def send_exception_response(self, data, e):
         """

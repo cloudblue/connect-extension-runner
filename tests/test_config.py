@@ -27,6 +27,12 @@ def test_get_user_agent(mocker):
     assert config.get_user_agent() == {'User-Agent': expected_ua}
 
 
+def test_get_transient_error_reschedule_countdown():
+    config = ConfigHelper()
+    config.env = {'background_transient_error_reschedule_countdown': 42}
+    assert config.get_transient_error_reschedule_countdown() == 42
+
+
 def test_update_dynamic_config(mocker):
     mocker.patch('connect.eaas.runner.config.logging.getLogger')
     config = ConfigHelper()

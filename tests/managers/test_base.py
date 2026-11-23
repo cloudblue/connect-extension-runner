@@ -356,3 +356,84 @@ async def test_get_installation(
         json=installation,
     )
     assert await manager.get_installation(task_data) == installation
+
+
+@pytest.mark.parametrize(
+    ('status_code', 'expected'),
+    (
+        (None, True),
+        (500, True),
+        (502, True),
+        (503, True),
+        (504, True),
+        (400, False),
+        (401, False),
+        (404, False),
+    ),
+)
+def test_is_transient_api_error(status_code, expected):
+    error = ClientError('error', status_code=status_code)
+    assert TasksManagerBase.is_transient_api_error(error) is expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ('status_code', 'transient'),
+    ((503, True), (None, True), (404, False)),
+)
+async def test_submit_client_error_dispatch(
+    mocker, extension_cls, task_payload, status_code, transient,
+):
+    class TaskManager(TasksManagerBase):
+        async def build_response(self, task_data, future):
+            pass
+
+        async def get_argument(self, task_data):
+            pass
+
+        def get_method_name(self, task_data, argument):
+            return 'my_method'
+
+    exc = ClientError('error', status_code=status_code)
+    mocker.patch.object(TaskManager, 'get_argument', side_effect=exc)
+    mocked_transient = mocker.patch.object(TaskManager, 'send_transient_error_response')
+    mocked_exception = mocker.patch.object(TaskManager, 'send_exception_response')
+
+    cls = extension_cls('my_method')
+    mocker.patch.object(cls, 'get_descriptor')
+    config = ConfigHelper()
+    mocker.patch.object(EventsApp, 'load_application', return_value=cls)
+    handler = EventsApp(config)
+
+    manager = TaskManager(config, handler, mocker.AsyncMock())
+    task_data = Task(**task_payload('category', 'type', 'ID'))
+    await manager.submit(task_data)
+
+    if transient:
+        mocked_transient.assert_called_once_with(task_data, exc)
+        mocked_exception.assert_not_called()
+    else:
+        mocked_exception.assert_called_once_with(task_data, exc)
+        mocked_transient.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_transient_error_response_default(mocker, task_payload):
+    class TaskManager(TasksManagerBase):
+        async def build_response(self, task_data, future):
+            pass
+
+        async def get_argument(self, task_data):
+            pass
+
+        def get_method_name(self, task_data, argument):
+            pass
+
+    mocked_exception = mocker.patch.object(TaskManager, 'send_exception_response')
+    manager = TaskManager(ConfigHelper(), None, None)
+    task_data = Task(**task_payload('category', 'type', 'ID'))
+    exc = ClientError('error', status_code=503)
+
+    manager.send_transient_error_response(task_data, exc)
+
+    mocked_exception.assert_called_once_with(task_data, exc)
