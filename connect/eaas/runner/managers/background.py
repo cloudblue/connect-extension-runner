@@ -56,7 +56,8 @@ class BackgroundTasksManager(TasksManagerBase):
         )
         future = asyncio.Future()
         future.set_result(BackgroundResponse.reschedule(countdown=countdown))
-        asyncio.create_task(self.enqueue_result(data, future))
+        # Same fire-and-forget pattern as send_skip_response: the future is already resolved.
+        asyncio.create_task(self.enqueue_result(data, future))  # NOSONAR
 
     async def get_argument(self, task_data):
         """
