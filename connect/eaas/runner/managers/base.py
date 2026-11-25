@@ -96,7 +96,7 @@ class TasksManagerBase(ABC):
 
     async def submit(self, task_data):
         """
-        Submit a new task for its processing.
+        Submit a new task. Return True when processing or an error response was scheduled.
 
         :param task_data: Task data.
         :type task_data: connect.eaas.core.proto.Task
@@ -137,19 +137,20 @@ class TasksManagerBase(ABC):
 
             logger.info(f'invoke method {method.__name__} for task {task_data.options.task_id}')
             await self.invoke(task_data, method, argument)
+            return True
         except ClientError as ce:
             logger.warning(
                 f'Cannot retrieve object {task_data.input.object_id} '
                 f'for task {task_data.options.task_id}',
             )
             self.send_exception_response(task_data, ce)
-            return
+            return True
         except Exception as e:
             logger.error(
                 f'Exceptions while processing task {task_data.options.task_id}',
             )
             self.send_exception_response(task_data, e)
-            return
+            return True
 
     def send_exception_response(self, data, e):
         """

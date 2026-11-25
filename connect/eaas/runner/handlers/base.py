@@ -8,6 +8,10 @@ from abc import (
     abstractmethod,
 )
 
+from opentelemetry.trace.propagation.tracecontext import (
+    TraceContextTextMapPropagator,
+)
+
 from connect.client import (
     AsyncConnectClient,
     ConnectClient,
@@ -142,9 +146,13 @@ class ApplicationHandlerBase(ABC):
         default_headers.update(self._config.get_user_agent())
 
         if connect_correlation_id:
-            operation_id = connect_correlation_id[3:34]
-            span_id = os.urandom(8).hex()
-            correlation_id = f'00-{operation_id}-{span_id}-01'
+            carrier = {}
+            TraceContextTextMapPropagator().inject(carrier)
+            correlation_id = carrier.get('traceparent')
+            if not correlation_id or correlation_id[3:35] != connect_correlation_id[3:35]:
+                operation_id = connect_correlation_id[3:34]
+                span_id = os.urandom(8).hex()
+                correlation_id = f'00-{operation_id}-{span_id}-01'
             default_headers['ext-traceparent'] = correlation_id
 
         return Client(

@@ -28,6 +28,8 @@ cextrun = 'connect.eaas.runner.main:main'
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 websockets = "13.*"
+opentelemetry-sdk = "^1.32"
+opentelemetry-exporter-otlp-proto-http = "^1.32"
 connect-openapi-client = ">=29.0,<38"
 logzio-python-handler = "^4.1.4"
 backoff = "^2.2.1"

@@ -20,12 +20,18 @@ from connect.eaas.core.proto import (
 from connect.eaas.runner.managers.base import (
     TasksManagerBase,
 )
+from connect.eaas.runner.tracing import (
+    traced_handler,
+)
 
 
 logger = logging.getLogger(__name__)
 
 
 class InteractiveTasksManager(TasksManagerBase):
+
+    async def invoke(self, task_data, method, argument):
+        await super().invoke(task_data, traced_handler(method), argument)
 
     def get_method_name(self, task_data, argument):
         return self.handler.events[task_data.input.event_type]['method']

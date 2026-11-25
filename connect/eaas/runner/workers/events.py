@@ -6,11 +6,23 @@
 import asyncio
 import logging
 import signal
+from dataclasses import (
+    dataclass,
+)
 
+from opentelemetry import (
+    trace,
+)
+
+from connect.eaas.core.enums import (
+    ResultType,
+    TaskCategory,
+)
 from connect.eaas.core.proto import (
     Message,
     MessageType,
     SetupRequest,
+    Task,
 )
 from connect.eaas.runner.constants import (
     DELAY_ON_CONNECT_EXCEPTION_SECONDS,
@@ -26,12 +38,22 @@ from connect.eaas.runner.managers import (
     InteractiveTasksManager,
     ScheduledTasksManager,
 )
+from connect.eaas.runner.tracing import (
+    configure_worker_tracing,
+    start_interactive_span,
+)
 from connect.eaas.runner.workers.base import (
     WorkerBase,
 )
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TracedResult:
+    task: Task
+    span: trace.Span
 
 
 class EventsWorker(WorkerBase):
@@ -50,10 +72,11 @@ class EventsWorker(WorkerBase):
             self.handler,
             self.results_queue.put,
         )
+        self._interactive_spans = set()
         self.interactive_manager = InteractiveTasksManager(
             self.config,
             self.handler,
-            self.results_queue.put,
+            self._enqueue_interactive_result,
         )
         self.scheduled_manager = ScheduledTasksManager(
             self.config,
@@ -121,8 +144,35 @@ class EventsWorker(WorkerBase):
             f'received new {task_data.options.task_category} task: {task_data.options.task_id}',
         )
         manager = getattr(self, f'{task_data.options.task_category}_manager')
-        await manager.submit(task_data)
+        span = None
+        if task_data.options.task_category == TaskCategory.INTERACTIVE:
+            span = start_interactive_span(task_data)
+        if span is None or not span.is_recording():
+            await manager.submit(task_data)
+        else:
+            self._interactive_spans.add(span)
+            scheduled = False
+            try:
+                with trace.use_span(span, record_exception=False, set_status_on_exception=False):
+                    scheduled = await manager.submit(task_data)
+            finally:
+                if not scheduled:
+                    self._end_interactive_span(span, failed=True)
         logger.info(f'task {task_data.options.task_id} submitted for processing')
+
+    def _end_interactive_span(self, span, failed):
+        self._interactive_spans.discard(span)
+        if failed:
+            span.set_status(trace.StatusCode.ERROR)
+        span.end()
+
+    async def _enqueue_interactive_result(self, task):
+        span = trace.get_current_span()
+        if span in self._interactive_spans:
+            span.add_event('result.queued')
+            await self.results_queue.put(TracedResult(task, span))
+        else:
+            await self.results_queue.put(task)
 
     async def result_sender(self):  # noqa: CCR001
         """
@@ -141,39 +191,53 @@ class EventsWorker(WorkerBase):
                 f'Current processing status: running={self.running_tasks} '
                 f'results={self.results_queue.qsize()}',
             )
-            result = await self.results_queue.get()
-            logger.info(f'Got a result from queue: {result.options.task_id}')
-            retries = 0
-            while retries < RESULT_SENDER_MAX_RETRIES:
+            item = await self.results_queue.get()
+            if isinstance(item, TracedResult):
+                item.span.add_event('result.dequeued')
+                sent = False
                 try:
-                    message = Message(
-                        version=2,
-                        message_type=MessageType.TASK,
-                        data=result,
-                    )
-                    await self.ensure_connection()
-                    logger.debug(f'Sending message: {self.prettify(message)}')
-                    await self.send(message.serialize())
-                    logger.info(f'Result for task {result.options.task_id} has been sent.')
-                    break
-                except Exception:
-                    logger.warning(
-                        f'Attempt {retries} to send results for task '
-                        f'{result.options.task_id} has failed.',
-                    )
-                    retries += 1
-                    await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
+                    sent = await self._send_result(item.task, item.span)
+                finally:
+                    failed = not sent or item.task.output.result == ResultType.FAIL
+                    self._end_interactive_span(item.span, failed)
             else:
-                logger.warning(
-                    f'Max retries exceeded ({RESULT_SENDER_MAX_RETRIES})'
-                    f' for sending results of task {result.options.task_id}',
-                )
+                await self._send_result(item)
 
             if not self.run_event.is_set():
                 logger.info(
                     f'Current processing status: running={self.running_tasks} '
                     f'results={self.results_queue.qsize()}',
                 )
+
+    async def _send_result(self, result, span=None):
+        logger.info(f'Got a result from queue: {result.options.task_id}')
+        retries = 0
+        while retries < RESULT_SENDER_MAX_RETRIES:
+            try:
+                message = Message(
+                    version=2,
+                    message_type=MessageType.TASK,
+                    data=result,
+                )
+                await self.ensure_connection()
+                logger.debug(f'Sending message: {self.prettify(message)}')
+                if span is not None:
+                    span.add_event('websocket.send', {'attempt': retries + 1})
+                await self.send(message.serialize())
+                logger.info(f'Result for task {result.options.task_id} has been sent.')
+                return True
+            except Exception:
+                logger.warning(
+                    f'Attempt {retries} to send results for task '
+                    f'{result.options.task_id} has failed.',
+                )
+                retries += 1
+                await asyncio.sleep(DELAY_ON_CONNECT_EXCEPTION_SECONDS)
+        logger.warning(
+            f'Max retries exceeded ({RESULT_SENDER_MAX_RETRIES})'
+            f' for sending results of task {result.options.task_id}',
+        )
+        return False
 
     async def stopping(self):
         result_timeout = self.config.get_timeout('background') + RESULT_SENDER_WAIT_GRACE_SECONDS
@@ -197,7 +261,11 @@ class EventsWorker(WorkerBase):
         Start the runner.
         """
         self.results_task = asyncio.create_task(self.result_sender())
-        await super().start()
+        try:
+            await super().start()
+        finally:
+            for span in list(self._interactive_spans):
+                self._end_interactive_span(span, failed=True)
 
     def __repr__(self):
         if self.runner_type:
@@ -233,7 +301,12 @@ def _start_event_worker_process(
         signal.SIGTERM,
         worker.handle_signal,
     )
-    loop.run_until_complete(worker.start())
+    provider = configure_worker_tracing()
+    try:
+        loop.run_until_complete(worker.start())
+    finally:
+        if provider is not None:
+            provider.shutdown()
 
 
 def start_interactive_worker_process(
